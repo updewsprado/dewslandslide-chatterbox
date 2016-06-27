@@ -87,11 +87,11 @@ class ChatterBox implements MessageComponentInterface {
     }
 
     //Insert data for smsinbox table
-    public function insertSMSInboxEntry($smsid, $timestamp, $sender, $message) {
+    public function insertSMSInboxEntry($timestamp, $sender, $message) {
         //TODO: this needs to filter or check special characters
 
-        $sql = "INSERT INTO smsinbox (sms_id, timestamp, sim_num, sms_msg, read_status, web_flag)
-                VALUES ('$smsid', '$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
+        $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
+                VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
         if ($this->dbconn->query($sql) === TRUE) {
             echo "New record created successfully!\n";
@@ -117,6 +117,62 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Error: " . $sql . "<br>" . $this->dbconn->error;
             }
         }
+    }
+
+    //Return the message exchanges between Chatterbox and a number
+    public function getMessageExchanges($number = null, $timestamp = null) {
+        if ($number == null) {
+            echo "Error: no number selected.";
+            return -1;
+        }
+
+        $sql = '';
+        if ($timestamp == null) {
+            $sql = "SELECT 'You' as user, sms_msg as msg, 
+                        timestamp_written as timestamp
+                    FROM smsoutbox WHERE recepients LIKE '%$number'
+                    UNION 
+                    SELECT sim_num as user, sms_msg as msg,
+                        timestamp as timestamp
+                    FROM smsinbox WHERE sim_num LIKE '%$number'
+                    ORDER BY timestamp desc LIMIT 30";
+        } else {
+            $sql = "SELECT 'You' as user, sms_msg as msg, 
+                        timestamp_written as timestamp
+                    FROM smsoutbox WHERE recepients LIKE '%$number'
+                    AND timestamp_written < '$timestamp'
+                    UNION 
+                    SELECT sim_num as user, sms_msg as msg,
+                        timestamp as timestamp
+                    FROM smsinbox WHERE sim_num LIKE '%$number'
+                    AND timestamp < '$timestamp'
+                    ORDER BY timestamp desc LIMIT 30";
+        }
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'smsload';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        return $fullData;
     }
 
     //TODO: Resilience against Net Connection Loss
@@ -148,7 +204,7 @@ class ChatterBox implements MessageComponentInterface {
             $msgType = $decodedText->type;
 
             if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
-                //TODO: broadcast JSON message to all connected clients
+                //broadcast JSON message to all connected clients
                 foreach ($this->clients as $client) {
                     if ($from !== $client) {
                         // The sender is not the receiver, send to each client connected
@@ -156,7 +212,7 @@ class ChatterBox implements MessageComponentInterface {
                     }
                 }
 
-                //TODO: save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
+                //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
                 //saving "smssend"
                 if ($msgType == "smssend") {
                     echo "Message sent by ChatterBox Users to GSM and the community.\n";
@@ -172,14 +228,25 @@ class ChatterBox implements MessageComponentInterface {
                     echo "Message received from GSM.\n";
 
                     //store data in 'smsinbox' table
-                    $smsid = $decodedText->sms_id;
                     $rcvTS = $decodedText->timestamp;
                     $sender = $decodedText->sender;
                     $rcvMsg = $decodedText->msg;
 
-                    $this->insertSMSInboxEntry($smsid, $rcvTS, $sender, $rcvMsg);
+                    $this->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
                 }
             } 
+            elseif ($msgType == "smsloadrequest") {
+                echo "Loading messages...";
+
+                //Load the message exchanges between Chatterbox and a number
+                $number = $decodedText->number;
+                $from->send("request for: $number");
+                $timestamp = $decodedText->timestamp;
+                $from->send("timestamp: $timestamp");
+
+                $exchanges = $this->getMessageExchanges($number, $timestamp);
+                $from->send(json_encode($exchanges));
+            }
             else {
                 echo "Message will be ignored\n";
             }
