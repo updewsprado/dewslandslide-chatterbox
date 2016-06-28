@@ -120,7 +120,7 @@ class ChatterBox implements MessageComponentInterface {
     }
 
     //Return the message exchanges between Chatterbox and a number
-    public function getMessageExchanges($number = null, $timestamp = null) {
+    public function getMessageExchanges($number = null, $timestamp = null, $limit = 10) {
         if ($number == null) {
             echo "Error: no number selected.";
             return -1;
@@ -135,7 +135,7 @@ class ChatterBox implements MessageComponentInterface {
                     SELECT sim_num as user, sms_msg as msg,
                         timestamp as timestamp
                     FROM smsinbox WHERE sim_num LIKE '%$number'
-                    ORDER BY timestamp desc LIMIT 30";
+                    ORDER BY timestamp desc LIMIT $limit";
         } else {
             $sql = "SELECT 'You' as user, sms_msg as msg, 
                         timestamp_written as timestamp
@@ -146,7 +146,7 @@ class ChatterBox implements MessageComponentInterface {
                         timestamp as timestamp
                     FROM smsinbox WHERE sim_num LIKE '%$number'
                     AND timestamp < '$timestamp'
-                    ORDER BY timestamp desc LIMIT 30";
+                    ORDER BY timestamp desc LIMIT $limit";
         }
 
         $result = $this->dbconn->query($sql);
@@ -204,13 +204,13 @@ class ChatterBox implements MessageComponentInterface {
             $msgType = $decodedText->type;
 
             if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
-                //broadcast JSON message to all connected clients
-                foreach ($this->clients as $client) {
-                    if ($from !== $client) {
-                        // The sender is not the receiver, send to each client connected
-                        $client->send($msg);
-                    }
-                }
+                // //broadcast JSON message to all connected clients
+                // foreach ($this->clients as $client) {
+                //     if ($from !== $client) {
+                //         // The sender is not the receiver, send to each client connected
+                //         $client->send($msg);
+                //     }
+                // }
 
                 //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
                 //saving "smssend"
@@ -222,7 +222,21 @@ class ChatterBox implements MessageComponentInterface {
                     $sentMsg = $decodedText->msg;
 
                     $this->insertSMSOutboxEntry($recipients, $sentMsg);
-                }
+
+                    $displayMsg['type'] = "smssend";
+                    $displayMsg['timestamp'] = date("Y-m-d H:i:s", time());
+                    $displayMsg['user'] = "You";
+                    $displayMsg['numbers'] = $recipients;
+                    $displayMsg['msg'] = $sentMsg;
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    //broadcast JSON message from GSM to all connected clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }                }
                 //saving "smsrcv"
                 elseif ($msgType == "smsrcv") {
                     echo "Message received from GSM.\n";
@@ -233,6 +247,20 @@ class ChatterBox implements MessageComponentInterface {
                     $rcvMsg = $decodedText->msg;
 
                     $this->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
+
+                    $displayMsg['type'] = "smsrcv";
+                    $displayMsg['timestamp'] = $rcvTS;
+                    $displayMsg['user'] = $sender;
+                    $displayMsg['msg'] = $rcvMsg;
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    //broadcast JSON message from GSM to all connected clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }
                 }
             } 
             elseif ($msgType == "smsloadrequest") {
@@ -240,9 +268,7 @@ class ChatterBox implements MessageComponentInterface {
 
                 //Load the message exchanges between Chatterbox and a number
                 $number = $decodedText->number;
-                $from->send("request for: $number");
                 $timestamp = $decodedText->timestamp;
-                $from->send("timestamp: $timestamp");
 
                 $exchanges = $this->getMessageExchanges($number, $timestamp);
                 $from->send(json_encode($exchanges));
