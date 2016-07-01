@@ -175,6 +175,245 @@ class ChatterBox implements MessageComponentInterface {
         return $fullData;
     }
 
+    public function getArraySize($arr) {
+        $tot = 0;
+        foreach($arr as $a) {
+            if (is_array($a)) {
+                $tot += $this->getArraySize($a);
+            }
+            if (is_string($a)) {
+                $tot += strlen($a);
+            }
+            if (is_int($a)) {
+                $tot += PHP_INT_SIZE;
+            }
+        }
+        return $tot;
+    }
+
+    public function getCommunityContact($sitename, $office) {
+        if ( ($office == "all") || ($office == null) ) {
+            $sql = "SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                        number as numbers
+                    FROM communitycontacts
+                    WHERE sitename like '%$sitename%'
+                    ORDER BY fullname";
+        } else {
+            $sql = "SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                        number as numbers
+                    FROM communitycontacts
+                    WHERE sitename like '%$sitename%' AND office = '$office'
+                    ORDER BY fullname";
+        }
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'loadcommunitycontact';
+
+        if ($result->num_rows > 0) {
+            $fullData['total'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //echo json_encode($fullData);
+        return $fullData;
+    }
+
+    public function getContactsFromName($queryName) {
+        $sql = "SELECT * FROM
+                    (SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                        number as numbers
+                    FROM communitycontacts
+                    UNION
+                    SELECT 
+                        CONCAT(firstname, ' ', lastname) as fullname, 
+                        numbers
+                    FROM dewslcontacts
+                    ORDER BY fullname) as fullcontacts
+                WHERE
+                    fullname LIKE '%$queryName%'";
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'loadcommunitycontact';
+
+        if ($result->num_rows > 0) {
+            $fullData['total'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //echo json_encode($fullData);
+        return $fullData;
+    }
+
+    public function getContactSuggestions($queryName) {
+        $sql = "SELECT * FROM
+                    (SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                        number as numbers
+                    FROM communitycontacts
+                    UNION
+                    SELECT 
+                        CONCAT(firstname, ' ', lastname) as fullname, 
+                        numbers
+                    FROM dewslcontacts
+                    ORDER BY fullname) as fullcontacts
+                WHERE
+                    fullname LIKE '%$queryName%'";
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'loadnamesuggestions';
+
+        if ($result->num_rows > 0) {
+            $fullData['total'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //echo json_encode($fullData);
+        return $fullData;
+    }
+
+    public function getNameSuggestions($queryName) {
+        $sql = "SELECT * FROM
+                    (SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname
+                    FROM communitycontacts
+                    UNION
+                    SELECT 
+                        CONCAT(firstname, ' ', lastname) as fullname
+                    FROM dewslcontacts
+                    ORDER BY fullname) as fullcontacts
+                WHERE
+                    fullname LIKE '%$queryName%'";
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'loadnamesuggestions';
+
+        if ($result->num_rows > 0) {
+            $fullData['total'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr] = utf8_decode($row['fullname']);
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //echo json_encode($fullData);
+        return $fullData;
+    }
+
+    //Return the normalized contact list for both DEWSL and Community
+    //currently exceeds the web socket bandwidth (9115 bytes)
+    public function getAllContactsList() {
+        $sql = "SELECT
+                    CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                    number as numbers
+                FROM communitycontacts
+                UNION
+                SELECT 
+                    CONCAT(firstname, ' ', lastname) as fullname, 
+                    numbers
+                FROM dewslcontacts
+                ORDER BY fullname";
+
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'loadcontacts';
+
+        if ($result->num_rows > 0) {
+            $fullData['total'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['fullname'] = $row['fullname'];
+                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //echo json_encode($fullData);
+        return $fullData;
+    }
+
     //TODO: Resilience against Net Connection Loss
     //Create a protocol for checking whether the message was sent to GSM.
     //There should be a function that will attempt to send "PENDING" data
@@ -204,14 +443,6 @@ class ChatterBox implements MessageComponentInterface {
             $msgType = $decodedText->type;
 
             if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
-                // //broadcast JSON message to all connected clients
-                // foreach ($this->clients as $client) {
-                //     if ($from !== $client) {
-                //         // The sender is not the receiver, send to each client connected
-                //         $client->send($msg);
-                //     }
-                // }
-
                 //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
                 //saving "smssend"
                 if ($msgType == "smssend") {
@@ -272,6 +503,42 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->getMessageExchanges($number, $timestamp);
                 $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "loadcontactsrequest") {
+                echo "Loading contact information...";
+
+                //Load the contacts list
+                $contacts = $this->getAllContactsList();
+                $from->send(json_encode($contacts));
+            }
+            elseif ($msgType == "loadcommunitycontactrequest") {
+                echo "Loading a community contact information...";
+
+                //Load a community contact information
+                $sitename = $decodedText->sitename;
+                $office = $decodedText->office;
+
+                $commcontact = $this->getCommunityContact($sitename, $office);
+                $from->send(json_encode($commcontact));
+            }
+            elseif ($msgType == "loadcontactfromnamerequest") {
+                echo "Loading a contact information from name...";
+
+                //Load a community contact information
+                $contactname = $decodedText->contactname;
+
+                $contact = $this->getContactsFromName($contactname);
+                $from->send(json_encode($contact));
+            }
+            elseif ($msgType == "requestnamesuggestions") {
+                echo "Loading name suggestions...";
+
+                //Load a community contact information
+                $namequery = $decodedText->namequery;
+
+                //$namesuggestions = $this->getNameSuggestions($namequery);
+                $namesuggestions = $this->getContactSuggestions($namequery);
+                $from->send(json_encode($namesuggestions));
             }
             else {
                 echo "Message will be ignored\n";
