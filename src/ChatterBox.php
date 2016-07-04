@@ -296,7 +296,8 @@ class ChatterBox implements MessageComponentInterface {
                     FROM dewslcontacts
                     ORDER BY fullname) as fullcontacts
                 WHERE
-                    fullname LIKE '%$queryName%'";
+                    fullname LIKE '%$queryName%'
+                    OR numbers LIKE '%$queryName%'";
 
         $result = $this->dbconn->query($sql);
 
@@ -339,7 +340,8 @@ class ChatterBox implements MessageComponentInterface {
                     FROM dewslcontacts
                     ORDER BY fullname) as fullcontacts
                 WHERE
-                    fullname LIKE '%$queryName%'";
+                    fullname LIKE '%$queryName%'
+                    OR numbers LIKE '%$queryName%'";
 
         $result = $this->dbconn->query($sql);
 
