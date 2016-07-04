@@ -120,33 +120,62 @@ class ChatterBox implements MessageComponentInterface {
     }
 
     //Return the message exchanges between Chatterbox and a number
-    public function getMessageExchanges($number = null, $timestamp = null, $limit = 10) {
+    public function getMessageExchanges($number = null, $timestamp = null, $limit = 20) {
+        $ctr = 0;
         if ($number == null) {
             echo "Error: no number selected.";
             return -1;
+        } else {
+            foreach ($number as $test) {
+                //echo "target: $number\n";
+                echo "target: $test\n";
+                $ctr++;
+            }
         }
 
         $sql = '';
-        if ($timestamp == null) {
-            $sql = "SELECT 'You' as user, sms_msg as msg, 
-                        timestamp_written as timestamp
-                    FROM smsoutbox WHERE recepients LIKE '%$number'
-                    UNION 
-                    SELECT sim_num as user, sms_msg as msg,
-                        timestamp as timestamp
-                    FROM smsinbox WHERE sim_num LIKE '%$number'
-                    ORDER BY timestamp desc LIMIT $limit";
+        $sqlTargetNumbers = "";
+
+        //Construct the query for loading messages from multiple numbers
+        if ($ctr > 1) {
+            for ($i = 0; $i < $ctr; $i++) { 
+                $targetNum = $number[$i];
+
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                }
+            }
         } else {
-            $sql = "SELECT 'You' as user, sms_msg as msg, 
-                        timestamp_written as timestamp
-                    FROM smsoutbox WHERE recepients LIKE '%$number'
-                    AND timestamp_written < '$timestamp'
-                    UNION 
-                    SELECT sim_num as user, sms_msg as msg,
-                        timestamp as timestamp
-                    FROM smsinbox WHERE sim_num LIKE '%$number'
-                    AND timestamp < '$timestamp'
-                    ORDER BY timestamp desc LIMIT $limit";
+            $targetNum = $number[0];
+            $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+            $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+        }
+
+        //Construct the final query
+        if ($timestamp == null) {
+            $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+                            timestamp_written as timestamp
+                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
+
+            $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+                            timestamp as timestamp
+                        FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
+
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+        } else {
+            $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+                            timestamp_written as timestamp
+                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
+
+            $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+                            timestamp as timestamp
+                        FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
+
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
         }
 
         $result = $this->dbconn->query($sql);
