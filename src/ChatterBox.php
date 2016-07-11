@@ -101,14 +101,20 @@ class ChatterBox implements MessageComponentInterface {
     }
 
     //Insert data for smsoutbox table
-    public function insertSMSOutboxEntry($recipients, $message) {
+    public function insertSMSOutboxEntry($recipients, $message, $sentTS = null) {
         //TODO: this needs to filter or check special characters
 
-        foreach ($recipients as $recipient) {
+        if ($sentTS) {
+            $curTime = $sentTS;
+        } else {
             $curTime = date("Y-m-d H:i:s", time());
+        }
+        
+
+        foreach ($recipients as $recipient) {
             echo "$curTime Message recipient: $recipient\n";
 
-            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status)
+            $sql = "INSERT INTO smsoutbox (timestamp_sent, recepients, sms_msg, send_status)
                     VALUES ('$curTime', '$recipient', '$message', 'PENDING')";
 
             if ($this->dbconn->query($sql) === TRUE) {
@@ -158,7 +164,7 @@ class ChatterBox implements MessageComponentInterface {
         //Construct the final query
         if ($timestamp == null) {
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp
+                            timestamp_sent as timestamp
                         FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
@@ -168,8 +174,8 @@ class ChatterBox implements MessageComponentInterface {
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
         } else {
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp
-                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
+                            timestamp_sent as timestamp
+                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_sent < '$timestamp' ";
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
                             timestamp as timestamp
@@ -482,11 +488,14 @@ class ChatterBox implements MessageComponentInterface {
                     //store data in 'smsoutbox' table
                     $recipients = $decodedText->numbers;
                     $sentMsg = $decodedText->msg;
+                    $sentTS = $decodedText->timestamp;
 
-                    $this->insertSMSOutboxEntry($recipients, $sentMsg);
+                    echo "sentTS = $sentTS \n";
+
+                    $this->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
 
                     $displayMsg['type'] = "smssend";
-                    $displayMsg['timestamp'] = date("Y-m-d H:i:s", time());
+                    $displayMsg['timestamp'] = $sentTS;
                     $displayMsg['user'] = "You";
                     $displayMsg['numbers'] = $recipients;
                     $displayMsg['msg'] = $sentMsg;
