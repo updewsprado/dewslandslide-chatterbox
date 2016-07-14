@@ -210,6 +210,151 @@ class ChatterBox implements MessageComponentInterface {
         return $fullData;
     }
 
+    //Return the message exchanges between Chatterbox and a group
+    public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null, $limit = 70) {
+        $ctr = 0;
+
+        $ctrOffices = 0;
+        $subQueryOffices;
+        if ($offices == null) {
+            echo "Error: no office selected.";
+            return -1;
+        } else {
+            foreach ($offices as $office) {
+                //echo "target: $number\n";
+                echo "target office: $office\n";
+
+                if ($ctrOffices == 0) {
+                    $subQueryOffices = "('$office'";
+                } else {
+                    $subQueryOffices = $subQueryOffices . ",'$office'";
+                }
+                $ctrOffices++;
+            }
+
+            $subQueryOffices = $subQueryOffices . ")";
+        }
+        echo "offices: $subQueryOffices \n";
+
+        $ctrSites = 0;
+        $subQuerySitenames;
+        if ($sitenames == null) {
+            echo "Error: no sitename selected.";
+            return -1;
+        } else {
+            foreach ($sitenames as $site) {
+                //echo "target: $number\n";
+                echo "target sitename: $site\n";
+
+                if ($ctrSites == 0) {
+                    $subQuerySitenames = "('$site'";
+                } else {
+                    $subQuerySitenames = $subQuerySitenames . ",'$site'";
+                }
+                $ctrSites++;
+            }
+
+            $subQuerySitenames = $subQuerySitenames . ")";
+        }
+        echo "sitenames: $subQuerySitenames \n";
+
+        $sql = '';
+        
+
+        //TODO: construct query for loading the numbers from the tags selected
+        //  by the user
+        $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                            FROM communitycontacts 
+                            WHERE office in $subQueryOffices 
+                            AND sitename in $subQuerySitenames";
+
+        $result = $this->dbconn->query($sqlTargetNumbers);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $numbers = explode(",", $row['number']);
+
+                foreach ($numbers as $number) {
+                    $dbreturn[$ctr]['office'] = $row['office'];
+                    $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                    // $dbreturn[$ctr]['lastname'] = $row['lastname'];
+
+                    $dbreturn[$ctr]['number'] = $number;
+
+                    // echo $row['sitename'] . " " . $row['office'] . " " . $number . "\n";
+
+                    $ctr = $ctr + 1;
+                }
+            }
+
+            $fullData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 numbers found\n";
+            $fullData['data'] = null;
+        }
+
+        // echo "JSON output ($ctr): " . json_encode($fullData);
+
+        //Construct the query for loading messages from multiple numbers
+        $num_numbers = count($fullData['data']);
+        if ($num_numbers > 1) {
+            for ($i = 0; $i < $num_numbers; $i++) { 
+                $targetNum = substr($fullData['data'][$i]['number'], 1) ;
+
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                }
+            }
+        } else {
+            $sqlTargetNumbersOutbox = " ";
+            $sqlTargetNumbersInbox = " ";
+        }
+
+        //Construct the final query
+        $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+                        timestamp_sent as timestamp
+                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_sent IS NOT NULL ";
+
+        $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+                        timestamp as timestamp
+                    FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+
+        echo "\n\n$sql";
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $msgData['type'] = 'smsload';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $msgData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $msgData['data'] = null;
+        }
+
+        // echo json_encode($msgData);
+
+        return $msgData;
+    }
+
     public function getArraySize($arr) {
         $tot = 0;
         foreach($arr as $a) {
@@ -451,6 +596,67 @@ class ChatterBox implements MessageComponentInterface {
         return $fullData;
     }
 
+    //This will only be called only one time and only if the user clicks
+    //  on the "advanced search option"
+    public function getAllOfficesAndSites() {
+        $fullData['type'] = 'loadofficeandsites';
+
+        //Get the list of offices from the community contacts list
+        $sqlOffices = "SELECT DISTINCT office FROM communitycontacts";
+        $result = $this->dbconn->query($sqlOffices);
+
+        $ctr = 0;
+        $returnOffices = "";
+
+        if ($result->num_rows > 0) {
+            $fullData['total_offices'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $returnOffices[$ctr] = $row['office'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['offices'] = $returnOffices;
+            echo "Offices data size: " . $this->getArraySize($returnOffices) . "\n";
+        }
+        else {
+            echo "0 results for offices\n";
+            $fullData['offices'] = null;
+        }
+
+        //Get the list of sitenames from the community contacts list
+        $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts";
+        $result = $this->dbconn->query($sqlSitenames);
+
+        $ctr = 0;
+        $returnSitenames = "";
+
+        if ($result->num_rows > 0) {
+            $fullData['total_sites'] = $result->num_rows;
+            echo $result->num_rows . " results\n";
+
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $returnSitenames[$ctr] = $row['sitename'];
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['sitenames'] = $returnSitenames;
+            echo "Sitenames data size: " . $this->getArraySize($returnSitenames) . "\n";
+        }
+        else {
+            echo "0 results for sitenames\n";
+            $fullData['sitenames'] = null;
+        }
+
+        // echo json_encode($fullData);
+        return $fullData;
+    }
+
     //TODO: Resilience against Net Connection Loss
     //Create a protocol for checking whether the message was sent to GSM.
     //There should be a function that will attempt to send "PENDING" data
@@ -543,6 +749,26 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->getMessageExchanges($number, $timestamp);
                 $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "smsloadrequestgroup") {
+                echo "Loading groups/tag messages...";
+
+                //Load the message exchanges between Chatterbox and group selected
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+
+                //Load Message Exchanges using group tags
+                //$exchanges = $this->getMessageExchanges($number, $timestamp);
+                $exchanges = $this->getMessageExchangesFromGroupTags($offices, $sitenames);
+
+                $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "loadofficeandsitesrequest") {
+                echo "Loading office and sitename information...";
+
+                //Load the office and sitenames
+                $officeAndSites = $this->getAllOfficesAndSites();
+                $from->send(json_encode($officeAndSites));
             }
             elseif ($msgType == "loadcontactsrequest") {
                 echo "Loading contact information...";
