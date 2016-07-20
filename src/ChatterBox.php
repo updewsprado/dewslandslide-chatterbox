@@ -86,9 +86,19 @@ class ChatterBox implements MessageComponentInterface {
         }
     }
 
+    public function filterSpecialCharacters($message) {
+        //Filter backslash (\)
+        $filteredMsg = str_replace("\\", "\\\\", $message);
+        //Filter single quote (')
+        $filteredMsg = str_replace("'", "\'", $filteredMsg);
+
+        return $filteredMsg;
+    }
+
     //Insert data for smsinbox table
     public function insertSMSInboxEntry($timestamp, $sender, $message) {
-        //TODO: this needs to filter or check special characters
+        //filter or check special characters
+        $message = $this->filterSpecialCharacters($message);
 
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
                 VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
@@ -102,7 +112,8 @@ class ChatterBox implements MessageComponentInterface {
 
     //Insert data for smsoutbox table
     public function insertSMSOutboxEntry($recipients, $message, $sentTS = null) {
-        //TODO: this needs to filter or check special characters
+        //filter or check special characters
+        $message = $this->filterSpecialCharacters($message);
 
         if ($sentTS) {
             $curTime = $sentTS;
@@ -210,6 +221,25 @@ class ChatterBox implements MessageComponentInterface {
         return $fullData;
     }
 
+    //Normalize a contact number
+    public function normalizeContactNumber($contactNumber) {
+        $countNum = strlen($contactNumber);
+        //echo "num count = $countNum\n";
+
+        //ex. 09168888888
+        if ($countNum == 11) {
+            $contactNumber = substr($contactNumber, 1);
+        }
+        //ex. 639168888888
+        elseif ($countNum == 12) {
+            $contactNumber = substr($contactNumber, 2);
+        }
+
+        return $contactNumber;
+    }
+
+
+
     //Return the message exchanges between Chatterbox and a group
     public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null, $limit = 70) {
         $ctr = 0;
@@ -277,30 +307,27 @@ class ChatterBox implements MessageComponentInterface {
                 foreach ($numbers as $number) {
                     $dbreturn[$ctr]['office'] = $row['office'];
                     $dbreturn[$ctr]['sitename'] = $row['sitename'];
-                    // $dbreturn[$ctr]['lastname'] = $row['lastname'];
-
                     $dbreturn[$ctr]['number'] = $number;
-
-                    // echo $row['sitename'] . " " . $row['office'] . " " . $number . "\n";
 
                     $ctr = $ctr + 1;
                 }
             }
 
-            $fullData['data'] = $dbreturn;
+            $contactInfoData['data'] = $dbreturn;
         }
         else {
             echo "0 numbers found\n";
-            $fullData['data'] = null;
+            $contactInfoData['data'] = null;
         }
 
-        // echo "JSON output ($ctr): " . json_encode($fullData);
+        //echo "JSON output ($ctr): " . json_encode($contactInfoData);
 
         //Construct the query for loading messages from multiple numbers
-        $num_numbers = count($fullData['data']);
+        $num_numbers = count($contactInfoData['data']);
         if ($num_numbers > 1) {
             for ($i = 0; $i < $num_numbers; $i++) { 
-                $targetNum = substr($fullData['data'][$i]['number'], 1) ;
+                $targetNum = $this->normalizeContactNumber($contactInfoData['data'][$i]['number']);
+                $contactInfoData['data'][$i]['number'] = $targetNum;
 
                 if ($i == 0) {
                     $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
@@ -340,6 +367,18 @@ class ChatterBox implements MessageComponentInterface {
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
 
+                //Normalize the user's number
+                $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
+
+                //TODO: Add "office" and "sitename" data using the "contactInfoData" array
+                foreach ($contactInfoData['data'] as $singleContact) {
+                    if ($singleContact['number'] == $normalized) {
+                        // $dbreturn[$ctr]['office'] = $singleContact['office'];
+                        // $dbreturn[$ctr]['sitename'] = $singleContact['sitename'];
+                        $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                    }
+                }
+
                 $ctr = $ctr + 1;
             }
 
@@ -350,7 +389,7 @@ class ChatterBox implements MessageComponentInterface {
             $msgData['data'] = null;
         }
 
-        // echo json_encode($msgData);
+        //echo json_encode($msgData);
 
         return $msgData;
     }
@@ -461,6 +500,53 @@ class ChatterBox implements MessageComponentInterface {
 
         //echo json_encode($fullData);
         return $fullData;
+    }
+
+    //Get contact name from number
+    public function getNameFromNumber($contactNumber) {
+        //normalize the number
+        $normalized = $this->normalizeContactNumber($contactNumber);
+
+        //TODO: create query to get name from the contact number if it exists
+        $sql = "SELECT * FROM 
+                    (SELECT
+                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                        number as numbers
+                    FROM communitycontacts
+                    UNION
+                    SELECT
+                        CONCAT(firstname, ' ', lastname) as fullname, 
+                        numbers
+                    FROM dewslcontacts) as contactNames
+                WHERE
+                    numbers LIKE '%$normalized%'";
+
+        $result = $this->dbconn->query($sql);
+
+        $dbreturn = [];
+        if ($result->num_rows > 0) {
+            $ctr = 0;
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                if ($ctr == 0) {
+                    $dbreturn['fullname'] = $row['fullname'];
+                }
+                else {
+                    $dbreturn['fullname'] = $dbreturn['fullname'] . ', ' . $row['fullname'];
+                }
+
+                $ctr++;
+            }
+
+            echo "data size: " . $this->getArraySize($dbreturn);
+        }
+        else {
+            echo "0 results\n";
+            $dbreturn['fullname'] = "unknown";
+        }
+
+        echo json_encode($dbreturn);
+        return $dbreturn;
     }
 
     public function getContactSuggestions($queryName) {
@@ -725,9 +811,13 @@ class ChatterBox implements MessageComponentInterface {
 
                     $this->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
 
+                    //TODO: Get tags (office, sitename, tags) from number
+                    $name = $this->getNameFromNumber($sender);
+
                     $displayMsg['type'] = "smsrcv";
                     $displayMsg['timestamp'] = $rcvTS;
                     $displayMsg['user'] = $sender;
+                    $displayMsg['name'] = $name['fullname'];
                     $displayMsg['msg'] = $rcvMsg;
                     $displayMsgJSON = json_encode($displayMsg);
 
