@@ -121,7 +121,6 @@ class ChatterBox implements MessageComponentInterface {
             $curTime = date("Y-m-d H:i:s", time());
         }
         
-
         foreach ($recipients as $recipient) {
             echo "$curTime Message recipient: $recipient\n";
 
@@ -238,10 +237,8 @@ class ChatterBox implements MessageComponentInterface {
         return $contactNumber;
     }
 
-
-
-    //Return the message exchanges between Chatterbox and a group
-    public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null, $limit = 70) {
+    //Return the contact numbers from the group tags
+    public function getContactNumbersFromGroupTags($offices = null, $sitenames = null) {
         $ctr = 0;
 
         $ctrOffices = 0;
@@ -251,9 +248,6 @@ class ChatterBox implements MessageComponentInterface {
             return -1;
         } else {
             foreach ($offices as $office) {
-                //echo "target: $number\n";
-                echo "target office: $office\n";
-
                 if ($ctrOffices == 0) {
                     $subQueryOffices = "('$office'";
                 } else {
@@ -273,14 +267,94 @@ class ChatterBox implements MessageComponentInterface {
             return -1;
         } else {
             foreach ($sitenames as $site) {
-                //echo "target: $number\n";
-                echo "target sitename: $site\n";
-
                 if ($ctrSites == 0) {
                     $subQuerySitenames = "('$site'";
                 } else {
                     $subQuerySitenames = $subQuerySitenames . ",'$site'";
                 }
+                $ctrSites++;
+            }
+
+            $subQuerySitenames = $subQuerySitenames . ")";
+        }
+        echo "sitenames: $subQuerySitenames \n";
+
+        $sql = '';
+        
+
+        //construct query for loading the numbers from the tags selected
+        //  by the user
+        $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                            FROM communitycontacts 
+                            WHERE office in $subQueryOffices 
+                            AND sitename in $subQuerySitenames";
+
+        $result = $this->dbconn->query($sqlTargetNumbers);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $numbers = explode(",", $row['number']);
+
+                foreach ($numbers as $number) {
+                    $dbreturn[$ctr]['office'] = $row['office'];
+                    $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                    $dbreturn[$ctr]['number'] = $number;
+
+                    $ctr = $ctr + 1;
+                }
+            }
+
+            $contactInfoData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 numbers found\n";
+            $contactInfoData['data'] = null;
+        }
+
+        return $contactInfoData;
+    }
+
+    //Return the message exchanges between Chatterbox and a group
+    public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null, $limit = 70) {
+        $ctr = 0;
+
+        $tagsCombined = "";
+
+        $ctrOffices = 0;
+        $subQueryOffices;
+        if ($offices == null) {
+            echo "Error: no office selected.";
+            return -1;
+        } else {
+            foreach ($offices as $office) {
+                if ($ctrOffices == 0) {
+                    $subQueryOffices = "('$office'";
+                } else {
+                    $subQueryOffices = $subQueryOffices . ",'$office'";
+                }
+
+                $tagsCombined = "$tagsCombined $office";
+                $ctrOffices++;
+            }
+
+            $subQueryOffices = $subQueryOffices . ")";
+        }
+        echo "offices: $subQueryOffices \n";
+
+        $ctrSites = 0;
+        $subQuerySitenames;
+        if ($sitenames == null) {
+            echo "Error: no sitename selected.";
+            return -1;
+        } else {
+            foreach ($sitenames as $site) {
+                if ($ctrSites == 0) {
+                    $subQuerySitenames = "('$site'";
+                } else {
+                    $subQuerySitenames = $subQuerySitenames . ",'$site'";
+                }
+
+                $tagsCombined = "$tagsCombined $site";
                 $ctrSites++;
             }
 
@@ -343,22 +417,22 @@ class ChatterBox implements MessageComponentInterface {
         }
 
         //Construct the final query
-        $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
                         timestamp_sent as timestamp
                     FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_sent IS NOT NULL ";
 
-        $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
                         timestamp as timestamp
                     FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
 
         $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
 
-        echo "\n\n$sql";
+        //echo "\n\n$sql";
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
         $dbreturn = "";
-        $msgData['type'] = 'smsload';
+        $msgData['type'] = 'smsloadrequestgroup';
 
         if ($result->num_rows > 0) {
             // output data of each row
@@ -370,13 +444,15 @@ class ChatterBox implements MessageComponentInterface {
                 //Normalize the user's number
                 $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
 
-                //TODO: Add "office" and "sitename" data using the "contactInfoData" array
+                //Add "office" and "sitename" data using the "contactInfoData" array
                 foreach ($contactInfoData['data'] as $singleContact) {
                     if ($singleContact['number'] == $normalized) {
-                        // $dbreturn[$ctr]['office'] = $singleContact['office'];
-                        // $dbreturn[$ctr]['sitename'] = $singleContact['sitename'];
                         $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                     }
+                }
+
+                if ($dbreturn[$ctr]['user'] == "You") {
+                    $dbreturn[$ctr]['name'] = $tagsCombined;
                 }
 
                 $ctr = $ctr + 1;
@@ -811,7 +887,7 @@ class ChatterBox implements MessageComponentInterface {
 
                     $this->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
 
-                    //TODO: Get tags (office, sitename, tags) from number
+                    //Get tags (office, sitename, tags) from number
                     $name = $this->getNameFromNumber($sender);
 
                     $displayMsg['type'] = "smsrcv";
@@ -830,6 +906,53 @@ class ChatterBox implements MessageComponentInterface {
                     }
                 }
             } 
+            elseif ($msgType == "smssendgroup") {
+                echo "send groups/tag messages...\n";
+
+                //broadcast JSON message from GSM to all connected clients
+                foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        // The sender is not the receiver, send to each client connected
+                        $client->send($msg);
+                    }
+                }
+
+                //Get the offices and sitenames info and group message
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+                $sentTS = $decodedText->timestamp;
+                $sentMsg = $decodedText->msg;
+
+                $displayMsg['type'] = "smssend";
+                $displayMsg['timestamp'] = $sentTS;
+                $displayMsg['user'] = "You";
+                $displayMsg['numbers'] = null;
+                $displayMsg['name'] = null;
+                $displayMsg['msg'] = $sentMsg;
+
+                //Get contact numbers using group tags
+                $contacts = $this->getContactNumbersFromGroupTags($offices, $sitenames);
+
+                var_dump($contacts);
+                $numContacts = count($contacts['data']);
+                $allMsgs = [];
+
+                //broadcast JSON message from GSM to all connected clients
+                foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        foreach ($contacts['data'] as $singleContact) {
+                            $displayMsg['numbers'] = array($singleContact['number']);
+                            $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                            $displayMsgJSON = json_encode($displayMsg);
+
+                            $this->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }
+                }
+            }
             elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
 
@@ -848,7 +971,6 @@ class ChatterBox implements MessageComponentInterface {
                 $sitenames = $decodedText->sitenames;
 
                 //Load Message Exchanges using group tags
-                //$exchanges = $this->getMessageExchanges($number, $timestamp);
                 $exchanges = $this->getMessageExchangesFromGroupTags($offices, $sitenames);
 
                 $from->send(json_encode($exchanges));
