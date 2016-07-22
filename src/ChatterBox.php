@@ -10,6 +10,11 @@ class ChatterBox implements MessageComponentInterface {
     public function __construct() {
         $this->clients = new \SplObjectStorage;
 
+        //Initialize the database connection
+        $this->initDBforCB();
+    }
+
+    public function initDBforCB() {
         //Create a DB Connection
         $host = "localhost";
         $usr = "root";
@@ -95,6 +100,27 @@ class ChatterBox implements MessageComponentInterface {
         return $filteredMsg;
     }
 
+    //Check connection and catch SQL that might be clue for MySQL Runaway
+    //This is the solution for the "MySQL Runaway Error"
+    public function checkConnectionDB($sql = "Nothing") {
+        // Make sure the connection is still alive, if not, try to reconnect 
+        if (!mysqli_ping($this->dbconn)) {
+            echo 'Lost connection, exiting after query #1';
+
+            //TODO: write the ff to a file
+            //  1. Timestamp when the problem occurred
+            //  2. The Query to be written
+            //Append the file
+            $logFile = fopen("../logs/mysqlRunAwayLogs.txt", "a+");
+            $t = time();
+            fwrite($logFile, date("Y-m-d H:i:s") . "\n" . $sql . "\n\n");
+            fclose($logFile);
+
+            //Try to reconnect
+            $this->initDBforCB();
+        }
+    }
+
     //Insert data for smsinbox table
     public function insertSMSInboxEntry($timestamp, $sender, $message) {
         //filter or check special characters
@@ -102,6 +128,9 @@ class ChatterBox implements MessageComponentInterface {
 
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
                 VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
 
         if ($this->dbconn->query($sql) === TRUE) {
             echo "New record created successfully!\n";
@@ -126,6 +155,9 @@ class ChatterBox implements MessageComponentInterface {
 
             $sql = "INSERT INTO smsoutbox (timestamp_sent, recepients, sms_msg, send_status)
                     VALUES ('$curTime', '$recipient', '$message', 'PENDING')";
+
+            // Make sure the connection is still alive, if not, try to reconnect 
+            $this->checkConnectionDB($sql);
 
             if ($this->dbconn->query($sql) === TRUE) {
                 echo "New record created successfully!\n";
@@ -194,6 +226,8 @@ class ChatterBox implements MessageComponentInterface {
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
         }
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -289,6 +323,8 @@ class ChatterBox implements MessageComponentInterface {
                             WHERE office in $subQueryOffices 
                             AND sitename in $subQuerySitenames";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
             // output data of each row
@@ -372,6 +408,8 @@ class ChatterBox implements MessageComponentInterface {
                             WHERE office in $subQueryOffices 
                             AND sitename in $subQuerySitenames";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
             // output data of each row
@@ -427,7 +465,8 @@ class ChatterBox implements MessageComponentInterface {
 
         $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
 
-        //echo "\n\n$sql";
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -503,6 +542,8 @@ class ChatterBox implements MessageComponentInterface {
                     ORDER BY fullname";
         }
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -548,6 +589,8 @@ class ChatterBox implements MessageComponentInterface {
                 WHERE
                     fullname LIKE '%$queryName%'";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -597,6 +640,8 @@ class ChatterBox implements MessageComponentInterface {
                 WHERE
                     numbers LIKE '%$normalized%'";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $dbreturn = [];
@@ -641,6 +686,8 @@ class ChatterBox implements MessageComponentInterface {
                     fullname LIKE '%$queryName%'
                     OR numbers LIKE '%$queryName%'";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -685,6 +732,8 @@ class ChatterBox implements MessageComponentInterface {
                     fullname LIKE '%$queryName%'
                     OR numbers LIKE '%$queryName%'";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -728,6 +777,8 @@ class ChatterBox implements MessageComponentInterface {
                 FROM dewslcontacts
                 ORDER BY fullname";
 
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -765,6 +816,8 @@ class ChatterBox implements MessageComponentInterface {
 
         //Get the list of offices from the community contacts list
         $sqlOffices = "SELECT DISTINCT office FROM communitycontacts";
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlOffices);
         $result = $this->dbconn->query($sqlOffices);
 
         $ctr = 0;
@@ -791,6 +844,8 @@ class ChatterBox implements MessageComponentInterface {
 
         //Get the list of sitenames from the community contacts list
         $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts";
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlSitenames);
         $result = $this->dbconn->query($sqlSitenames);
 
         $ctr = 0;
@@ -937,6 +992,14 @@ class ChatterBox implements MessageComponentInterface {
                 $numContacts = count($contacts['data']);
                 $allMsgs = [];
 
+                foreach ($contacts['data'] as $singleContact) {
+                    $displayMsg['numbers'] = array($singleContact['number']);
+                    $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    $this->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+                }
+
                 //broadcast JSON message from GSM to all connected clients
                 foreach ($this->clients as $client) {
                     if ($from !== $client) {
@@ -944,8 +1007,6 @@ class ChatterBox implements MessageComponentInterface {
                             $displayMsg['numbers'] = array($singleContact['number']);
                             $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                             $displayMsgJSON = json_encode($displayMsg);
-
-                            $this->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
 
                             // The sender is not the receiver, send to each client connected
                             $client->send($displayMsgJSON);
