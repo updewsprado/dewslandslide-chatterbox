@@ -122,6 +122,49 @@ class ChatterBox implements MessageComponentInterface {
         }
     }
 
+    //Identify contact number's network
+    public function identifyMobileNetwork($contactNumber) {
+        try {
+            $countNum = strlen($contactNumber);
+            //echo "num count = $countNum\n";
+
+            //ex. 09 '16' 8888888
+            if ($countNum == 11) {
+                $curSimPrefix = substr($contactNumber, 2, 2);
+            }
+            //ex. 639 '16' 8888888
+            elseif ($countNum == 12) {
+                $curSimPrefix = substr($contactNumber, 3, 2);
+            }
+
+            echo "simprefix: 09$curSimPrefix\n";
+            //TODO: compare the prefix to the list of sim prefixes
+
+            //Mix of Smart, Sun, Talk & Text
+            $networkSmart = "00,07,08,09,10,11,12,14,18,19,20,21,22,23,24,25,28,29,30,31,
+                    32,33,34,38,39,40,42,43,44,46,47,48,49,50,89,98,99";
+            //Mix of Globe and TM
+            $networkGlobe = "05,06,15,16,17,25,26,27,35,36,37,45,75,77,78,79,94,96,97";
+
+            //Globe Number
+            if (strpos($networkSmart, $curSimPrefix)) {
+                echo "Smart Network!\n";
+                return "SMART";
+            } 
+            elseif (strpos($networkGlobe, $curSimPrefix)) {
+                echo "Globe Network!\n";
+                return "GLOBE";
+            }
+            else {
+                echo "Unkown Network!\n";
+                return "UNKNOWN";
+            }
+        } catch (Exception $e) {
+            echo "identifyMobileNetwork Exception: Unknown Network\n";
+            return "UNKNOWN";
+        }
+    }
+
     //Insert data for smsinbox table
     public function insertSMSInboxEntry($timestamp, $sender, $message) {
         //filter or check special characters
@@ -150,12 +193,15 @@ class ChatterBox implements MessageComponentInterface {
         } else {
             $curTime = date("Y-m-d H:i:s", time());
         }
-        
+
         foreach ($recipients as $recipient) {
+            // Identify the mobile network of the current number
+            $mobileNetwork = $this->identifyMobileNetwork($recipient);
+
             echo "$curTime Message recipient: $recipient\n";
 
-            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status)
-                    VALUES ('$curTime', '$recipient', '$message', 'PENDING')";
+            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id)
+                    VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork')";
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -918,11 +964,24 @@ class ChatterBox implements MessageComponentInterface {
 
                     $this->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
 
+                    $recpCtr = count($recipients);
+
+                    // TODO: This line currently assumes that there is only one number we are sending the
+                    //      message to.
+
+                    if ($recpCtr > 1) {
+                        $mobileNetwork = "UNKNOWN";
+                    } else {
+                        // Identify the mobile network of the current number
+                        $mobileNetwork = $this->identifyMobileNetwork($recipients[0]);
+                    }
+
                     $displayMsg['type'] = "smssend";
                     $displayMsg['timestamp'] = $sentTS;
                     $displayMsg['user'] = "You";
                     $displayMsg['numbers'] = $recipients;
                     $displayMsg['msg'] = $sentMsg;
+                    $displayMsg['gsm_id'] = $mobileNetwork;
                     $displayMsgJSON = json_encode($displayMsg);
 
                     //broadcast JSON message from GSM to all connected clients
@@ -1007,6 +1066,11 @@ class ChatterBox implements MessageComponentInterface {
                         foreach ($contacts['data'] as $singleContact) {
                             $displayMsg['numbers'] = array($singleContact['number']);
                             $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+
+                            // Identify the mobile network of the current number
+                            $mobileNetwork = $this->identifyMobileNetwork($singleContact['number']);
+                            $displayMsg['gsm_id'] = $mobileNetwork;
+
                             $displayMsgJSON = json_encode($displayMsg);
 
                             // The sender is not the receiver, send to each client connected
