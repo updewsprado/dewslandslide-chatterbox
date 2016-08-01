@@ -964,24 +964,12 @@ class ChatterBox implements MessageComponentInterface {
 
                     $this->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
 
-                    $recpCtr = count($recipients);
-
-                    // TODO: This line currently assumes that there is only one number we are sending the
-                    //      message to.
-
-                    if ($recpCtr > 1) {
-                        $mobileNetwork = "UNKNOWN";
-                    } else {
-                        // Identify the mobile network of the current number
-                        $mobileNetwork = $this->identifyMobileNetwork($recipients[0]);
-                    }
-
                     $displayMsg['type'] = "smssend";
                     $displayMsg['timestamp'] = $sentTS;
                     $displayMsg['user'] = "You";
                     $displayMsg['numbers'] = $recipients;
                     $displayMsg['msg'] = $sentMsg;
-                    $displayMsg['gsm_id'] = $mobileNetwork;
+                    $displayMsg['gsm_id'] = "UNKNOWN";
                     $displayMsgJSON = json_encode($displayMsg);
 
                     //broadcast JSON message from GSM to all connected clients
@@ -1066,10 +1054,7 @@ class ChatterBox implements MessageComponentInterface {
                         foreach ($contacts['data'] as $singleContact) {
                             $displayMsg['numbers'] = array($singleContact['number']);
                             $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
-
-                            // Identify the mobile network of the current number
-                            $mobileNetwork = $this->identifyMobileNetwork($singleContact['number']);
-                            $displayMsg['gsm_id'] = $mobileNetwork;
+                            $displayMsg['gsm_id'] = "UNKNOWN";
 
                             $displayMsgJSON = json_encode($displayMsg);
 
