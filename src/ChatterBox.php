@@ -107,9 +107,10 @@ class ChatterBox implements MessageComponentInterface {
         if (!mysqli_ping($this->dbconn)) {
             echo 'Lost connection, exiting after query #1';
 
-            //TODO: write the ff to a file
+            //Write the ff to the log file
             //  1. Timestamp when the problem occurred
             //  2. The Query to be written
+            
             //Append the file
             $logFile = fopen("../logs/mysqlRunAwayLogs.txt", "a+");
             $t = time();
@@ -153,7 +154,7 @@ class ChatterBox implements MessageComponentInterface {
         foreach ($recipients as $recipient) {
             echo "$curTime Message recipient: $recipient\n";
 
-            $sql = "INSERT INTO smsoutbox (timestamp_sent, recepients, sms_msg, send_status)
+            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status)
                     VALUES ('$curTime', '$recipient', '$message', 'PENDING')";
 
             // Make sure the connection is still alive, if not, try to reconnect 
@@ -206,7 +207,7 @@ class ChatterBox implements MessageComponentInterface {
         //Construct the final query
         if ($timestamp == null) {
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_sent as timestamp
+                            timestamp_written as timestamp
                         FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
@@ -216,8 +217,8 @@ class ChatterBox implements MessageComponentInterface {
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
         } else {
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_sent as timestamp
-                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_sent < '$timestamp' ";
+                            timestamp_written as timestamp
+                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
                             timestamp as timestamp
@@ -456,8 +457,8 @@ class ChatterBox implements MessageComponentInterface {
 
         //Construct the final query
         $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
-                        timestamp_sent as timestamp
-                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_sent IS NOT NULL ";
+                        timestamp_written as timestamp
+                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
 
         $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
                         timestamp as timestamp
