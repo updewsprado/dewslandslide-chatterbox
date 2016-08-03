@@ -482,8 +482,8 @@ class ChatterBox implements MessageComponentInterface {
         //echo "JSON output ($ctr): " . json_encode($contactInfoData);
 
         //Construct the query for loading messages from multiple numbers
-        $num_numbers = count($contactInfoData['data']);
-        if ($num_numbers > 1) {
+        $num_numbers = sizeof($contactInfoData['data']);
+        if ($num_numbers >= 1) {
             for ($i = 0; $i < $num_numbers; $i++) { 
                 $targetNum = $this->normalizeContactNumber($contactInfoData['data'][$i]['number']);
                 $contactInfoData['data'][$i]['number'] = $targetNum;
