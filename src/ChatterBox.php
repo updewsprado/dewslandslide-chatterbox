@@ -214,6 +214,120 @@ class ChatterBox implements MessageComponentInterface {
         }
     }
 
+    //TODO: Optimize the loading of the quick inbox messages
+    //Return the quick inbox messages needed for the initial display on chatterbox
+    public function getQuickInboxMessages() {
+        $start = microtime(true);
+
+        //Get the name of the senders
+        $contactsList = $this->getFullnamesAndNumbers();
+
+        $sqlGetLatestMessagePerContact = "
+            SELECT timestamp, sim_num as user, sms_msg as msg FROM smsinbox
+            WHERE 
+            timestamp IN (
+                SELECT max(timestamp) FROM smsinbox GROUP BY sim_num
+            )
+            AND timestamp > (curdate() - interval 2 day)
+            ORDER BY timestamp DESC";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlGetLatestMessagePerContact);
+        $result = $this->dbconn->query($sqlGetLatestMessagePerContact);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'smsloadquickinbox';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $normalizedNum = $this->normalizeContactNumber($row['user']);
+                $dbreturn[$ctr]['user'] = $normalizedNum;
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['name'] = $this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']);
+
+                //Format for final quick inbox message - user (sim_num), msg, timestamp, name
+                // echo "fullname: " . $dbreturn[$ctr]['name'] . ", num: " . $dbreturn[$ctr]['user'] . ", ts: " . $dbreturn[$ctr]['timestamp'] . ", msg: " . $dbreturn[$ctr]['msg'] . "\n";
+
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //return $fullData;
+        echo json_encode($fullData);
+        //echo json_encode($contactsList);
+
+        $execution_time = microtime(true) - $start;
+        echo "\n\nExecution Time: $execution_time\n\n";
+
+        return $fullData;
+    }
+
+    //Find the Fullname of a contact from a number
+    public function findFullnameFromNumber($contactsList, $normalizedNum) {
+        // foreach($contactsList as $contact) {
+        //     if(strpos($contact['numbers'], $normalizedNum) >= 0) 
+        //         return $contact['fullname'];
+        // }
+        for ($i=0; $i < count($contactsList); $i++) { 
+            if (strpos($contactsList[$i]['numbers'], $normalizedNum)) {
+                return $contactsList[$i]['fullname'];
+            }
+        }
+
+        return "unknown";
+    }
+
+    //Get Fullnames and numbers in the database
+    public function getFullnamesAndNumbers() {
+        $sqlGetFullnamesAndNumbers = "
+            SELECT
+                CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+                number as numbers
+            FROM communitycontacts
+            UNION
+            SELECT 
+                CONCAT(firstname, ' ', lastname) as fullname, 
+                numbers
+            FROM dewslcontacts
+            ORDER BY fullname";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlGetFullnamesAndNumbers);
+        $result = $this->dbconn->query($sqlGetFullnamesAndNumbers);
+
+        $ctr = 0;
+        $dbreturn = "";
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['fullname'] = $row['fullname'];
+                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+
+                // echo "fullname: ". $row['fullname'] . ", numbers: " . $row['numbers'] . "\n";
+                // echo "fullname: ". $dbreturn[$ctr]['fullname'] . ", numbers: " . $dbreturn[$ctr]['numbers'] . "\n";
+
+                $ctr = $ctr + 1;
+            }
+
+            // echo json_encode($dbreturn);
+
+            return $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+        }
+    }
+
     //Return the message exchanges between Chatterbox and a number
     public function getMessageExchanges($number = null, $timestamp = null, $limit = 20) {
         $ctr = 0;
@@ -346,11 +460,13 @@ class ChatterBox implements MessageComponentInterface {
         if ($sitenames == null) {
             echo "Error: no sitename selected.";
             return -1;
-        } else {
+        } 
+        else {
             foreach ($sitenames as $site) {
                 if ($ctrSites == 0) {
                     $subQuerySitenames = "('$site'";
-                } else {
+                } 
+                else {
                     $subQuerySitenames = $subQuerySitenames . ",'$site'";
                 }
                 $ctrSites++;
@@ -408,7 +524,8 @@ class ChatterBox implements MessageComponentInterface {
         if ($offices == null) {
             echo "Error: no office selected.";
             return -1;
-        } else {
+        } 
+        else {
             foreach ($offices as $office) {
                 if ($ctrOffices == 0) {
                     $subQueryOffices = "('$office'";
@@ -429,11 +546,13 @@ class ChatterBox implements MessageComponentInterface {
         if ($sitenames == null) {
             echo "Error: no sitename selected.";
             return -1;
-        } else {
+        } 
+        else {
             foreach ($sitenames as $site) {
                 if ($ctrSites == 0) {
                     $subQuerySitenames = "('$site'";
-                } else {
+                } 
+                else {
                     $subQuerySitenames = $subQuerySitenames . ",'$site'";
                 }
 
@@ -1085,6 +1204,17 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->getMessageExchangesFromGroupTags($offices, $sitenames);
 
                 $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "smsloadquickinboxrequest") {
+                //Load latest message from 20 registered numbers
+                //Load latest message from 20 unknown numbers
+                echo "Loading latest message from 20 registered and unknown numbers for the past 7 days...";
+
+                //Get the quick inbox messages
+                $quickInboxMessages = $this->getQuickInboxMessages();
+
+                //TODO: Send the quick inbox messages to the 
+                $from->send(json_encode($quickInboxMessages));
             }
             elseif ($msgType == "loadofficeandsitesrequest") {
                 echo "Loading office and sitename information...";
