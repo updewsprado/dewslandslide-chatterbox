@@ -103,6 +103,10 @@ class ChatterBoxTest implements MessageComponentInterface {
                             $client->send($displayMsgJSON);
                         }
                     }
+
+                    //TODO: Call function to push new incoming message to the 
+                    //  quick inbox cache
+                    $this->chatModel->addQuickInboxMessageToCache($displayMsg);
                 }
             } 
             elseif ($msgType == "smssendgroup") {

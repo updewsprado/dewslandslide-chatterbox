@@ -255,7 +255,7 @@ class ChatMessageModel {
             $qiResults = $this->getQuickInboxMessages();
         }
 
-        echo json_encode($qiResults) . "\n\n";
+        //echo json_encode($qiResults) . "\n\n";
 
         $execution_time = microtime(true) - $start;
         echo "\n\nExecution Time: $execution_time\n\n";
@@ -263,7 +263,45 @@ class ChatMessageModel {
         return $qiResults;
     }
 
-    //TODO: Optimize the loading of the quick inbox messages
+    public function addQuickInboxMessageToCache($receivedMsg) {
+        //Get the cached results
+        $os = PHP_OS;
+
+        if (strpos($os,'WIN') !== false) {
+            //do nothing if on windows
+            return;
+        }
+        elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
+            //echo "Running on a Linux server. Will use memcached </Br>";
+
+            $mem = new \Memcached();
+            $mem->addServer("127.0.0.1", 11211);
+
+            //cachedprall - Cached Public Release All
+            $qiCached = $mem->get("cachedQI");
+
+            //Load quick inbox results from DB on initialization
+            if ($qiCached && ($this->qiInit == true) ) {
+                echo "Initialize the Quick Inbox Messages \n";
+
+                $qiResults = $this->getQuickInboxMessages();
+                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
+            } 
+            else {
+                //delete the oldest message from array
+                array_pop($qiCached['data']);  
+                //insert latest message to array
+                array_unshift($qiCached['data'], $receivedMsg);
+                //update the cached quick inbox results
+                $mem->set("cachedQI", $qiCached) or die("couldn't save quick inbox results");
+            }
+        }
+        else {
+            //do nothing if not on Linux
+            return;
+        }
+    }
+
     //Return the quick inbox messages needed for the initial display on chatterbox
     public function getQuickInboxMessages() {
         // $start = microtime(true);
