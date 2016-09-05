@@ -2,7 +2,7 @@
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
-use MyApp\ChatterBoxTest;
+use MyApp\ChatterBoxLegacy;
 
     require dirname(__DIR__) . '/vendor/autoload.php';
 
