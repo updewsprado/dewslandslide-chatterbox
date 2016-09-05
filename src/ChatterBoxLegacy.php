@@ -3,20 +3,15 @@ namespace MyApp;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
-class ChatMessageModel {
+class ChatterBoxLegacy implements MessageComponentInterface {
+    protected $clients;
     protected $dbconn;
 
     public function __construct() {
+        $this->clients = new \SplObjectStorage;
+
         //Initialize the database connection
         $this->initDBforCB();
-
-        //Cache the initial inbox messages
-        $this->qiInit = true;
-        $this->getCachedQuickInboxMessages();
-    }
-
-    public function helloWorld() {
-    	echo "ChatMessageModel: Hello World \n\n";
     }
 
     public function initDBforCB() {
@@ -219,114 +214,10 @@ class ChatMessageModel {
         }
     }
 
-    public function isSenderValid($sender) {
-        $patternNoNumbers = '/[^0-9+]/';
-
-        $success = preg_match($patternNoNumbers, $sender, $match);
-        if ($success) {
-            $patternExceptions='/^LBC|^lbc/';
-
-            if (preg_match($patternExceptions, $sender, $match)) {
-                echo "Valid: $sender";
-                return true;
-            }
-            else {
-                echo "Filter out: $sender";
-                return false;
-            }
-        }
-        else {
-            echo "Valid: All Numbers";
-            return true;
-        }
-    }
-
-    public function getCachedQuickInboxMessages() {
-        $start = microtime(true);
-
-        $os = PHP_OS;
-        $qiResults;
-
-        if (strpos($os,'WIN') !== false) {
-            //echo "Running on a windows server. Not using memcached </Br>";
-            $qiResults = $this->getQuickInboxMessages();
-        }
-        elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-            //echo "Running on a Linux server. Will use memcached </Br>";
-
-            $mem = new \Memcached();
-            $mem->addServer("127.0.0.1", 11211);
-
-            //cachedprall - Cached Public Release All
-            $qiCached = $mem->get("cachedQI");
-
-            //Load quick inbox results from DB on initialization
-            if ($qiCached && ($this->qiInit == true) ) {
-                echo "Initialize the Quick Inbox Messages \n";
-
-                $qiResults = $this->getQuickInboxMessages();
-                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-            } 
-            else {
-                //Load from cache if no longer from initialization
-                $qiResults = $mem->get("cachedQI");
-            }
-        }
-        else {
-            //echo "Unknown OS for execution... Script discontinued";
-            $qiResults = $this->getQuickInboxMessages();
-        }
-
-        //echo json_encode($qiResults) . "\n\n";
-
-        $execution_time = microtime(true) - $start;
-        echo "\n\nExecution Time: $execution_time\n\n";
-
-        return $qiResults;
-    }
-
-    public function addQuickInboxMessageToCache($receivedMsg) {
-        //Get the cached results
-        $os = PHP_OS;
-
-        if (strpos($os,'WIN') !== false) {
-            //do nothing if on windows
-            return;
-        }
-        elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-            //echo "Running on a Linux server. Will use memcached </Br>";
-
-            $mem = new \Memcached();
-            $mem->addServer("127.0.0.1", 11211);
-
-            //cachedprall - Cached Public Release All
-            $qiCached = $mem->get("cachedQI");
-
-            //Load quick inbox results from DB on initialization
-            if ($qiCached && ($this->qiInit == true) ) {
-                echo "Initialize the Quick Inbox Messages \n";
-
-                $qiResults = $this->getQuickInboxMessages();
-                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-            } 
-            else {
-                //delete the oldest message from array
-                array_pop($qiCached['data']);  
-                //insert latest message to array
-                array_unshift($qiCached['data'], $receivedMsg);
-                //update the cached quick inbox results
-                $mem->set("cachedQI", $qiCached) or die("couldn't save quick inbox results");
-            }
-        }
-        else {
-            //do nothing if not on Linux
-            return;
-        }
-    }
-
+    //TODO: Optimize the loading of the quick inbox messages
     //Return the quick inbox messages needed for the initial display on chatterbox
     public function getQuickInboxMessages() {
-        // $start = microtime(true);
+        $start = microtime(true);
 
         //Get the name of the senders
         $contactsList = $this->getFullnamesAndNumbers();
@@ -371,14 +262,11 @@ class ChatMessageModel {
         }
 
         //return $fullData;
-        // echo json_encode($fullData);
+        echo json_encode($fullData);
         //echo json_encode($contactsList);
 
-        // $execution_time = microtime(true) - $start;
-        // echo "\n\nExecution Time: $execution_time\n\n";
-
-        //Quick Inbox Messages have been reloaded
-        $this->qiInit = false;
+        $execution_time = microtime(true) - $start;
+        echo "\n\nExecution Time: $execution_time\n\n";
 
         return $fullData;
     }
@@ -1150,5 +1038,243 @@ class ChatMessageModel {
 
         // echo json_encode($fullData);
         return $fullData;
+    }
+
+    //TODO: Resilience against Net Connection Loss
+    //Create a protocol for checking whether the message was sent to GSM.
+    //There should be a function that will attempt to send "PENDING" data
+    //  to GSM everytime there is a new connection.
+
+    public function onOpen(ConnectionInterface $conn) {
+        // Store the new connection to send messages to later
+        $this->clients->attach($conn);
+
+        echo "New connection! ({$conn->resourceId})\n";
+    }
+
+    public function onMessage(ConnectionInterface $from, $msg) {
+        $numRecv = count($this->clients) - 1;
+
+        $decodedText = json_decode($msg);
+
+        if ($decodedText == NULL) {
+            echo "Message is not in JSON format ($msg).\n";
+            return;
+        }
+        else {
+            echo "Valid data\n";
+            echo sprintf('Connection %d sending message "%s" to %d other connection%s' . 
+                    "\n", $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
+
+            $msgType = $decodedText->type;
+
+            if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
+                //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
+                //saving "smssend"
+                if ($msgType == "smssend") {
+                    echo "Message sent by ChatterBox Users to GSM and the community.\n";
+
+                    //store data in 'smsoutbox' table
+                    $recipients = $decodedText->numbers;
+                    $sentMsg = $decodedText->msg;
+                    $sentTS = $decodedText->timestamp;
+
+                    echo "sentTS = $sentTS \n";
+
+                    $this->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
+
+                    $displayMsg['type'] = "smssend";
+                    $displayMsg['timestamp'] = $sentTS;
+                    $displayMsg['user'] = "You";
+                    $displayMsg['numbers'] = $recipients;
+                    $displayMsg['msg'] = $sentMsg;
+                    $displayMsg['gsm_id'] = "UNKNOWN";
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    //broadcast JSON message from GSM to all connected clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }                }
+                //saving "smsrcv"
+                elseif ($msgType == "smsrcv") {
+                    echo "Message received from GSM.\n";
+
+                    //store data in 'smsinbox' table
+                    $rcvTS = $decodedText->timestamp;
+                    $sender = $decodedText->sender;
+                    $rcvMsg = $decodedText->msg;
+
+                    $this->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
+
+                    //Get tags (office, sitename, tags) from number
+                    $name = $this->getNameFromNumber($sender);
+
+                    $displayMsg['type'] = "smsrcv";
+                    $displayMsg['timestamp'] = $rcvTS;
+                    $displayMsg['user'] = $sender;
+                    $displayMsg['name'] = $name['fullname'];
+                    $displayMsg['msg'] = $rcvMsg;
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    //broadcast JSON message from GSM to all connected clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }
+                }
+            } 
+            elseif ($msgType == "smssendgroup") {
+                echo "send groups/tag messages...\n";
+
+                //broadcast JSON message from GSM to all connected clients
+                foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        // The sender is not the receiver, send to each client connected
+                        $client->send($msg);
+                    }
+                }
+
+                //Get the offices and sitenames info and group message
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+                $sentTS = $decodedText->timestamp;
+                $sentMsg = $decodedText->msg;
+
+                $displayMsg['type'] = "smssend";
+                $displayMsg['timestamp'] = $sentTS;
+                $displayMsg['user'] = "You";
+                $displayMsg['numbers'] = null;
+                $displayMsg['name'] = null;
+                $displayMsg['msg'] = $sentMsg;
+
+                //Get contact numbers using group tags
+                $contacts = $this->getContactNumbersFromGroupTags($offices, $sitenames);
+
+                var_dump($contacts);
+                $numContacts = count($contacts['data']);
+                $allMsgs = [];
+
+                foreach ($contacts['data'] as $singleContact) {
+                    $displayMsg['numbers'] = array($singleContact['number']);
+                    $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                    $displayMsgJSON = json_encode($displayMsg);
+
+                    $this->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+                }
+
+                //broadcast JSON message from GSM to all connected clients
+                foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        foreach ($contacts['data'] as $singleContact) {
+                            $displayMsg['numbers'] = array($singleContact['number']);
+                            $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                            $displayMsg['gsm_id'] = "UNKNOWN";
+
+                            $displayMsgJSON = json_encode($displayMsg);
+
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($displayMsgJSON);
+                        }
+                    }
+                }
+            }
+            elseif ($msgType == "smsloadrequest") {
+                echo "Loading messages...";
+
+                //Load the message exchanges between Chatterbox and a number
+                $number = $decodedText->number;
+                $timestamp = $decodedText->timestamp;
+
+                $exchanges = $this->getMessageExchanges($number, $timestamp);
+                $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "smsloadrequestgroup") {
+                echo "Loading groups/tag messages...";
+
+                //Load the message exchanges between Chatterbox and group selected
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+
+                //Load Message Exchanges using group tags
+                $exchanges = $this->getMessageExchangesFromGroupTags($offices, $sitenames);
+
+                $from->send(json_encode($exchanges));
+            }
+            elseif ($msgType == "smsloadquickinboxrequest") {
+                //Load latest message from 20 registered numbers
+                //Load latest message from 20 unknown numbers
+                echo "Loading latest message from 20 registered and unknown numbers for the past 7 days...";
+
+                //Get the quick inbox messages
+                $quickInboxMessages = $this->getQuickInboxMessages();
+
+                //TODO: Send the quick inbox messages to the 
+                $from->send(json_encode($quickInboxMessages));
+            }
+            elseif ($msgType == "loadofficeandsitesrequest") {
+                echo "Loading office and sitename information...";
+
+                //Load the office and sitenames
+                $officeAndSites = $this->getAllOfficesAndSites();
+                $from->send(json_encode($officeAndSites));
+            }
+            elseif ($msgType == "loadcontactsrequest") {
+                echo "Loading contact information...";
+
+                //Load the contacts list
+                $contacts = $this->getAllContactsList();
+                $from->send(json_encode($contacts));
+            }
+            elseif ($msgType == "loadcommunitycontactrequest") {
+                echo "Loading a community contact information...";
+
+                //Load a community contact information
+                $sitename = $decodedText->sitename;
+                $office = $decodedText->office;
+
+                $commcontact = $this->getCommunityContact($sitename, $office);
+                $from->send(json_encode($commcontact));
+            }
+            elseif ($msgType == "loadcontactfromnamerequest") {
+                echo "Loading a contact information from name...";
+
+                //Load a community contact information
+                $contactname = $decodedText->contactname;
+
+                $contact = $this->getContactsFromName($contactname);
+                $from->send(json_encode($contact));
+            }
+            elseif ($msgType == "requestnamesuggestions") {
+                echo "Loading name suggestions...";
+
+                //Load a community contact information
+                $namequery = $decodedText->namequery;
+
+                //$namesuggestions = $this->getNameSuggestions($namequery);
+                $namesuggestions = $this->getContactSuggestions($namequery);
+                $from->send(json_encode($namesuggestions));
+            }
+            else {
+                echo "Message will be ignored\n";
+            }
+        }
+    }
+
+    public function onClose(ConnectionInterface $conn) {
+        // The connection is losed, remove it, as we can no longer send it messages
+        $this->clients->detach($conn);
+
+        echo "Connection {$conn->resourceId} has disconnected\n";
+    }
+
+    public function onError(ConnectionInterface $conn, \Exception $e) {
+        echo "An error has occurred: {$e->getMessage()}\n";
+
+        $conn->close();
     }
 }
