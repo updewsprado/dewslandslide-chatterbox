@@ -241,7 +241,7 @@ class ChatMessageModel {
         }
     }
 
-    public function getCachedQuickInboxMessages() {
+    public function getCachedQuickInboxMessages($isForceLoad=false) {
         $start = microtime(true);
 
         $os = PHP_OS;
@@ -261,7 +261,7 @@ class ChatMessageModel {
             $qiCached = $mem->get("cachedQI");
 
             //Load quick inbox results from DB on initialization
-            if ($qiCached && ($this->qiInit == true) ) {
+            if ( ($this->qiInit == true) || $isForceLoad ) {
                 echo "Initialize the Quick Inbox Messages \n";
 
                 $qiResults = $this->getQuickInboxMessages();
