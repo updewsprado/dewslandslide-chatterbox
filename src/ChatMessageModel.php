@@ -337,7 +337,7 @@ class ChatMessageModel {
             timestamp IN (
                 SELECT max(timestamp) FROM smsinbox GROUP BY sim_num
             )
-            AND timestamp > (curdate() - interval 2 day)
+            AND timestamp > (curdate() - interval 7 day)
             ORDER BY timestamp DESC";
 
         // Make sure the connection is still alive, if not, try to reconnect 
