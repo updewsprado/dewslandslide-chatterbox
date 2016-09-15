@@ -284,8 +284,10 @@ class ChatMessageModel {
 
         if ($this->dbconn->query($updateQuery) === TRUE) {
             echo "record updated successfully!\n";
+            return 0;
         } else {
             echo "Error: " . $updateQuery . "<br>" . $this->dbconn->error;
+            return -1;
         }
     }
 

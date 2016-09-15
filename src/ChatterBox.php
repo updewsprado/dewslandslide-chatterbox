@@ -259,11 +259,18 @@ class ChatterBox implements MessageComponentInterface {
 
                 echo "\n\n$writtenTS, $recipients, $sendStatus\n\n";
 
-                //TODO: Update the smsoutbox entry
-                $this->chatModel->updateSMSOutboxEntry($recipients, $writtenTS, $sendStatus);
+                //Attempt to Update the smsoutbox entry
+                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, $writtenTS, $sendStatus);
 
-                //TODO: Send the acknowledgment to all connected web socket clients
-
+                if ($updateStatus >= 0) {
+                    //Send the acknowledgment to all connected web socket clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($msg);
+                        }
+                    }
+                }
             }
             else {
                 echo "Message will be ignored\n";
