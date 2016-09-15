@@ -248,7 +248,7 @@ class ChatterBox implements MessageComponentInterface {
             }
             //Acknowledgement Message from RPi that it has received your message
             elseif ($msgType == "ackrpi") {
-                echo "Received RPi Acknowledgment...";
+                echo "Received Acknowledgment: RPi has received your smsoutbox message...";
 
                 //Acknowledgement Data includes: 
                 // timestamp written - to identify what time it was sent by Chatterbox
@@ -260,7 +260,37 @@ class ChatterBox implements MessageComponentInterface {
                 echo "\n\n$writtenTS, $recipients, $sendStatus\n\n";
 
                 //Attempt to Update the smsoutbox entry
-                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, $writtenTS, $sendStatus);
+                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
+                                                        $writtenTS, $sendStatus);
+
+                if ($updateStatus >= 0) {
+                    //Send the acknowledgment to all connected web socket clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($msg);
+                        }
+                    }
+                }
+            }
+            //Acknowledgement Message that Chatterbox's outgoing message has been
+            //  sent by the GSM already
+            elseif ($msgType == "ackgsm") {
+                echo "Received Acknowledgment: GSM has sent your smsoutbox message...";
+
+                //Acknowledgement Data includes: 
+                // timestamp written - to identify what time it was sent by Chatterbox
+                // receipient - which number was the information sent to
+                $writtenTS = $decodedText->timestamp_written;
+                $recipients = $decodedText->recipients;
+                $sendStatus = "SENT";
+                $sentTS = $decodedText->timestamp_sent;
+
+                echo "\n\n$writtenTS, $sentTS, $recipients, $sendStatus\n\n";
+
+                //Attempt to Update the smsoutbox entry
+                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
+                                                    $writtenTS, $sendStatus, $sentTS);
 
                 if ($updateStatus >= 0) {
                     //Send the acknowledgment to all connected web socket clients

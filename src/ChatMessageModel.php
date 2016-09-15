@@ -12,7 +12,7 @@ class ChatMessageModel {
 
         //Cache the initial inbox messages
         $this->qiInit = true;
-        //$this->getCachedQuickInboxMessages();
+        $this->getCachedQuickInboxMessages();
     }
 
     public function helloWorld() {
