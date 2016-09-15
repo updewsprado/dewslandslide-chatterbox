@@ -12,7 +12,7 @@ class ChatMessageModel {
 
         //Cache the initial inbox messages
         $this->qiInit = true;
-        $this->getCachedQuickInboxMessages();
+        //$this->getCachedQuickInboxMessages();
     }
 
     public function helloWorld() {
@@ -219,6 +219,76 @@ class ChatMessageModel {
         }
     }
 
+    //TODO: Update a smsoutbox entry
+    public function updateSMSOutboxEntry($recipient=null, $writtenTS=null, $sendStatus=null, $sentTS=null) {
+        // validate identifier: recipient
+        //Remove non number characters
+        $recipient = str_replace("[", "", $recipient);
+        $recipient = str_replace("]", "", $recipient);
+        $recipient = str_replace("u", "", $recipient);
+        $recipient = str_replace("'", "", $recipient);
+        $recipient = $this->normalizeContactNumber($recipient);
+
+        if ($this->isSenderValid($recipient) == false) {
+            echo "Error: recipient '$recipient' is invalid.\n";
+            return -1;
+        }
+
+        // TODO: validate identifier: written timestamp
+        if ($writtenTS == null) {
+            echo "Error: no input for written_timestamp.\n";
+            return -1;
+        }
+
+        $setCtr = 0;
+        $updateQuery = "UPDATE smsoutbox ";
+        $whereClause = " WHERE timestamp_written = '$writtenTS' AND recepients like '%$recipient'";
+
+        // validate sendStatus
+        if ( ($sendStatus == "PENDING") || ($sendStatus == "SENT-PI") || 
+            ($sendStatus == "SENT") || ($sendStatus == "SENT-WSS") ) {
+            //compose send status set clause
+            $setClause = " SET send_status = '$sendStatus'";
+            $setCtr++;
+        }
+        elseif ($sendStatus == null) {
+            // Do nothing
+        }
+        else {
+            echo "Error: invalid send_status.\n";
+            return -1;
+        }
+
+        // validate sentTS
+        if ($sentTS) {
+            if ($setCtr > 0) {
+                $setClause = $setClause . ", timestamp_sent = '$sentTS'";
+            }
+            else {
+                $setClause = " SET timestamp_sent = '$sentTS'";
+            }
+
+            $setCtr++;
+        }
+
+        if ($setCtr == 0) {
+            echo "Error: No data for updating\n";
+            return -1;
+        }
+
+        $updateQuery = $updateQuery . $setClause . $whereClause;
+        //echo "updateQuery: $updateQuery\n";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($updateQuery);
+
+        if ($this->dbconn->query($updateQuery) === TRUE) {
+            echo "record updated successfully!\n";
+        } else {
+            echo "Error: " . $updateQuery . "<br>" . $this->dbconn->error;
+        }
+    }
+
     public function isSenderValid($sender) {
         $patternNoNumbers = '/[^0-9+]/';
 
@@ -227,16 +297,16 @@ class ChatMessageModel {
             $patternExceptions='/^LBC|^lbc/';
 
             if (preg_match($patternExceptions, $sender, $match)) {
-                echo "Valid: $sender";
+                echo "Valid: $sender\n";
                 return true;
             }
             else {
-                echo "Filter out: $sender";
+                echo "Filter out: $sender\n";
                 return false;
             }
         }
         else {
-            echo "Valid: All Numbers";
+            echo "Valid: All Numbers\n";
             return true;
         }
     }

@@ -246,6 +246,25 @@ class ChatterBox implements MessageComponentInterface {
                 $namesuggestions = $this->chatModel->getContactSuggestions($namequery);
                 $from->send(json_encode($namesuggestions));
             }
+            //Acknowledgement Message from RPi that it has received your message
+            elseif ($msgType == "ackrpi") {
+                echo "Received RPi Acknowledgment...";
+
+                //Acknowledgement Data includes: 
+                // timestamp written - to identify what time it was sent by Chatterbox
+                // receipient - which number was the information sent to
+                $writtenTS = $decodedText->timestamp_written;
+                $recipients = $decodedText->recipients;
+                $sendStatus = $decodedText->send_status;
+
+                echo "\n\n$writtenTS, $recipients, $sendStatus\n\n";
+
+                //TODO: Update the smsoutbox entry
+                $this->chatModel->updateSMSOutboxEntry($recipients, $writtenTS, $sendStatus);
+
+                //TODO: Send the acknowledgment to all connected web socket clients
+
+            }
             else {
                 echo "Message will be ignored\n";
             }
