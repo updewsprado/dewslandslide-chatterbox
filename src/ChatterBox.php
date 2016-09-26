@@ -301,6 +301,24 @@ class ChatterBox implements MessageComponentInterface {
                         }
                     }
                 }
+            }  else if ($msgType == "oldMessage"){
+                echo "Loading messages for individual chat";
+                $number = $decodedText->number;
+                $timestampYou = $decodedText->timestampYou;
+                $timestampIndi = $decodedText->timestampIndi;
+                $timestamp = $timestampYou.",".$timestampIndi;
+                $exchanges = $this->chatModel->getMessageExchanges($number, $timestamp,10);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "oldMessageGroup"){
+                echo "Loading messages groups/tag";
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+                $yourTimeStamp = $decodedText->lastMessageTimeStampYou;
+                $groupTimeStamp = $decodedText->lastMessageTimeStampGroup;
+                $lastTimeStamps = $yourTimeStamp.",".$groupTimeStamp;
+
+                $exchanges = $this->chatModel->getMessageExchangesFromGroupTags($offices, $sitenames,$lastTimeStamps,10);
+                $from->send(json_encode($exchanges));
             }
             else {
                 echo "Message will be ignored\n";

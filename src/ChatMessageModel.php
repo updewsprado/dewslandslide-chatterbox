@@ -558,36 +558,71 @@ class ChatMessageModel {
         }
 
         //Construct the final query
-        if ($timestamp == null) {
+        if ($limit == 10) {
+
+            $timeStampArray = explode(',', $timestamp);
+            $yourLastTimeStamp = $timeStampArray[0];
+            $indiLastTimeStamp = $timeStampArray[1];
+
+            if ($yourLastTimeStamp == ""){
+                $fetchTimeStamp = "select timestamp_written from smsoutbox where $sqlTargetNumbersOutbox order by timestamp_written desc";
+                echo $fetchTimeStamp;
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $yourLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
+            if ($indiLastTimeStamp == "") {
+                $fetchTimeStamp = "select timestamp from smsinbox where $sqlTargetNumbersInbox order by timestamp desc";
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $indiLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp
-                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
+                            timestamp_written as timestamp FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
+
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
                             timestamp as timestamp
-                        FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
+                        FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$indiLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
 
-            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
+
         } else {
-            $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp
-                        FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
+            if ($timestamp == null) {
+                $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+                                timestamp_written as timestamp
+                            FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
 
-            $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                            timestamp as timestamp
-                        FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
+                $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+                                timestamp as timestamp
+                            FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
 
-            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
-        }
+                $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+            } else {
+                $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
+                                timestamp_written as timestamp
+                            FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
 
+                $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
+                                timestamp as timestamp
+                            FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
+
+                $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+            }
+        }  
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
         $dbreturn = "";
-        $fullData['type'] = 'smsload';
-
+        if ($limit == 20){
+            $fullData['type'] = 'smsload';
+        } else {
+            $fullData['type'] = 'oldMessage';
+        }
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
@@ -813,16 +848,46 @@ class ChatMessageModel {
             $sqlTargetNumbersInbox = " ";
         }
 
-        //Construct the final query
-        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
-                        timestamp_written as timestamp
-                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
+        if ($limit == 10){
 
-        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
-                        timestamp as timestamp
-                    FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+            $timeStampArray = explode(',', $lastTimeStamps);
+            $yourLastTimeStamp = $timeStampArray[0];
+            $groupLastTimeStamp = $timeStampArray[1];
 
-        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+            if ($yourLastTimeStamp == ""){
+                $fetchTimeStamp = "select timestamp_written from smsoutbox where $sqlTargetNumbersOutbox order by timestamp_written desc";
+                echo $fetchTimeStamp;
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $yourLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
+            if ($groupLastTimeStamp == "") {
+                $fetchTimeStamp = "select timestamp from smsinbox where $sqlTargetNumbersInbox order by timestamp desc";
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $groupLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
+
+
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
+
+            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
+
+        } else {
+            //Construct the final query
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
+                            timestamp_written as timestamp
+                        FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
+
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
+                            timestamp as timestamp
+                        FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+        }
 
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
@@ -830,7 +895,11 @@ class ChatMessageModel {
 
         $ctr = 0;
         $dbreturn = "";
-        $msgData['type'] = 'smsloadrequestgroup';
+                if ($limit == 10){
+            $msgData['type'] = 'oldMessageGroup';
+        } else {
+            $msgData['type'] = 'smsloadrequestgroup';
+        }
 
         if ($result->num_rows > 0) {
             // output data of each row
