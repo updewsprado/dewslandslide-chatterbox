@@ -313,6 +313,14 @@ class ChatMessageModel {
         }
     }
 
+    public function convertNameToUTF8($name) {
+        //Convert the string to utf8 format
+        $converted = utf8_decode($name);
+
+        //Replace "?" character with "ñ"
+        return str_replace("?", "ñ", $converted);
+    }
+
     public function getCachedQuickInboxMessages($isForceLoad=false) {
         $start = microtime(true);
 
@@ -409,7 +417,7 @@ class ChatMessageModel {
             timestamp IN (
                 SELECT max(timestamp) FROM smsinbox GROUP BY sim_num
             )
-            AND timestamp > (curdate() - interval 7 day)
+            AND timestamp > (now() - interval 3 day - interval 4 hour)
             ORDER BY timestamp DESC";
 
         // Make sure the connection is still alive, if not, try to reconnect 
@@ -427,10 +435,11 @@ class ChatMessageModel {
                 $dbreturn[$ctr]['user'] = $normalizedNum;
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                $dbreturn[$ctr]['name'] = $this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']);
+                // $dbreturn[$ctr]['name'] = $this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']);
+                $dbreturn[$ctr]['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']));
 
                 //Format for final quick inbox message - user (sim_num), msg, timestamp, name
-                // echo "fullname: " . $dbreturn[$ctr]['name'] . ", num: " . $dbreturn[$ctr]['user'] . ", ts: " . $dbreturn[$ctr]['timestamp'] . ", msg: " . $dbreturn[$ctr]['msg'] . "\n";
+                echo "fullname: " . $dbreturn[$ctr]['name'] . ", num: " . $dbreturn[$ctr]['user'] . ", ts: " . $dbreturn[$ctr]['timestamp'] . ", msg: " . $dbreturn[$ctr]['msg'] . "\n";
 
                 $ctr = $ctr + 1;
             }
@@ -443,7 +452,7 @@ class ChatMessageModel {
         }
 
         //return $fullData;
-        // echo json_encode($fullData);
+        echo "JSON DATA: " . json_encode($fullData);
         //echo json_encode($contactsList);
 
         // $execution_time = microtime(true) - $start;
@@ -906,7 +915,7 @@ class ChatMessageModel {
 
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
 
                 $ctr = $ctr + 1;
@@ -953,7 +962,7 @@ class ChatMessageModel {
 
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
 
                 $ctr = $ctr + 1;
@@ -1050,7 +1059,7 @@ class ChatMessageModel {
 
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['fullname'] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
 
                 $ctr = $ctr + 1;
@@ -1096,7 +1105,7 @@ class ChatMessageModel {
 
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr] = utf8_decode($row['fullname']);
+                $dbreturn[$ctr] = $this->convertNameToUTF8($row['fullname']);
 
                 $ctr = $ctr + 1;
             }
