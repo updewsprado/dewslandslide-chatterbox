@@ -555,6 +555,21 @@ class ChatMessageModel {
             $yourLastTimeStamp = $timeStampArray[0];
             $indiLastTimeStamp = $timeStampArray[1];
 
+            if ($yourLastTimeStamp == ""){
+                $fetchTimeStamp = "select timestamp_written from smsoutbox where $sqlTargetNumbersOutbox order by timestamp_written desc";
+                echo $fetchTimeStamp;
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $yourLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
+            if ($indiLastTimeStamp == "") {
+                $fetchTimeStamp = "select timestamp from smsinbox where $sqlTargetNumbersInbox order by timestamp desc";
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $indiLastTimeStamp = $result->fetch_assoc()['timestamp']; 
+            }
+
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
                             timestamp_written as timestamp FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
 
