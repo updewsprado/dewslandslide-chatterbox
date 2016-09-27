@@ -16,7 +16,7 @@ class ChatMessageModel {
     }
 
     public function helloWorld() {
-    	echo "ChatMessageModel: Hello World \n\n";
+        echo "ChatMessageModel: Hello World \n\n";
     }
 
     public function initDBforCB() {
@@ -522,8 +522,9 @@ class ChatMessageModel {
     }
 
     //Return the message exchanges between Chatterbox and a number
-    public function getMessageExchanges($number = null, $timestamp = null, $limit = 20) {
+    public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20) {
         $ctr = 0;
+
         if ($number == null) {
             echo "Error: no number selected.";
             return -1;
@@ -558,7 +559,7 @@ class ChatMessageModel {
         }
 
         //Construct the final query
-        if ($limit == 10) {
+        if ($type == "oldMessage") {
 
             $timeStampArray = explode(',', $timestamp);
             $yourLastTimeStamp = $timeStampArray[0];
@@ -618,10 +619,10 @@ class ChatMessageModel {
 
         $ctr = 0;
         $dbreturn = "";
-        if ($limit == 20){
-            $fullData['type'] = 'smsload';
-        } else {
+        if ($type == "oldMessage"){
             $fullData['type'] = 'oldMessage';
+        } else {
+            $fullData['type'] = 'smsload';
         }
         if ($result->num_rows > 0) {
             // output data of each row
@@ -742,7 +743,7 @@ class ChatMessageModel {
     }
 
     //Return the message exchanges between Chatterbox and a group
-    public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null, $limit = 70) {
+    public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null,$type = null,$lastTimeStamps = null, $limit = 70) {
         $ctr = 0;
 
         $tagsCombined = "";
@@ -848,7 +849,7 @@ class ChatMessageModel {
             $sqlTargetNumbersInbox = " ";
         }
 
-        if ($limit == 10){
+        if ($type == "oldMessageGroup"){
 
             $timeStampArray = explode(',', $lastTimeStamps);
             $yourLastTimeStamp = $timeStampArray[0];
@@ -895,7 +896,7 @@ class ChatMessageModel {
 
         $ctr = 0;
         $dbreturn = "";
-                if ($limit == 10){
+            if ($type == "oldMessageGroup"){
             $msgData['type'] = 'oldMessageGroup';
         } else {
             $msgData['type'] = 'smsloadrequestgroup';
