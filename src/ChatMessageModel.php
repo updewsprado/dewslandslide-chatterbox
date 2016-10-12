@@ -521,6 +521,478 @@ class ChatMessageModel {
         }
     }
 
+   //Return the message searched between Chatterbox and a number
+    public function getSearchedConversation($number = null,$type = null,$timestamp = null){
+        if ($type == "smsLoadSearched") {
+
+            $ctr = 0;
+            $sql = '';
+            $sqlTargetNumbers = "";
+
+            //Construct the query for loading messages from multiple numbers
+            if ($ctr > 1) {
+                for ($i = 0; $i < $ctr; $i++) { 
+                    $targetNum = $number[$i];
+
+                    if ($i == 0) {
+                        $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                        $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                    } else {
+                        $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                        $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                    }
+                }
+            } else {
+                $targetNum = $number[0];
+                $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+            }
+
+            //------------- First 20 latest messages
+
+            $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox. "AND timestamp_written > '$timestamp' ";
+
+            $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp > '$timestamp' ";
+
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+            // Make sure the connection is still alive, if not, try to reconnect 
+            $this->checkConnectionDB($sql);
+            $result = $this->dbconn->query($sql);
+
+            $ctr = 0;
+            $presentConversation = "";
+            $fullData['type'] = "smsLoadSearched";
+            if ($result->num_rows > 0) {
+                // output data of each row
+                while ($row = $result->fetch_assoc()) {
+                    $presentConversation[$ctr]['user'] = $row['user'];
+                    $presentConversation[$ctr]['msg'] = $row['msg'];
+                    $presentConversation[$ctr]['timestamp'] = $row['timestamp'];
+                    $presentConversation[$ctr]['type'] = 'smsLoadSearched';
+
+                    $ctr = $ctr + 1;
+                }
+            }
+            else {
+                echo "0 results\n";
+                $fullData['data'] = null;
+            }
+
+            //------------- END First 20 latest messages
+
+            //------------- First 20 OLD messages
+
+            $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox. "AND timestamp_written <= '$timestamp' ";
+
+            $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp <= '$timestamp' ";
+
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+            // Make sure the connection is still alive, if not, try to reconnect 
+            $this->checkConnectionDB($sql);
+            $result = $this->dbconn->query($sql);
+
+            $ctr = 0;
+            $pastConversation = "";
+            if ($result->num_rows > 0) {
+                // output data of each row
+                while ($row = $result->fetch_assoc()) {
+                    $pastConversation[$ctr]['user'] = $row['user'];
+                    $pastConversation[$ctr]['msg'] = $row['msg'];
+                    $pastConversation[$ctr]['timestamp'] = $row['timestamp'];
+                    $pastConversation[$ctr]['type'] = 'smsLoadSearched';
+
+                    $ctr = $ctr + 1;
+                }
+            }
+            else {
+                echo "0 results\n";
+                $fullData['data'] = null;
+            }
+            //------------- END First 20 OLD messages
+
+            $allArray = array_merge($presentConversation,$pastConversation);
+            $fullData['data'] = $allArray;
+            return $fullData;
+
+        } else {
+            echo "Invalid Request/No request has been made.";
+        }
+    }
+
+    public function getSearchedGroupConversation($offices = null,$sitenames=null,$type=null, $timestamp=null){
+        if ($type == "smsLoadGroupSearched") {
+            $ctr = 0;
+
+            $tagsCombined = "";
+
+            $ctrOffices = 0;
+            $subQueryOffices;
+            if ($offices == null) {
+                echo "Error: no office selected.";
+                return -1;
+            } 
+            else {
+                foreach ($offices as $office) {
+                    if ($ctrOffices == 0) {
+                        $subQueryOffices = "('$office'";
+                    } else {
+                        $subQueryOffices = $subQueryOffices . ",'$office'";
+                    }
+
+                    $tagsCombined = "$tagsCombined $office";
+                    $ctrOffices++;
+                }
+
+                $subQueryOffices = $subQueryOffices . ")";
+            }
+            echo "offices: $subQueryOffices \n";
+
+            $ctrSites = 0;
+            $subQuerySitenames;
+            if ($sitenames == null) {
+                echo "Error: no sitename selected.";
+                return -1;
+            } 
+            else {
+                foreach ($sitenames as $site) {
+                    if ($ctrSites == 0) {
+                        $subQuerySitenames = "('$site'";
+                    } 
+                    else {
+                        $subQuerySitenames = $subQuerySitenames . ",'$site'";
+                    }
+
+                    $tagsCombined = "$tagsCombined $site";
+                    $ctrSites++;
+                }
+
+                $subQuerySitenames = $subQuerySitenames . ")";
+            }
+            echo "sitenames: $subQuerySitenames \n";
+
+            $sql = '';
+            
+            $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                                FROM communitycontacts 
+                                WHERE office in $subQueryOffices 
+                                AND sitename in $subQuerySitenames";
+
+            $this->checkConnectionDB($sqlTargetNumbers);
+            $result = $this->dbconn->query($sqlTargetNumbers);
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $numbers = explode(",", $row['number']);
+
+                    foreach ($numbers as $number) {
+                        $dbreturn[$ctr]['office'] = $row['office'];
+                        $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                        $dbreturn[$ctr]['number'] = $number;
+
+                        $ctr = $ctr + 1;
+                    }
+                }
+
+                $contactInfoData['data'] = $dbreturn;
+            }
+            else {
+                echo "0 numbers found\n";
+                $contactInfoData['data'] = null;
+            }
+
+            $num_numbers = sizeof($contactInfoData['data']);
+            if ($num_numbers >= 1) {
+                for ($i = 0; $i < $num_numbers; $i++) { 
+                    $targetNum = $this->normalizeContactNumber($contactInfoData['data'][$i]['number']);
+                    $contactInfoData['data'][$i]['number'] = $targetNum;
+
+                    if ($i == 0) {
+                        $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                        $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                    } else {
+                        $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                        $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                    }
+                }
+            } else {
+                $sqlTargetNumbersOutbox = " ";
+                $sqlTargetNumbersInbox = " ";
+            }   
+
+            $timeStampArray = explode(',', $timestamp);
+            $timestampYou = $timeStampArray[0];
+            $timestampGroup = $timeStampArray[1];
+
+            if ($timestampYou == "" || $timestampYou == null){
+                $fetchTimeStamp = "select distinct timestamp_written from smsoutbox where $sqlTargetNumbersOutbox order by timestamp_written desc";
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        if ($row['timestamp_written'] < $timestampGroup){
+                            $timestampYou = $row['timestamp_written'];
+                            break;
+                        }
+                    }
+                }
+
+            }
+
+            if ($timestampGroup == "" || $timestampGroup == null) {
+                $fetchTimeStamp = "select distinct timestamp from smsinbox where $sqlTargetNumbersInbox order by timestamp desc";
+                $this->checkConnectionDB($fetchTimeStamp);
+                $result = $this->dbconn->query($fetchTimeStamp);
+                $result->fetch_assoc()['timestamp'];
+
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        if ($row['timestamp'] < $timestampYou){
+                            $timestampGroup =  $row['timestamp'];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // FETCH THE LAST 20 MESSAGES
+
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$timestampYou' order by sms_id limit 1) x on timestamp_written.sms_id <= x.sms_id WHERE $sqlTargetNumbersOutbox ";
+
+
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$timestampGroup' order by sms_id limit 1) x on timestamp.sms_id <= x.sms_id WHERE $sqlTargetNumbersInbox ";
+
+            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT 20";
+
+            $this->checkConnectionDB($sql);
+            $result = $this->dbconn->query($sql);
+
+            $ctr = 0;
+            $dbreturn = "";
+            $pastMessages = "";
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                    $dbreturn[$ctr]['msg'] = $row['msg'];
+                    $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                    $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
+                    foreach ($contactInfoData['data'] as $singleContact) {
+                        if ($singleContact['number'] == $normalized) {
+                            $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                            $dbreturn[$ctr]['type'] = "smsLoadGroupSearched";
+                        }
+                    }
+
+                    if ($dbreturn[$ctr]['user'] == "You") {
+                        $dbreturn[$ctr]['name'] = $tagsCombined;
+                    }
+
+                    $ctr = $ctr + 1;
+                }
+
+                $pastMessages['data'] = $dbreturn;
+            }
+            else {
+                echo "0 results\n";
+                $pastMessages['data'] = null;
+            }
+
+            // END LAST 20
+
+            // LATEST 20
+
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$timestampYou' order by sms_id limit 1) x on timestamp_written.sms_id > x.sms_id WHERE $sqlTargetNumbersOutbox ";
+
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$timestampGroup' order by sms_id limit 1) x on timestamp.sms_id > x.sms_id WHERE $sqlTargetNumbersInbox ";
+
+            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT 20";
+
+            $this->checkConnectionDB($sql);
+            $result = $this->dbconn->query($sql);
+
+            $ctr = 0;
+            $dbreturn = "";
+            $latestMessages = "";
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                    $dbreturn[$ctr]['msg'] = $row['msg'];
+                    $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                    $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
+                    foreach ($contactInfoData['data'] as $singleContact) {
+                        if ($singleContact['number'] == $normalized) {
+                            $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                            $dbreturn[$ctr]['type'] = "smsLoadGroupSearched";
+                        }
+                    }
+
+                    if ($dbreturn[$ctr]['user'] == "You") {
+                        $dbreturn[$ctr]['name'] = $tagsCombined;
+                    }
+
+                    $ctr = $ctr + 1;
+                }
+
+                $latestMessages['data'] = $dbreturn;
+            }
+            else {
+                echo "0 results\n";
+                $latestMessages['data'] = null;
+            }
+
+            // END LATEST 20
+            $msgData = [];
+            $msgData['data'] = array_merge($latestMessages['data'],$pastMessages['data']);
+            $msgData['type'] = 'smsLoadGroupSearched';
+            return $msgData;
+
+        } else {
+            echo "Invalid Request/No request has been made.";
+        }
+    }
+
+    public function getSearchedGlobalConversation($user=null,$user_number=null,$timestamp=null,$msg){
+        $ctr = 0;
+        $sql = '';
+        $sqlTargetNumbers = "";
+
+        //Get the recepient number and trim it.
+        if ($user_number == "You") {
+            $sql = "SELECT DISTINCT 'You' as user, recepients as recepients FROM smsoutbox WHERE sms_msg LIKE '%$msg%' AND timestamp_written = '$timestamp'";
+
+            $this->checkConnectionDB($sql);
+            $result = $this->dbconn->query($sql);
+
+            $ctr = 0;
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+
+                    if (strlen($row['recepients']) == 12){
+                       $contactTrimmed = substr($row['recepients'], 2);
+                    } else if (strlen($row['recepients']) == 11){
+                        $contactTrimmed = substr($row['recepients'], 1);
+                    } else {
+                        $contactTrimmed = $row['recepients'];
+                    }
+                    $ctr = $ctr + 1;
+                }
+            }
+            else {
+                echo "0 results\n";
+                $fullData['data'] = null;
+            }
+
+
+        } else {
+            if (strlen($user_number) == 12){
+               $contactTrimmed = substr($user_number, 2);
+            } else if (strlen($user_number) == 11){
+                $contactTrimmed = substr($user_number, 1);
+            } else {
+                $contactTrimmed = $user_number;
+            }
+        }
+
+        //Get the Recepients name
+        $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
+        $this->checkConnectionDB($sqlTargetIndividualAlias);
+        $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
+        if ($resultAlias->num_rows > 0) {
+            while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
+                $alias= $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
+                break;
+            }
+        } else {
+            // GET RECEPIENT ALIAS FOR Group
+            $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
+            $this->checkConnectionDB($sqlTargetGroupAlias);
+            $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
+            if ($resultGroupAlias->num_rows > 0) {
+                while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
+                  $alias = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
+                   break;
+                }
+            } else {
+                $alias = "You";
+            }
+        }
+
+        //------------- First 20 latest messages
+
+        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written > '$timestamp' ";
+
+        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp > '$timestamp' ";
+
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $presentConversation = "";
+        $fullData['type'] = "smsloadGlobalSearched";
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                if ($row['user'] == "You"){
+                    $presentConversation[$ctr]['user'] = "You";
+                } else {
+                    $presentConversation[$ctr]['user'] = $alias;
+                }
+                $presentConversation[$ctr]['msg'] = $row['msg'];
+                $presentConversation[$ctr]['timestamp'] = $row['timestamp'];
+                $presentConversation[$ctr]['type'] = 'smsloadGlobalSearched';
+
+                $ctr = $ctr + 1;
+            }
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+
+        //------------- END First 20 latest messages
+
+        //------------- First 20 OLD messages
+
+        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written <= '$timestamp' ";
+
+        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp <= '$timestamp' ";
+
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $pastConversation = "";
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                if ($row['user'] == "You"){
+                    $pastConversation[$ctr]['user'] = "You";
+                } else {
+                    $pastConversation[$ctr]['user'] = $alias;
+                }
+                $pastConversation[$ctr]['msg'] = $row['msg'];
+                $pastConversation[$ctr]['timestamp'] = $row['timestamp'];
+                $pastConversation[$ctr]['type'] = 'smsloadGlobalSearched';
+
+                $ctr = $ctr + 1;
+            }
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+        //------------- END First 20 OLD messages
+
+        $allArray = array_merge($presentConversation,$pastConversation);
+        $fullData['data'] = $allArray;
+        return $fullData;
+    }
+
     //Return the message exchanges between Chatterbox and a number
     public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20) {
         $ctr = 0;
@@ -612,7 +1084,8 @@ class ChatMessageModel {
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
             }
-        }  
+        } 
+
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -644,6 +1117,303 @@ class ChatMessageModel {
         return $fullData;
     }
 
+    public function searchMessage($number,$timestamp,$searchKey){
+        $ctr = 0;
+        $sql = '';
+        $sqlTargetNumbers = "";
+
+        //Construct the query for loading messages from multiple numbers
+        if ($ctr > 1) {
+            for ($i = 0; $i < $ctr; $i++) { 
+                $targetNum = $number[$i];
+
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                }
+            }
+        } else {
+            $targetNum = $number[0];
+            $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+            $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+        }
+
+        //Construct the query for searching
+        $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND sms_msg LIKE '%".$searchKey."%'";
+
+        $sqlInbox = "SELECT sim_num as user, sms_msg as msg,timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND sms_msg LIKE '%".$searchKey."%'";
+
+        $sql = $sqlOutbox . " UNION " . $sqlInbox . "ORDER BY timestamp desc";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'searchMessage';
+
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['type'] = 'searchMessage';
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+        return $fullData;
+    }
+
+    public function searchMessageGroup($offices, $sitenames,$searchKey){
+        $ctr = 0;
+
+        $tagsCombined = "";
+
+        $ctrOffices = 0;
+        $subQueryOffices;
+        if ($offices == null) {
+            echo "Error: no office selected.";
+            return -1;
+        } 
+        else {
+            foreach ($offices as $office) {
+                if ($ctrOffices == 0) {
+                    $subQueryOffices = "('$office'";
+                } else {
+                    $subQueryOffices = $subQueryOffices . ",'$office'";
+                }
+
+                $tagsCombined = "$tagsCombined $office";
+                $ctrOffices++;
+            }
+
+            $subQueryOffices = $subQueryOffices . ")";
+        }
+        echo "offices: $subQueryOffices \n";
+
+        $ctrSites = 0;
+        $subQuerySitenames;
+        if ($sitenames == null) {
+            echo "Error: no sitename selected.";
+            return -1;
+        } 
+        else {
+            foreach ($sitenames as $site) {
+                if ($ctrSites == 0) {
+                    $subQuerySitenames = "('$site'";
+                } 
+                else {
+                    $subQuerySitenames = $subQuerySitenames . ",'$site'";
+                }
+
+                $tagsCombined = "$tagsCombined $site";
+                $ctrSites++;
+            }
+
+            $subQuerySitenames = $subQuerySitenames . ")";
+        }
+        echo "sitenames: $subQuerySitenames \n";
+
+        $sql = '';
+
+        //TODO: construct query for loading the numbers from the tags selected
+        //  by the user
+        $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                            FROM communitycontacts 
+                            WHERE office in $subQueryOffices 
+                            AND sitename in $subQuerySitenames";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sqlTargetNumbers);
+        $result = $this->dbconn->query($sqlTargetNumbers);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $numbers = explode(",", $row['number']);
+
+                foreach ($numbers as $number) {
+                    $dbreturn[$ctr]['office'] = $row['office'];
+                    $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                    $dbreturn[$ctr]['number'] = $number;
+
+                    $ctr = $ctr + 1;
+                }
+            }
+
+            $contactInfoData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 numbers found\n";
+            $contactInfoData['data'] = null;
+        }
+
+        //echo "JSON output ($ctr): " . json_encode($contactInfoData);
+
+        //Construct the query for loading messages from multiple numbers
+        $num_numbers = sizeof($contactInfoData['data']);
+        if ($num_numbers >= 1) {
+            for ($i = 0; $i < $num_numbers; $i++) { 
+                $targetNum = $this->normalizeContactNumber($contactInfoData['data'][$i]['number']);
+                $contactInfoData['data'][$i]['number'] = $targetNum;
+
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$targetNum' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$targetNum' ";
+                }
+            }
+        } else {
+            $sqlTargetNumbersOutbox = " ";
+            $sqlTargetNumbersInbox = " ";
+        }
+
+        //Construct the final query
+        $sqlOutbox = "SELECT DISTINCT user,msg,timestamp FROM (SELECT 'You' as user,sms_msg as msg,timestamp_written as timestamp FROM smsoutbox WHERE ".$sqlTargetNumbersOutbox.") as outbox WHERE msg LIKE '%$searchKey%'";   
+
+        $sqlInbox = "SELECT DISTINCT user,msg,timestamp FROM (SELECT sim_num as user,sms_msg as msg,timestamp as timestamp FROM smsinbox WHERE ".$sqlTargetNumbersInbox.") as inbox WHERE msg LIKE '%$searchKey%'";
+
+        $sql = $sqlOutbox . " UNION " . $sqlInbox . " ORDER BY timestamp desc";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $msgData['type'] = 'searchMessageGroup';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['type'] = "searchMessageGroup";
+                //Normalize the user's number
+                $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
+
+                //Add "office" and "sitename" data using the "contactInfoData" array
+                foreach ($contactInfoData['data'] as $singleContact) {
+                    if ($singleContact['number'] == $normalized) {
+                        $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                    }
+                }
+
+                if ($dbreturn[$ctr]['user'] == "You") {
+                    $dbreturn[$ctr]['name'] = $tagsCombined;
+                }
+
+                $ctr = $ctr + 1;
+            }
+
+            $msgData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $msgData['data'] = null;
+        }
+
+        //echo json_encode($msgData);
+
+        return $msgData;
+    }
+
+    public function searchMessageGlobal($type,$searchKey){
+        //Construct the query for searching
+        $sqlOutbox = "SELECT DISTINCT 'You' as user,sms_msg as msg, timestamp_written as timestamp FROM smsoutbox WHERE sms_msg LIKE '%$searchKey%'";
+
+        $sqlInbox = "SELECT DISTINCT sim_num as user,sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE sms_msg LIKE '%$searchKey%'";
+
+        $sql = $sqlOutbox . " UNION " . $sqlInbox . "ORDER BY timestamp desc";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        $ctr = 0;
+        $dbreturn = "";
+        $fullData['type'] = 'searchMessageGlobal';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+
+                if ($row['user'] == 'You') {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                } else {
+
+                    // GET RECEPIENT ALIAS FOR INDIVIDUAL
+
+                    $sqlTrimmedContact = "SELECT DISTINCT sim_num from smsinbox where timestamp like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."' UNION SELECT 'You' from smsoutbox where timestamp_written like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."'";
+                    $this->checkConnectionDB($sqlTrimmedContact);
+                    $trimmedContact = $this->dbconn->query($sqlTrimmedContact);
+                    if ($trimmedContact->num_rows > 0) {
+                        while ($trimmed = $trimmedContact->fetch_assoc()) {
+                            if (strlen($trimmed['sim_num']) == 12){
+                               $contactTrimmed = substr($trimmed['sim_num'], 2);
+                            } else if (strlen($trimmed['sim_num']) == 11){
+                                $contactTrimmed = substr($trimmed['sim_num'], 1);
+                            } else {
+                                $contactTrimmed = $trimmed['sim_num'];
+                            }
+                        }
+                    }
+
+
+                    $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
+                    $this->checkConnectionDB($sqlTargetIndividualAlias);
+                    $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
+                    if ($resultAlias->num_rows > 0) {
+                        while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
+                            $dbreturn[$ctr]['user'] = $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
+                            break;
+                        }
+                    } else {
+                        // GET RECEPIENT ALIAS FOR Group
+                        $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
+                        $this->checkConnectionDB($sqlTargetGroupAlias);
+                        $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
+                        if ($resultGroupAlias->num_rows > 0) {
+                            while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
+                              $dbreturn[$ctr]['user'] = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
+                               break;
+                            }
+                        } else {
+                            $dbreturn[$ctr]['user'] = "Unknown - ".$row['user'];
+                        }
+                    }
+                }
+
+                $dbreturn[$ctr]['user_number'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['type'] = 'searchMessageGlobal';
+                $ctr = $ctr + 1;
+            }
+
+            $fullData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+        return $fullData;
+    }
+    
     //Normalize a contact number
     public function normalizeContactNumber($contactNumber) {
         $countNum = strlen($contactNumber);
