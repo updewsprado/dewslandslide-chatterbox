@@ -521,7 +521,7 @@ class ChatMessageModel {
         }
     }
 
-   //Return the message searched between Chatterbox and a number
+    //Return the message searched between Chatterbox and a number
     public function getSearchedConversation($number = null,$type = null,$timestamp = null){
         if ($type == "smsLoadSearched") {
 
@@ -554,7 +554,10 @@ class ChatMessageModel {
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp > '$timestamp' ";
 
-            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
+            
+            echo "\n\n";
+            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -588,6 +591,10 @@ class ChatMessageModel {
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp <= '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+
+            echo "\n\n";
+            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -806,7 +813,7 @@ class ChatMessageModel {
 
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$timestampGroup' order by sms_id limit 1) x on timestamp.sms_id > x.sms_id WHERE $sqlTargetNumbersInbox ";
 
-            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT 20";
+            $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp asc LIMIT 20";
 
             $this->checkConnectionDB($sql);
             $result = $this->dbconn->query($sql);
@@ -924,7 +931,7 @@ class ChatMessageModel {
 
         $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp > '$timestamp' ";
 
-        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -1084,7 +1091,7 @@ class ChatMessageModel {
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
             }
-        } 
+        }
 
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
