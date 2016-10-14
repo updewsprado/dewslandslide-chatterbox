@@ -555,9 +555,6 @@ class ChatMessageModel {
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp > '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
-            
-            echo "\n\n";
-            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -591,10 +588,6 @@ class ChatMessageModel {
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp <= '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
-
-
-            echo "\n\n";
-            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
