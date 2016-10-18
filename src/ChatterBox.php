@@ -318,8 +318,48 @@ class ChatterBox implements MessageComponentInterface {
                 $yourTimeStamp = $decodedText->lastMessageTimeStampYou;
                 $groupTimeStamp = $decodedText->lastMessageTimeStampGroup;
                 $lastTimeStamps = $yourTimeStamp.",".$groupTimeStamp;
-
                 $exchanges = $this->chatModel->getMessageExchangesFromGroupTags($offices,$sitenames,$type,$lastTimeStamps,10);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchMessageIndividual") {
+                echo "Searching messages for individual chat";
+                $number = $decodedText->number;
+                $timestamp = $decodedText->timestamp;
+                $searchKey = $decodedText->searchKey;
+                $exchanges = $this->chatModel->searchMessage($number,$timestamp,$searchKey);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchMessageGroup"){
+                echo "Searching groups/tag messages...";
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+                $searchKey = $decodedText->searchKey;
+                $exchanges = $this->chatModel->searchMessageGroup($offices, $sitenames,$searchKey);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsLoadSearched"){
+                $number = $decodedText->number;
+                $timestamp = $decodedText->timestamp;
+                $type = $decodedText->type;
+                $exchanges = $this->chatModel->getSearchedConversation($number,$type, $timestamp);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsLoadGroupSearched"){
+                $offices = $decodedText->offices;
+                $sitenames = $decodedText->sitenames;
+                $timestampYou = $decodedText->timestampYou;
+                $timestampGroup = $decodedText->timestampGroup;
+                $timestamp = $timestampYou.",".$timestampGroup;
+                $type = $decodedText->type;
+                $exchanges = $this->chatModel->getSearchedGroupConversation($offices,$sitenames,$type, $timestamp);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchMessageGlobal") {
+                $type = $decodedText->type;
+                $searchKey = $decodedText->searchKey;
+                $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsloadGlobalSearched"){
+                $user = $decodedText->user;
+                $user_number =$decodedText->user_number;
+                $timestamp = $decodedText->timestamp;
+                $msg = $decodedText->sms_msg;
+                $exchanges = $this->chatModel->getSearchedGlobalConversation($user,$user_number,$timestamp,$msg);
                 $from->send(json_encode($exchanges));
             }
             else {
