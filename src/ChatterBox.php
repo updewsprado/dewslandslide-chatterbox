@@ -1,4 +1,4 @@
-<?php
+`<?php
 namespace MyApp;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
@@ -130,6 +130,7 @@ class ChatterBox implements MessageComponentInterface {
                 $sitenames = $decodedText->sitenames;
                 $sentTS = $decodedText->timestamp;
                 $sentMsg = $decodedText->msg;
+                $ewiRecipient = $decodedText->ewi_filter;
 
                 $displayMsg['type'] = "smssend";
                 $displayMsg['timestamp'] = $sentTS;
@@ -139,7 +140,7 @@ class ChatterBox implements MessageComponentInterface {
                 $displayMsg['msg'] = $sentMsg;
 
                 //Get contact numbers using group tags
-                $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames);
+                $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames,$ewiRecipient);
 
                 var_dump($contacts);
                 $numContacts = count($contacts['data']);
@@ -171,12 +172,12 @@ class ChatterBox implements MessageComponentInterface {
             }
             elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
-
                 //Load the message exchanges between Chatterbox and a number
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
+                $type = $decodedText->type;
 
-                $exchanges = $this->chatModel->getMessageExchanges($number, $timestamp);
+                $exchanges = $this->chatModel->getMessageExchanges($number, $type,$timestamp);
                 $from->send(json_encode($exchanges));
             }
             elseif ($msgType == "smsloadrequestgroup") {
@@ -198,7 +199,7 @@ class ChatterBox implements MessageComponentInterface {
 
                 //Get the quick inbox messages
                 //$quickInboxMessages = $this->getQuickInboxMessages();
-                $quickInboxMessages = $this->chatModel->getCachedQuickInboxMessages();
+               $quickInboxMessages = $this->chatModel->getCachedQuickInboxMessages();
 
                 //TODO: Send the quick inbox messages to the 
                 $from->send(json_encode($quickInboxMessages));
@@ -361,8 +362,12 @@ class ChatterBox implements MessageComponentInterface {
                 $msg = $decodedText->sms_msg;
                 $exchanges = $this->chatModel->getSearchedGlobalConversation($user,$user_number,$timestamp,$msg);
                 $from->send(json_encode($exchanges));
-            }
-            else {
+            } else if ($msgType == "updateEwiRecipients"){
+                $type = $decodedText->type;
+                $data = $decodedText->data;
+                $exchanges = $this->chatModel->updateEwiRecipients($type,$data);
+                $from->send(json_encode($exchanges));
+            } else {
                 echo "Message will be ignored\n";
             }
         }

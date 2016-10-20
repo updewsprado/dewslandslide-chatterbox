@@ -555,6 +555,9 @@ class ChatMessageModel {
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp > '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
+            
+            echo "\n\n";
+            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -588,6 +591,10 @@ class ChatMessageModel {
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp <= '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+
+
+            echo "\n\n";
+            echo $sql;
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
@@ -1432,7 +1439,7 @@ class ChatMessageModel {
     }
 
     //Return the contact numbers from the group tags
-    public function getContactNumbersFromGroupTags($offices = null, $sitenames = null) {
+    public function getContactNumbersFromGroupTags($offices = null, $sitenames = null,$ewi_filter = null) {
         $ctr = 0;
 
         $ctrOffices = 0;
@@ -1480,10 +1487,20 @@ class ChatMessageModel {
 
         //construct query for loading the numbers from the tags selected
         //  by the user
-        $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                            FROM communitycontacts 
-                            WHERE office in $subQueryOffices 
-                            AND sitename in $subQuerySitenames";
+        var_dump($ewi_filter);
+        if ($ewi_filter == "true") {
+            var_dump("HIT TRUE");
+            $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                                FROM communitycontacts 
+                                WHERE office in $subQueryOffices 
+                                AND sitename in $subQuerySitenames AND ewirecipient = true";
+        } else {
+            var_dump("HIT FALSE");
+            $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
+                    FROM communitycontacts 
+                    WHERE office in $subQueryOffices 
+                    AND sitename in $subQuerySitenames";
+        }
 
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlTargetNumbers);
@@ -1510,6 +1527,108 @@ class ChatMessageModel {
         }
 
         return $contactInfoData;
+    }
+
+    public function getEwiRecepients($offices,$sitenames){
+        $ctr = 0;
+        $dbreturn = "";
+        $sqlTargetNumbers = "SELECT office, sitename, lastname,firstname, number, ewirecipient
+                            FROM communitycontacts 
+                            WHERE office in $offices
+                            AND sitename in $sitenames";
+        $this->checkConnectionDB($sqlTargetNumbers);
+        $result = $this->dbconn->query($sqlTargetNumbers);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $numbers = explode(",", $row['number']);
+                    if ($row['ewirecipient'] == NULL) {
+                        foreach ($numbers as $number) {
+                            $dbreturn[$ctr]['office'] = $row['office'];
+                            $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                            $dbreturn[$ctr]['lastname'] = (string)$row['lastname'];
+                            $dbreturn[$ctr]['firstname'] = (string)$row['firstname'];
+                            $dbreturn[$ctr]['number'] = $number;
+                            $dbreturn[$ctr]['ewirecipient'] = $row['ewirecipient'];
+                            $ctr = $ctr + 1;
+                            $resultData['type'] = "hasNullEWIRecipient";
+                            $resultData['hasNull'] = true;
+                        }
+                    } else {
+                            $resultData['hasNull'] = false;
+                    }
+            }
+        } else {
+            echo "0 numbers found\n";
+        }
+        $resultData['data'] = $dbreturn;
+        return $resultData;
+    }
+
+    public function updateEwiRecipients($type,$data){
+        $sql = "";
+        $site = [];
+        $office = [];
+        $numbers = [];
+        foreach ($data as $info) {
+
+            if (count($site) == 0 && count($office) == 0 ) {
+                array_push($site,$info->sitename);
+                array_push($office,$info->office);
+            }
+
+            for ($i = 0; $i < sizeof($site);$i++){
+                if ($site[$i] != $info->sitename) {
+                    array_push($site,$info->sitename);
+                }
+            }
+
+            for ($x = 0; $x < sizeof($office);$x++){
+                if ($office[$x] !=  $info->office) {
+                    array_push($office,$info->office);
+                }
+            }
+        }
+
+        $ctr = 0;
+        $ctrSites = 0;
+        $filterSitenames;
+
+        foreach ($site as $site) {
+            if ($ctrSites == 0) {
+                $filterSitenames = "('$site'";
+            } 
+            else {
+                $filterSitenames = $filterSitenames . ",'$site'";
+            }
+            $ctrSites++;
+        }
+        $filterSitenames = $filterSitenames . ")";
+
+        // UPDATES ALL THE CONTACTS EWI RECIPIENTS TO FALSE.
+        $sql = "UPDATE communitycontacts SET ewirecipient = false WHERE sitename IN $filterSitenames";
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+
+        // UPDATES SELECTED CONTACTS EWI RECIPIENTS TO TRUE.
+        foreach ($data as $info) {
+            array_push($numbers,$info->number);
+        }
+
+        for ($i = 0; $i < sizeof($numbers); $i++) { 
+            if ($i == 0) {
+                $target = "number LIKE '%$numbers[$i]%' ";
+            } else {
+                $target = $target . "OR number LIKE '%$numbers[$i]%' ";
+            }
+        }
+
+        $sql = "UPDATE communitycontacts SET ewirecipient = true WHERE $target";
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+        $data['type'] = "resumeLoading";
+        return $data;
+
     }
 
     //Return the message exchanges between Chatterbox and a group
@@ -1565,6 +1684,11 @@ class ChatMessageModel {
 
         $sql = '';
         
+        $result = $this->getEwiRecepients($subQueryOffices,$subQuerySitenames);
+
+        if ($result['hasNull'] == true) {
+            return $result;
+        }
 
         //TODO: construct query for loading the numbers from the tags selected
         //  by the user
