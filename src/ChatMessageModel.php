@@ -404,54 +404,68 @@ class ChatMessageModel {
         }
     }
 
+    public function getRowFromMultidimensionalArray($mdArray, $field, $value) {
+       foreach($mdArray as $key => $row) {
+          if ( $row[$field] === $value )
+             return $row;
+       }
+       return -1;
+    }
+
     //Return the quick inbox messages needed for the initial display on chatterbox
-    public function getQuickInboxMessages() {
+    public function getQuickInboxMessages($periodDays = 3) {
         // $start = microtime(true);
 
-        //Get the name of the senders
+        // Get the name of the senders
         $contactsList = $this->getFullnamesAndNumbers();
 
-        $sqlGetLatestMessagePerContact = "
-            SELECT timestamp, sim_num as user, sms_msg as msg FROM smsinbox
-            WHERE 
-            timestamp IN (
-                SELECT max(timestamp) FROM smsinbox GROUP BY sim_num
-            )
-            AND timestamp > (now() - interval 7 day)
+        // Create query to get all sim numbers for the past X days
+        $sqlGetAllNumbersFromPeriod = "
+            SELECT * FROM smsinbox
+            WHERE timestamp > (now() - interval $periodDays day)
             ORDER BY timestamp DESC";
 
         // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sqlGetLatestMessagePerContact);
-        $result = $this->dbconn->query($sqlGetLatestMessagePerContact);
+        $this->checkConnectionDB($sqlGetAllNumbersFromPeriod);
+        $resultNumbersFromPeriod = $this->dbconn->query($sqlGetAllNumbersFromPeriod);
 
-        $ctr = 0;
-        $dbreturn = "";
         $fullData['type'] = 'smsloadquickinbox';
-
-        if ($result->num_rows > 0) {
+        $distinctNumbers = "";
+        $allNumbers = [];
+        $allMessages = [];
+        $quickInboxMsgs = [];
+        $ctr = 0;
+        if ($resultNumbersFromPeriod->num_rows > 0) {
             // output data of each row
-            while ($row = $result->fetch_assoc()) {
-                $normalizedNum = $this->normalizeContactNumber($row['user']);
-                $dbreturn[$ctr]['user'] = $normalizedNum;
-                $dbreturn[$ctr]['msg'] = $row['msg'];
-                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                // $dbreturn[$ctr]['name'] = $this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']);
-                $dbreturn[$ctr]['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $dbreturn[$ctr]['user']));
+            while ($row = $resultNumbersFromPeriod->fetch_assoc()) {
+                $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
 
-                //Format for final quick inbox message - user (sim_num), msg, timestamp, name
-                echo "fullname: " . $dbreturn[$ctr]['name'] . ", num: " . $dbreturn[$ctr]['user'] . ", ts: " . $dbreturn[$ctr]['timestamp'] . ", msg: " . $dbreturn[$ctr]['msg'] . "\n";
-
-                $ctr = $ctr + 1;
+                array_push($allNumbers, $normalizedNum);
+                $allMessages[$ctr]['user'] = $normalizedNum;
+                $allMessages[$ctr]['msg'] = $row['sms_msg'];
+                $allMessages[$ctr]['timestamp'] = $row['timestamp'];
+                $ctr++;
             }
 
-            $fullData['data'] = $dbreturn;
+            // Get distinct numbers
+            $distinctNumbers = array_unique($allNumbers);
+            // echo "getQuickInboxMessages() | JSON DATA: " . json_encode($distinctNumbers) . "\n";
+
+            foreach ($distinctNumbers as $singleContact) {
+                // echo "$singleContact \n";
+                $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
+                $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
+                array_push($quickInboxMsgs, $msgDetails);
+                // echo json_encode($msgDetails) . "\n";
+            }
+
+            $fullData['data'] = $quickInboxMsgs;
         }
         else {
             echo "0 results\n";
             $fullData['data'] = null;
         }
 
-        //return $fullData;
         echo "JSON DATA: " . json_encode($fullData);
         //echo json_encode($contactsList);
 
