@@ -1846,6 +1846,107 @@ class ChatMessageModel {
         return $msgData;
     }
 
+    public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
+        $ctr = 0;
+        $ctrTags = 0;
+        $employeeTargetNumber = [];
+        foreach ($data as $tag) {
+            if ($ctrTags == 0) {
+                $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag' ";
+            } else {
+                $sqlTargetNumbersPerTag = $sqlTargetNumbersPerTag . "OR grouptags LIKE '%$tag' ";
+            }
+            $ctrTags++;
+        }
+        $sqlTargetNumbers = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE ".$sqlTargetNumbersPerTag;
+        $this->checkConnectionDB($sqlTargetNumbers);
+        $result = $this->dbconn->query($sqlTargetNumbers);
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $targetEmpNumbers = "";
+                if (strlen($row['numbers']) == 9) {
+                    $targetEmpNumbers = "63".$row['numbers'];
+                } else if (strlen($row['numbers']) == 11) {
+                    $targetEmpNumbers = "63".substr($row['numbers'],1);
+                } else if (strlen($row['numbers']) > 12){
+                    $numbers = explode(",", $row['numbers']);
+                    foreach ($numbers as $number) {
+                        array_push($employeeTargetNumber, "63".substr($number,1));
+                    }
+                } else {
+                    $targetEmpNumbers = $row['numbers'];
+                }
+                if ($targetEmpNumbers != "") {
+                  array_push($employeeTargetNumber, $targetEmpNumbers);                  
+                }
+                    $dbreturn[$ctr]['tag'] = $row['grouptags'];
+            }
+            $contactInfoData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 numbers found\n";
+            $contactInfoData['data'] = null;
+        }
+        $num_numbers = sizeof($employeeTargetNumber);
+        if ($num_numbers >= 1) {
+            for ($i = 0; $i < $num_numbers; $i++) { 
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$employeeTargetNumber[$i]' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$employeeTargetNumber[$i]' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$employeeTargetNumber[$i]' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$employeeTargetNumber[$i]' ";
+                }
+            }
+        } else {
+            $sqlTargetNumbersOutbox = " ";
+            $sqlTargetNumbersInbox = " ";
+        }
+
+        //Construct the final query
+        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
+                        timestamp_written as timestamp
+                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
+
+        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
+                        timestamp as timestamp
+                    FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+        $msgData['type'] = 'loadEmployeeTag';
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user'] = $row['user'];
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+
+                if ($dbreturn[$ctr]['user'] == "You") {
+                    $dbreturn[$ctr]['name'] = $tagsCombined;
+                }
+
+
+                foreach ($contactInfoData['data'] as $singleContact) {
+                    $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
+                }
+
+                $ctr = $ctr + 1;
+            }
+
+            $msgData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $msgData['data'] = null;
+        }
+
+        return $msgData;
+    }
+
     public function getArraySize($arr) {
         $tot = 0;
         foreach($arr as $a) {
