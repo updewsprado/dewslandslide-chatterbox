@@ -1501,7 +1501,6 @@ class ChatMessageModel {
 
         //construct query for loading the numbers from the tags selected
         //  by the user
-        var_dump($ewi_filter);
         if ($ewi_filter == "true") {
             var_dump("HIT TRUE");
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
@@ -1848,8 +1847,47 @@ class ChatMessageModel {
 
     public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
         $ctr = 0;
+        $e_ctr = 0;
         $ctrTags = 0;
         $employeeTargetNumber = [];
+        $employeeTags = [];
+
+        foreach ($data as $team_tag) {
+            $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag'";
+            $this->checkConnectionDB($ttag);
+            $res = $this->dbconn->query($ttag);
+
+            if ($res->num_rows > 0) {
+                while ($row = $res->fetch_assoc()){
+                    $temp = "";
+                    if (strlen($row['numbers']) == 9) {
+                        $emptag[$e_ctr]['tags'] = $row['grouptags'];
+                        $emptag[$e_ctr]['number'] = "63".$row['numbers'];
+                    } else if (strlen($row['numbers']) == 11) {
+                        $emptag[$e_ctr]['tags'] = $row['grouptags'];
+                        $emptag[$e_ctr]['number'] = "63".substr($row['numbers'],1);
+                    } else if (strlen($row['numbers']) > 12){
+                        $numbers = explode(",", $row['numbers']);
+                        $temp = $e_ctr;
+                        foreach ($numbers as $number) {
+                            $emptag[$temp]['tags'] = $row['grouptags'];
+                            $emptag[$temp]['number'] = "63".substr($number,1);
+                            $temp = $temp+1;
+                        }
+
+                    } else {
+                         $emptag[$e_ctr]['number']  = $row['numbers'];
+                    }
+                    if ($temp != "" || $temp != NULL) {
+                        $e_ctr = $temp;
+                    } else {
+                        $e_ctr = $e_ctr+1;
+                    }
+                    $employeeTags = $emptag;  
+                }
+            }
+        }
+
         foreach ($data as $tag) {
             if ($ctrTags == 0) {
                 $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag' ";
@@ -1858,9 +1896,11 @@ class ChatMessageModel {
             }
             $ctrTags++;
         }
+
         $sqlTargetNumbers = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE ".$sqlTargetNumbersPerTag;
         $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
+
         if ($result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
                 $targetEmpNumbers = "";
@@ -1887,6 +1927,7 @@ class ChatMessageModel {
             echo "0 numbers found\n";
             $contactInfoData['data'] = null;
         }
+
         $num_numbers = sizeof($employeeTargetNumber);
         if ($num_numbers >= 1) {
             for ($i = 0; $i < $num_numbers; $i++) { 
@@ -1921,18 +1962,19 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['user'] = $row['user'];
+                if ($row['user'] == "You") {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                } else {
+                    for ($x = 0;$x < sizeof($employeeTags);$x++) {
+                        if ($employeeTags[$x]['number'] == $row['user']) {
+                            $dbreturn[$ctr]['user'] = strtoupper($employeeTags[$x]['tags']);
+                        }
+                    }
+                }
+
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-
-                if ($dbreturn[$ctr]['user'] == "You") {
-                    $dbreturn[$ctr]['name'] = $tagsCombined;
-                }
-
-
-                foreach ($contactInfoData['data'] as $singleContact) {
-                    $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
-                }
+                $dbreturn[$ctr]['type'] = "loadEmployeeTag";
 
                 $ctr = $ctr + 1;
             }
@@ -1943,7 +1985,6 @@ class ChatMessageModel {
             echo "0 results\n";
             $msgData['data'] = null;
         }
-
         return $msgData;
     }
 

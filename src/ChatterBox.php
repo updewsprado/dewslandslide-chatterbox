@@ -371,7 +371,6 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $data = $decodedText->teams;
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
-                var_dump($exchanges);
                 $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";
