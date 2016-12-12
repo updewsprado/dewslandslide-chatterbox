@@ -198,7 +198,7 @@ class ChatMessageModel {
         } else {
             $curTime = date("Y-m-d H:i:s", time());
         }
-
+        
         foreach ($recipients as $recipient) {
             // Identify the mobile network of the current number
             $mobileNetwork = $this->identifyMobileNetwork($recipient);
@@ -1845,15 +1845,12 @@ class ChatMessageModel {
         return $msgData;
     }
 
-    public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
-        $ctr = 0;
+    public function getEmpTagNumbers($data){
         $e_ctr = 0;
-        $ctrTags = 0;
-        $employeeTargetNumber = [];
         $employeeTags = [];
 
         foreach ($data as $team_tag) {
-            $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag'";
+            $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag%'";
             $this->checkConnectionDB($ttag);
             $res = $this->dbconn->query($ttag);
 
@@ -1887,12 +1884,22 @@ class ChatMessageModel {
                 }
             }
         }
+        return $employeeTags;
+    }
+
+    public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
+        $ctr = 0;
+        $ctrTags = 0;
+        $employeeTags = [];
+        $employeeTargetNumber = [];
+
+        $employeeTags = $this->getEmpTagNumbers($data);
 
         foreach ($data as $tag) {
             if ($ctrTags == 0) {
-                $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag' ";
+                $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag%' ";
             } else {
-                $sqlTargetNumbersPerTag = $sqlTargetNumbersPerTag . "OR grouptags LIKE '%$tag' ";
+                $sqlTargetNumbersPerTag = $sqlTargetNumbersPerTag . "OR grouptags LIKE '%$tag%' ";
             }
             $ctrTags++;
         }
@@ -1959,6 +1966,7 @@ class ChatMessageModel {
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
         $msgData['type'] = 'loadEmployeeTag';
+
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
@@ -1985,6 +1993,7 @@ class ChatMessageModel {
             echo "0 results\n";
             $msgData['data'] = null;
         }
+
         return $msgData;
     }
 

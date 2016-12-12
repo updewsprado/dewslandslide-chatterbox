@@ -48,33 +48,69 @@ class ChatterBox implements MessageComponentInterface {
             if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
                 //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
                 //saving "smssend"
+
+                echo "Message sent by ChatterBox Users to GSM and the community.\n";     
+
                 if ($msgType == "smssend") {
-                    echo "Message sent by ChatterBox Users to GSM and the community.\n";
+                    if ($decodedText->tag != "" || $decodedText->tag != NULL || isset($decodedText->tag)) {
+                        $tempNumber = [];
 
-                    //store data in 'smsoutbox' table
-                    $recipients = $decodedText->numbers;
-                    $sentMsg = $decodedText->msg;
-                    $sentTS = $decodedText->timestamp;
+                        $recipientsTag = $decodedText->tag;
+                        $numbers = $this->chatModel->getEmpTagNumbers($recipientsTag);
 
-                    echo "sentTS = $sentTS \n";
+                        for ($x = 0;$x < sizeof($numbers);$x++) {
+                            if (!in_array($numbers[$x]["number"], $tempNumber)) {
+                                $recipients = [$numbers[$x]["number"]];
+                                $sentMsg = $decodedText->msg;
+                                $sentTS = $decodedText->timestamp;
+                                $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
+                                $displayMsg['type'] = "smssend";
+                                $displayMsg['timestamp'] = $sentTS;
+                                $displayMsg['user'] = "You";
+                                $displayMsg['numbers'] = $recipients;
+                                $displayMsg['msg'] = $sentMsg;
+                                $displayMsg['gsm_id'] = "UNKNOWN";
+                                $displayMsgJSON = json_encode($displayMsg);
 
-                    $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
-
-                    $displayMsg['type'] = "smssend";
-                    $displayMsg['timestamp'] = $sentTS;
-                    $displayMsg['user'] = "You";
-                    $displayMsg['numbers'] = $recipients;
-                    $displayMsg['msg'] = $sentMsg;
-                    $displayMsg['gsm_id'] = "UNKNOWN";
-                    $displayMsgJSON = json_encode($displayMsg);
-
-                    //broadcast JSON message from GSM to all connected clients
-                    foreach ($this->clients as $client) {
-                        if ($from !== $client) {
-                            // The sender is not the receiver, send to each client connected
-                            $client->send($displayMsgJSON);
+                                //broadcast JSON message from GSM to all connected clients
+                                foreach ($this->clients as $client) {
+                                    if ($from !== $client) {
+                                        // The sender is not the receiver, send to each client connected
+                                        $client->send($displayMsgJSON);
+                                    }
+                                } 
+                                array_push($tempNumber,$numbers[$x]["number"]);  
+                            }
                         }
-                    }                }
+
+                        var_dump($tempNumber);
+                    } else {
+                        //store data in 'smsoutbox' table
+                        $recipients = $decodedText->numbers;
+                        $sentMsg = $decodedText->msg;
+                        $sentTS = $decodedText->timestamp;
+
+                        echo "sentTS = $sentTS \n";
+
+                        $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
+
+                        $displayMsg['type'] = "smssend";
+                        $displayMsg['timestamp'] = $sentTS;
+                        $displayMsg['user'] = "You";
+                        $displayMsg['numbers'] = $recipients;
+                        $displayMsg['msg'] = $sentMsg;
+                        $displayMsg['gsm_id'] = "UNKNOWN";
+                        $displayMsgJSON = json_encode($displayMsg);
+
+                        //broadcast JSON message from GSM to all connected clients
+                        foreach ($this->clients as $client) {
+                            if ($from !== $client) {
+                                // The sender is not the receiver, send to each client connected
+                                $client->send($displayMsgJSON);
+                            }
+                        }      
+                    }    
+                }
                 //saving "smsrcv"
                 elseif ($msgType == "smsrcv") {
                     echo "Message received from GSM.\n";
@@ -142,7 +178,6 @@ class ChatterBox implements MessageComponentInterface {
                 //Get contact numbers using group tags
                 $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames,$ewiRecipient);
 
-                var_dump($contacts);
                 $numContacts = count($contacts['data']);
                 $allMsgs = [];
 
@@ -169,8 +204,7 @@ class ChatterBox implements MessageComponentInterface {
                         }
                     }
                 }
-            }
-            elseif ($msgType == "smsloadrequest") {
+            } elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
                 //Load the message exchanges between Chatterbox and a number
                 $number = $decodedText->number;
