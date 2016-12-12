@@ -198,7 +198,7 @@ class ChatMessageModel {
         } else {
             $curTime = date("Y-m-d H:i:s", time());
         }
-
+        
         foreach ($recipients as $recipient) {
             // Identify the mobile network of the current number
             $mobileNetwork = $this->identifyMobileNetwork($recipient);
@@ -1501,7 +1501,6 @@ class ChatMessageModel {
 
         //construct query for loading the numbers from the tags selected
         //  by the user
-        var_dump($ewi_filter);
         if ($ewi_filter == "true") {
             var_dump("HIT TRUE");
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
@@ -1842,6 +1841,158 @@ class ChatMessageModel {
         }
 
         //echo json_encode($msgData);
+
+        return $msgData;
+    }
+
+    public function getEmpTagNumbers($data){
+        $e_ctr = 0;
+        $employeeTags = [];
+
+        foreach ($data as $team_tag) {
+            $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag%'";
+            $this->checkConnectionDB($ttag);
+            $res = $this->dbconn->query($ttag);
+
+            if ($res->num_rows > 0) {
+                while ($row = $res->fetch_assoc()){
+                    $temp = "";
+                    if (strlen($row['numbers']) == 9) {
+                        $emptag[$e_ctr]['tags'] = $row['grouptags'];
+                        $emptag[$e_ctr]['number'] = "63".$row['numbers'];
+                    } else if (strlen($row['numbers']) == 11) {
+                        $emptag[$e_ctr]['tags'] = $row['grouptags'];
+                        $emptag[$e_ctr]['number'] = "63".substr($row['numbers'],1);
+                    } else if (strlen($row['numbers']) > 12){
+                        $numbers = explode(",", $row['numbers']);
+                        $temp = $e_ctr;
+                        foreach ($numbers as $number) {
+                            $emptag[$temp]['tags'] = $row['grouptags'];
+                            $emptag[$temp]['number'] = "63".substr($number,1);
+                            $temp = $temp+1;
+                        }
+
+                    } else {
+                         $emptag[$e_ctr]['number']  = $row['numbers'];
+                    }
+                    if ($temp != "" || $temp != NULL) {
+                        $e_ctr = $temp;
+                    } else {
+                        $e_ctr = $e_ctr+1;
+                    }
+                    $employeeTags = $emptag;  
+                }
+            }
+        }
+        return $employeeTags;
+    }
+
+    public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
+        $ctr = 0;
+        $ctrTags = 0;
+        $employeeTags = [];
+        $employeeTargetNumber = [];
+
+        $employeeTags = $this->getEmpTagNumbers($data);
+
+        foreach ($data as $tag) {
+            if ($ctrTags == 0) {
+                $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag%' ";
+            } else {
+                $sqlTargetNumbersPerTag = $sqlTargetNumbersPerTag . "OR grouptags LIKE '%$tag%' ";
+            }
+            $ctrTags++;
+        }
+
+        $sqlTargetNumbers = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE ".$sqlTargetNumbersPerTag;
+        $this->checkConnectionDB($sqlTargetNumbers);
+        $result = $this->dbconn->query($sqlTargetNumbers);
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $targetEmpNumbers = "";
+                if (strlen($row['numbers']) == 9) {
+                    $targetEmpNumbers = "63".$row['numbers'];
+                } else if (strlen($row['numbers']) == 11) {
+                    $targetEmpNumbers = "63".substr($row['numbers'],1);
+                } else if (strlen($row['numbers']) > 12){
+                    $numbers = explode(",", $row['numbers']);
+                    foreach ($numbers as $number) {
+                        array_push($employeeTargetNumber, "63".substr($number,1));
+                    }
+                } else {
+                    $targetEmpNumbers = $row['numbers'];
+                }
+                if ($targetEmpNumbers != "") {
+                  array_push($employeeTargetNumber, $targetEmpNumbers);                  
+                }
+                    $dbreturn[$ctr]['tag'] = $row['grouptags'];
+            }
+            $contactInfoData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 numbers found\n";
+            $contactInfoData['data'] = null;
+        }
+
+        $num_numbers = sizeof($employeeTargetNumber);
+        if ($num_numbers >= 1) {
+            for ($i = 0; $i < $num_numbers; $i++) { 
+                if ($i == 0) {
+                    $sqlTargetNumbersOutbox = "recepients LIKE '%$employeeTargetNumber[$i]' ";
+                    $sqlTargetNumbersInbox = "sim_num LIKE '%$employeeTargetNumber[$i]' ";
+                } else {
+                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$employeeTargetNumber[$i]' ";
+                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$employeeTargetNumber[$i]' ";
+                }
+            }
+        } else {
+            $sqlTargetNumbersOutbox = " ";
+            $sqlTargetNumbersInbox = " ";
+        }
+
+        //Construct the final query
+        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
+                        timestamp_written as timestamp
+                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
+
+        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
+                        timestamp as timestamp
+                    FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+
+        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
+
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($sql);
+        $result = $this->dbconn->query($sql);
+        $msgData['type'] = 'loadEmployeeTag';
+
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                if ($row['user'] == "You") {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                } else {
+                    for ($x = 0;$x < sizeof($employeeTags);$x++) {
+                        if ($employeeTags[$x]['number'] == $row['user']) {
+                            $dbreturn[$ctr]['user'] = strtoupper($employeeTags[$x]['tags']);
+                        }
+                    }
+                }
+
+                $dbreturn[$ctr]['msg'] = $row['msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['type'] = "loadEmployeeTag";
+
+                $ctr = $ctr + 1;
+            }
+
+            $msgData['data'] = $dbreturn;
+        }
+        else {
+            echo "0 results\n";
+            $msgData['data'] = null;
+        }
 
         return $msgData;
     }
