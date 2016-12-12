@@ -83,7 +83,6 @@ class ChatterBox implements MessageComponentInterface {
                             }
                         }
 
-                        var_dump($tempNumber);
                     } else {
                         //store data in 'smsoutbox' table
                         $recipients = $decodedText->numbers;
