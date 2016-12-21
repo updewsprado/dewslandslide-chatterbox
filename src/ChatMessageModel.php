@@ -1140,11 +1140,15 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
+                if ($type == "oldMessageGroupEmployee") {
                     for ($x = 0;$x < sizeof($employeeTags);$x++) {
                         if ($employeeTags[$x]['number'] == $row['user']) {
                             $dbreturn[$ctr]['user'] = strtoupper($employeeTags[$x]['tags']);
                         }
                     }
+                } else {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                }
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
 
