@@ -344,6 +344,19 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getMessageExchanges($number,$type,$timestamp,10);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "oldMessageGroupEmployee") {
+                $number = $decodedText->tags; // Number is also the tags
+                $timestampYou = $decodedText->timestampYou;
+                $timestampGroup = $decodedText->timestampGroup;
+                $timestamp = $timestampYou.",".$timestampGroup;
+                $type = $decodedText->type;
+                $tags = $decodedText->tags;
+
+                $exchanges = $this->chatModel->getMessageExchanges($number,$type,$timestamp,10,$tags);
+
+                $from->send(json_encode($exchanges));
+
+
             } else if ($msgType == "oldMessageGroup"){
                 echo "Loading messages groups/tag";
                 $offices = $decodedText->offices;

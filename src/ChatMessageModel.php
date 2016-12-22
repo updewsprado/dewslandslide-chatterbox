@@ -1015,17 +1015,27 @@ class ChatMessageModel {
     }
 
     //Return the message exchanges between Chatterbox and a number
-    public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20) {
+    public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20,$tags = null) {
         $ctr = 0;
+        $employeeTags = [];
 
-        if ($number == null) {
-            echo "Error: no number selected.";
-            return -1;
-        } else {
-            foreach ($number as $test) {
-                //echo "target: $number\n";
-                echo "target: $test\n";
+        $employeeTags = $this->getEmpTagNumbers($tags);
+
+        if ($type == "oldMessageGroupEmployee") {
+            $number = $this->getEmpTagNumbers($number);
+            for ($x = 0;$x < sizeof($number);$x++) {
                 $ctr++;
+            }
+        } else {
+            if ($number == null) {
+                echo "Error: no number selected.";
+                return -1;
+            } else {
+                foreach ($number as $test) {
+                    //echo "target: $number\n";
+                    echo "target: $test\n";
+                    $ctr++;
+                }
             }
         }
 
@@ -1034,8 +1044,12 @@ class ChatMessageModel {
 
         //Construct the query for loading messages from multiple numbers
         if ($ctr > 1) {
-            for ($i = 0; $i < $ctr; $i++) { 
-                $targetNum = $number[$i];
+            for ($i = 0; $i < $ctr; $i++) {
+                if ($type == "oldMessageGroupEmployee") {
+                    $targetNum = $number[$i]["number"];
+                } else {
+                    $targetNum = $number[$i];
+                }
 
                 if ($i == 0) {
                     $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
@@ -1052,7 +1066,7 @@ class ChatMessageModel {
         }
 
         //Construct the final query
-        if ($type == "oldMessage") {
+        if ($type == "oldMessage" || $type == "oldMessageGroupEmployee") {
 
             $timeStampArray = explode(',', $timestamp);
             $yourLastTimeStamp = $timeStampArray[0];
@@ -1108,6 +1122,8 @@ class ChatMessageModel {
         }
 
         // Make sure the connection is still alive, if not, try to reconnect 
+
+
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -1115,13 +1131,24 @@ class ChatMessageModel {
         $dbreturn = "";
         if ($type == "oldMessage"){
             $fullData['type'] = 'oldMessage';
+        } else if ($type == "oldMessageGroupEmployee") {
+            $fullData['type'] = 'oldMessageGroupEmployee';
         } else {
             $fullData['type'] = 'smsload';
         }
+
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['user'] = $row['user'];
+                if ($type == "oldMessageGroupEmployee") {
+                    for ($x = 0;$x < sizeof($employeeTags);$x++) {
+                        if ($employeeTags[$x]['number'] == $row['user']) {
+                            $dbreturn[$ctr]['user'] = strtoupper($employeeTags[$x]['tags']);
+                        }
+                    }
+                } else {
+                    $dbreturn[$ctr]['user'] = $row['user'];
+                }
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
 
@@ -1502,13 +1529,11 @@ class ChatMessageModel {
         //construct query for loading the numbers from the tags selected
         //  by the user
         if ($ewi_filter == "true") {
-            var_dump("HIT TRUE");
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
                                 FROM communitycontacts 
                                 WHERE office in $subQueryOffices 
                                 AND sitename in $subQuerySitenames AND ewirecipient = true";
         } else {
-            var_dump("HIT FALSE");
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
                     FROM communitycontacts 
                     WHERE office in $subQueryOffices 
@@ -1847,7 +1872,6 @@ class ChatMessageModel {
 
     public function getEmpTagNumbers($data){
         $e_ctr = 0;
-        $employeeTags = [];
 
         foreach ($data as $team_tag) {
             $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag%'";
