@@ -52,7 +52,7 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Message sent by ChatterBox Users to GSM and the community.\n";     
 
                 if ($msgType == "smssend") {
-                    if ($decodedText->tag != "" || $decodedText->tag != NULL || isset($decodedText->tag)) {
+                    if (isset($decodedText->tag)) {
                         $tempNumber = [];
 
                         $recipientsTag = $decodedText->tag;
