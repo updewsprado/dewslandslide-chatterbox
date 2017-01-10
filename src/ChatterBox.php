@@ -166,6 +166,7 @@ class ChatterBox implements MessageComponentInterface {
                 $sentTS = $decodedText->timestamp;
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
+                $ewimsg = $decodedText->ewi_msg;
 
                 $displayMsg['type'] = "smssend";
                 $displayMsg['timestamp'] = $sentTS;
@@ -173,6 +174,7 @@ class ChatterBox implements MessageComponentInterface {
                 $displayMsg['numbers'] = null;
                 $displayMsg['name'] = null;
                 $displayMsg['msg'] = $sentMsg;
+                // $displayMsg['ewi_msg'] = $ewimsg;
 
                 //Get contact numbers using group tags
                 $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames,$ewiRecipient);
@@ -185,7 +187,7 @@ class ChatterBox implements MessageComponentInterface {
                     $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                     $displayMsgJSON = json_encode($displayMsg);
 
-                    $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+                    $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS,$ewimsg);
                 }
 
                 //broadcast JSON message from GSM to all connected clients

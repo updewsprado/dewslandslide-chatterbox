@@ -189,7 +189,7 @@ class ChatMessageModel {
     }
 
     //Insert data for smsoutbox table
-    public function insertSMSOutboxEntry($recipients, $message, $sentTS = null) {
+    public function insertSMSOutboxEntry($recipients, $message, $sentTS = null, $ewimsg = false) {
         //filter or check special characters
         $message = $this->filterSpecialCharacters($message);
 
@@ -205,8 +205,8 @@ class ChatMessageModel {
 
             echo "$curTime Message recipient: $recipient\n";
 
-            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id)
-                    VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork')";
+            $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id, ewi_msg)
+                    VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork','$ewimsg')";
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
