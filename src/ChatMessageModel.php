@@ -868,7 +868,7 @@ class ChatMessageModel {
 
             // END LATEST 20
             $msgData = [];
-            $msgData['data'] = array_merge($latestMessages['data'],$pastMessages['data']);
+            $msgData['data'] = array_merge(array_reverse($pastMessages['data']),$latestMessages['data']);
             $msgData['type'] = 'smsLoadGroupSearched';
             return $msgData;
 
