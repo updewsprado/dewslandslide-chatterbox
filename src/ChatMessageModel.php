@@ -1884,8 +1884,6 @@ class ChatMessageModel {
     public function getEmpTagNumbers($data){
         $e_ctr = 0;
 
-        var_dump($data);
-
         foreach ($data as $team_tag) {
             $ttag = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE grouptags LIKE '%$team_tag%'";
             $this->checkConnectionDB($ttag);
