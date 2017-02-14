@@ -1811,21 +1811,23 @@ class ChatMessageModel {
                 $groupLastTimeStamp = $result->fetch_assoc()['timestamp']; 
             }
 
-            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent as timestampsent FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent,sms_id as timestampsent FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
 
 
-            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp ,null as timestampsent FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp ,null as timestampsent,sms_id FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
 
             $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
+
+            echo $sqlOutbox;
 
         } else {
             //Construct the final query
             $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp, timestamp_sent as timestampsent
+                            timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
                         FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
 
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
-                            timestamp as timestamp, null as timestamp_sent
+                            timestamp as timestamp, null as timestamp_sent,sms_id
                         FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
@@ -1847,6 +1849,12 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['sms_id'] = $row['sms_id'];
+                if ($row['user'] == "You") {
+                    $dbreturn[$ctr]['table_used'] = "smsoutbox";
+                } else {
+                    $dbreturn[$ctr]['table_used'] = "smsinbox";
+                }
                 $dbreturn[$ctr]['user'] = $row['user'];
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
