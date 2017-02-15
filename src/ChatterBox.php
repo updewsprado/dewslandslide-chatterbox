@@ -150,6 +150,8 @@ class ChatterBox implements MessageComponentInterface {
                 }
             } 
             elseif ($msgType == "smssendgroup") {
+                $ewi_tag_id = [];
+                $temp_tag_id = [];
                 echo "send groups/tag messages...\n";
 
                 //broadcast JSON message from GSM to all connected clients
@@ -166,6 +168,7 @@ class ChatterBox implements MessageComponentInterface {
                 $sentTS = $decodedText->timestamp;
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
+                $ewitag = $decodedText->ewi_tag;
 
                 $displayMsg['type'] = "smssend";
                 $displayMsg['timestamp'] = $sentTS;
@@ -185,7 +188,8 @@ class ChatterBox implements MessageComponentInterface {
                     $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                     $displayMsgJSON = json_encode($displayMsg);
 
-                    $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+                    $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS,$ewitag);
+                    array_push($temp_tag_id,$result_ewi_entry);
                 }
 
                 //broadcast JSON message from GSM to all connected clients
@@ -203,6 +207,9 @@ class ChatterBox implements MessageComponentInterface {
                         }
                     }
                 }
+                $ewi_tag_id['data'] = $temp_tag_id;
+                $ewi_tag_id['type'] = "ewi_tagging";
+                $from->send(json_encode($ewi_tag_id));
             } elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
                 //Load the message exchanges between Chatterbox and a number

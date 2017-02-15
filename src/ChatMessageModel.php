@@ -189,7 +189,9 @@ class ChatMessageModel {
     }
 
     //Insert data for smsoutbox table
-    public function insertSMSOutboxEntry($recipients, $message, $sentTS = null) {
+    public function insertSMSOutboxEntry($recipients, $message, $sentTS = null, $ewi_tag = false) {
+        //ewi tag ids
+        $ewi_tag_id = [];
         //filter or check special characters
         $message = $this->filterSpecialCharacters($message);
 
@@ -210,13 +212,19 @@ class ChatMessageModel {
 
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
-
-            if ($this->dbconn->query($sql) === TRUE) {
+            $result = $this->dbconn->query($sql);
+            if ($result === TRUE) {
                 echo "New record created successfully!\n";
+                if ($ewi_tag == true) {
+                    $sql  = "SELECT LAST_INSERT_ID()";
+                    $res = $this->dbconn->query($sql);
+                   array_push($ewi_tag_id,$res->fetch_array()[0]);
+                }
             } else {
                 echo "Error: " . $sql . "<br>" . $this->dbconn->error;
             }
         }
+        return $ewi_tag_id;
     }
 
     //TODO: Update a smsoutbox entry
@@ -1092,11 +1100,11 @@ class ChatMessageModel {
             }
 
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
+                            timestamp_written as timestamp, timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
 
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                            timestamp as timestamp, null as timestampsent
+                            timestamp as timestamp, null as timestampsent,timestamp.sms_id
                         FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$indiLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
 
             $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
@@ -1817,14 +1825,12 @@ class ChatMessageModel {
                 $groupLastTimeStamp = $result->fetch_assoc()['timestamp']; 
             }
 
-            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent,sms_id as timestampsent FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
 
 
-            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp ,null as timestampsent,sms_id FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
+            $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp ,null as timestampsent,timestamp.sms_id FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
 
             $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
-
-            echo $sqlOutbox;
 
         } else {
             //Construct the final query
