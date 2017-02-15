@@ -1104,21 +1104,21 @@ class ChatMessageModel {
         } else {
             if ($timestamp == null) {
                 $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                                timestamp_written as timestamp, timestamp_sent as timestampsent
+                                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
                             FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
 
                 $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                                timestamp as timestamp, null as timestampsent
+                                timestamp as timestamp, null as timestampsent,sms_id
                             FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
             } else {
                 $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                                timestamp_written as timestamp, timestamp_sent as timestampsent
+                                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
                             FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
 
                 $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                                timestamp as timestamp, null as timestampsent
+                                timestamp as timestamp, null as timestampsent,sms_id
                             FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
@@ -1153,7 +1153,13 @@ class ChatMessageModel {
                     }
                 } else {
                     $dbreturn[$ctr]['user'] = $row['user'];
+                    if ($dbreturn[$ctr]['user'] == "You") {
+                        $dbreturn[$ctr]['table_used'] = "smsoutbox";
+                    } else {
+                        $dbreturn[$ctr]['table_used'] = "smsinbox";
+                    }
                 }
+                $dbreturn[$ctr]['sms_id'] = $row['sms_id'];
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
                 $dbreturn[$ctr]['timestamp_sent'] = $row['timestampsent'];
