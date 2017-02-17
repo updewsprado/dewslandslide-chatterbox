@@ -1825,7 +1825,7 @@ class ChatMessageModel {
                 $groupLastTimeStamp = $result->fetch_assoc()['timestamp']; 
             }
 
-            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox ";
+            $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp ,timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox GROUP BY (timestamp)";
 
 
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp ,null as timestampsent,timestamp.sms_id FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$groupLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
@@ -1836,14 +1836,13 @@ class ChatMessageModel {
             //Construct the final query
             $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
                             timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
-                        FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
-
+                        FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL GROUP BY (timestamp)";
+  
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
                             timestamp as timestamp, null as timestamp_sent,sms_id
                         FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
 
-            $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
-
+            $sql = $sqlOutbox . "UNION " . $sqlInbox . " ORDER BY timestamp desc LIMIT $limit";
         }
 
         // Make sure the connection is still alive, if not, try to reconnect 
