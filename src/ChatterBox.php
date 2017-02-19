@@ -189,7 +189,9 @@ class ChatterBox implements MessageComponentInterface {
                     $displayMsgJSON = json_encode($displayMsg);
 
                     $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS,$ewitag);
-                    array_push($temp_tag_id,$result_ewi_entry);
+                    if (!empty($result_ewi_entry)){
+                        array_push($temp_tag_id,$result_ewi_entry);
+                    }
                 }
 
                 //broadcast JSON message from GSM to all connected clients
@@ -199,9 +201,7 @@ class ChatterBox implements MessageComponentInterface {
                             $displayMsg['numbers'] = array($singleContact['number']);
                             $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                             $displayMsg['gsm_id'] = "UNKNOWN";
-
                             $displayMsgJSON = json_encode($displayMsg);
-
                             // The sender is not the receiver, send to each client connected
                             $client->send($displayMsgJSON);
                         }

@@ -215,11 +215,9 @@ class ChatMessageModel {
             $result = $this->dbconn->query($sql);
             if ($result === TRUE) {
                 echo "New record created successfully!\n";
-                if ($ewi_tag == true) {
-                    $sql  = "SELECT LAST_INSERT_ID()";
-                    $res = $this->dbconn->query($sql);
-                   array_push($ewi_tag_id,$res->fetch_array()[0]);
-                }
+                $sql  = "SELECT LAST_INSERT_ID()";
+                $res = $this->dbconn->query($sql);
+                array_push($ewi_tag_id,$res->fetch_array()[0]);
             } else {
                 echo "Error: " . $sql . "<br>" . $this->dbconn->error;
             }
