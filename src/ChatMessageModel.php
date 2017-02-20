@@ -1898,21 +1898,25 @@ class ChatMessageModel {
             // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
-
+            $idCollection = [];
             if ($result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    for ($x = 0; $x < sizeof($dbreturn); $x++) {
-                        if ($dbreturn[$x]['sms_id'] == $row["table_element_id"]) {
-                            $dbreturn[$x]['hasTag'] = 1;
-                        } else {
-                            $dbreturn[$x]['hasTag'] = 0;
-                        }
+                 while ($row = $result->fetch_assoc()) {
+                    array_push($idCollection,$row["table_element_id"]);
+                 }
+            }
+
+            for ($x = 0; $x < sizeof($dbreturn); $x++) {
+                for ($y = 0; $y < sizeof($idCollection); $y++) {
+                    if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
+                        $dbreturn[$x]["hasTag"] = 1;
+                        break;
+                    } else {
+                        $dbreturn[$x]["hasTag"] = 0;
                     }
                 }
             }
 
             $msgData['data'] = $dbreturn;
-            var_dump($msgData);
         }
         else {
             echo "0 results\n";
