@@ -46,6 +46,8 @@ class ChatterBox implements MessageComponentInterface {
             $msgType = $decodedText->type;
 
             if (($msgType == "smssend") || ($msgType == "smsrcv"))  {
+                $ewi_tag_id = [];
+                $temp_tag_id = [];
                 //save message in DB (maybe create a thread to handle the DB write for the sake of scalability)
                 //saving "smssend"
 
@@ -88,11 +90,14 @@ class ChatterBox implements MessageComponentInterface {
                         $recipients = $decodedText->numbers;
                         $sentMsg = $decodedText->msg;
                         $sentTS = $decodedText->timestamp;
+                        $ewitag = $decodedText->ewi_tag;
 
                         echo "sentTS = $sentTS \n";
 
-                        $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
-
+                        $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS,$ewitag);
+                        if (!empty($result_ewi_entry)){
+                            array_push($temp_tag_id,$result_ewi_entry);
+                        }
                         $displayMsg['type'] = "smssend";
                         $displayMsg['timestamp'] = $sentTS;
                         $displayMsg['user'] = "You";
@@ -107,7 +112,10 @@ class ChatterBox implements MessageComponentInterface {
                                 // The sender is not the receiver, send to each client connected
                                 $client->send($displayMsgJSON);
                             }
-                        }      
+                        }
+                    $ewi_tag_id['data'] = $temp_tag_id;
+                    $ewi_tag_id['type'] = "ewi_tagging";
+                    $from->send(json_encode($ewi_tag_id)); 
                     }    
                 }
                 //saving "smsrcv"
@@ -150,6 +158,8 @@ class ChatterBox implements MessageComponentInterface {
                 }
             } 
             elseif ($msgType == "smssendgroup") {
+                $ewi_tag_id = [];
+                $temp_tag_id = [];
                 echo "send groups/tag messages...\n";
 
                 //broadcast JSON message from GSM to all connected clients
@@ -166,6 +176,7 @@ class ChatterBox implements MessageComponentInterface {
                 $sentTS = $decodedText->timestamp;
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
+                $ewitag = $decodedText->ewi_tag;
 
                 $displayMsg['type'] = "smssend";
                 $displayMsg['timestamp'] = $sentTS;
@@ -185,7 +196,10 @@ class ChatterBox implements MessageComponentInterface {
                     $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                     $displayMsgJSON = json_encode($displayMsg);
 
-                    $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS);
+                    $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS,$ewitag);
+                    if (!empty($result_ewi_entry)){
+                        array_push($temp_tag_id,$result_ewi_entry);
+                    }
                 }
 
                 //broadcast JSON message from GSM to all connected clients
@@ -195,14 +209,15 @@ class ChatterBox implements MessageComponentInterface {
                             $displayMsg['numbers'] = array($singleContact['number']);
                             $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
                             $displayMsg['gsm_id'] = "UNKNOWN";
-
                             $displayMsgJSON = json_encode($displayMsg);
-
                             // The sender is not the receiver, send to each client connected
                             $client->send($displayMsgJSON);
                         }
                     }
                 }
+                $ewi_tag_id['data'] = $temp_tag_id;
+                $ewi_tag_id['type'] = "ewi_tagging";
+                $from->send(json_encode($ewi_tag_id));
             } elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
                 //Load the message exchanges between Chatterbox and a number
