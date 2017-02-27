@@ -416,6 +416,10 @@ class ChatterBox implements MessageComponentInterface {
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchGintagMessages"){
+                $type = $decodedText->type;
+                $searchKey = $decodedText->searchKey;
+                $exchanges = $this->chatModel->searchGintagMessage($type,$searchKey);
             } else if ($msgType == "smsloadGlobalSearched"){
                 $user = $decodedText->user;
                 $user_number =$decodedText->user_number;

@@ -1482,6 +1482,10 @@ class ChatMessageModel {
         }
         return $fullData;
     }
+
+    public function searchGintagMessage(){
+        
+    }
     
     //Normalize a contact number
     public function normalizeContactNumber($contactNumber) {
