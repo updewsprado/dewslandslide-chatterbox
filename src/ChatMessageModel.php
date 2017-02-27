@@ -1483,8 +1483,55 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function searchGintagMessage(){
-        
+    public function searchGintagMessage($type,$searchKey){
+        if (strpos($searchKey, '#') !== 0) {
+            $searchKey = "#".$searchKey;
+        }
+
+        $query = "SELECT table_element_id,table_used FROM gintags inner join gintags_reference ON gintags.tag_id_fk=gintags_reference.tag_id WHERE gintags_reference.tag_name LIKE'%".$searchKey."%';";
+        // Make sure the connection is still alive, if not, try to reconnect 
+        $this->checkConnectionDB($query);
+        $result = $this->dbconn->query($query);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            $sms_id_collection = [];
+            $ctr = 0;
+
+            while ($row = $result->fetch_assoc()) {
+                $sms_id_collection[$ctr]["id"] = $row['table_element_id'];
+                $sms_id_collection[$ctr]["table_used"] = $row['table_used'];
+                $ctr++;
+            }
+
+            $inboxCtr = 0;
+            $outboxCtr = 0;
+
+            $sqlInbox = "";
+            $sqlOutbox = "";
+
+            for ($counter = 0; $counter < sizeof($sms_id_collection); $counter++) {
+                if ($sms_id_collection[$counter]['table_used'] == "smsoutbox") {
+                    if ($outboxCtr == 0) {
+                        $sqlOutbox  = "sms_id = '".$sms_id_collection[$counter]['id']."' ";
+                    } else {
+                        $sqlOutbox = $sqlOutbox." OR ".$sms_id_collection[$counter]['id']." ";
+                    }
+                    $outboxCtr++;
+                } else {
+                    if ($inboxCtr == 0) {
+                        $sqlInbox  = "sms_id = '".$sms_id_collection[$counter]['id']."' ";
+                    } else {
+                        $sqlInbox = $sqlInbox." OR sms_id = '".$sms_id_collection[$counter]['id']."' ";
+                    }
+                    $inboxCtr++;
+                }
+            }
+
+            echo $sqlOutbox;
+            echo "\n\n";
+            echo $sqlInbox;
+
+        }
     }
     
     //Normalize a contact number
