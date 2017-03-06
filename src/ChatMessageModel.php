@@ -1170,6 +1170,37 @@ class ChatMessageModel {
                 $ctr = $ctr + 1;
             }
 
+            for ($x = 0; $x < sizeof($dbreturn);$x++) {
+                if ($x == 0) {
+                    $ids = "table_element_id = '".$dbreturn[$x]["sms_id"]."' ";
+                } else {
+                    $ids = $ids."OR table_element_id = '".$dbreturn[$x]["sms_id"]."' ";
+                }
+            }
+
+            $query = "SELECT table_element_id FROM gintags WHERE ".$ids."";
+            // Make sure the connection is still alive, if not, try to reconnect 
+            $this->checkConnectionDB($query);
+            $result = $this->dbconn->query($query);
+            $idCollection = [];
+            if ($result->num_rows > 0) {
+                 while ($row = $result->fetch_assoc()) {
+                    array_push($idCollection,$row["table_element_id"]);
+                 }
+            }
+
+            for ($x = 0; $x < sizeof($dbreturn); $x++) {
+                for ($y = 0; $y < sizeof($idCollection); $y++) {
+                    if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
+                        $dbreturn[$x]["hasTag"] = 1;
+                        break;
+                    } else {
+                        $dbreturn[$x]["hasTag"] = 0;
+                    }
+                }
+            }
+
+
             $fullData['data'] = $dbreturn;
         }
         else {
