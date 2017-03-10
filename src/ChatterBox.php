@@ -218,7 +218,8 @@ class ChatterBox implements MessageComponentInterface {
                 $ewi_tag_id['data'] = $temp_tag_id;
                 $ewi_tag_id['type'] = "ewi_tagging";
                 $from->send(json_encode($ewi_tag_id));
-            } elseif ($msgType == "smsloadrequest") {
+            } 
+            elseif ($msgType == "smsloadrequest") {
                 echo "Loading messages...";
                 //Load the message exchanges between Chatterbox and a number
                 $number = $decodedText->number;
@@ -322,17 +323,23 @@ class ChatterBox implements MessageComponentInterface {
                     }
                 }
             }
-            //Acknowledgement Message that Chatterbox's outgoing message has been
-            //  sent by the GSM already
-            elseif ($msgType == "ackgsm") {
-                echo "Received Acknowledgment: GSM has sent your smsoutbox message...";
-
+            //Acknowledgement Message that Chatterbox's outgoing message has either been
+            //  sent SUCCESSFULLY or FAILED by the GSM
+            elseif ( ($msgType == "ackgsm") || ($msgType == "failgsm") ) {
+                if ($msgType == "ackgsm") {
+                    echo "Received Acknowledgment: GSM has sent your smsoutbox message...";
+                    $sendStatus = "SENT";
+                }
+                elseif ($msgType == "failgsm") {
+                    echo "Fail Acknowledgment: GSM FAILED sending your smsoutbox message...";
+                    $sendStatus = "FAIL";
+                }
+                
                 //Acknowledgement Data includes: 
                 // timestamp written - to identify what time it was sent by Chatterbox
                 // receipient - which number was the information sent to
                 $writtenTS = $decodedText->timestamp_written;
                 $recipients = $decodedText->recipients;
-                $sendStatus = "SENT";
                 $sentTS = $decodedText->timestamp_sent;
 
                 echo "\n\n$writtenTS, $sentTS, $recipients, $sendStatus\n\n";
@@ -350,7 +357,37 @@ class ChatterBox implements MessageComponentInterface {
                         }
                     }
                 }
-            }  else if ($msgType == "oldMessage"){
+            }
+/*            //Acknowledgement Message that Chatterbox's outgoing message
+            //  send attempt FAILED on GSM level
+            elseif ($msgType == "failgsm") {
+                echo "Fail Acknowledgment: GSM FAILED sending your smsoutbox message...";
+
+                //Acknowledgement Data includes: 
+                // timestamp written - to identify what time it was sent by Chatterbox
+                // receipient - which number was the information sent to
+                $writtenTS = $decodedText->timestamp_written;
+                $recipients = $decodedText->recipients;
+                $sendStatus = "FAIL";
+                $sentTS = $decodedText->timestamp_sent;
+
+                echo "\n\n$writtenTS, $sentTS, $recipients, $sendStatus\n\n";
+
+                //Attempt to Update the smsoutbox entry
+                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
+                                                    $writtenTS, $sendStatus, $sentTS);
+
+                if ($updateStatus >= 0) {
+                    //Send the acknowledgment to all connected web socket clients
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            // The sender is not the receiver, send to each client connected
+                            $client->send($msg);
+                        }
+                    }
+                }
+            }*/
+            else if ($msgType == "oldMessage"){
                 echo "Loading messages for individual chat";
                 $number = $decodedText->number;
                 $timestampYou = $decodedText->timestampYou;
@@ -359,7 +396,8 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getMessageExchanges($number,$type,$timestamp,10);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "oldMessageGroupEmployee") {
+            } 
+            else if ($msgType == "oldMessageGroupEmployee") {
                 $number = $decodedText->tags; // Number is also the tags
                 $timestampYou = $decodedText->timestampYou;
                 $timestampGroup = $decodedText->timestampGroup;
@@ -372,7 +410,8 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
 
 
-            } else if ($msgType == "oldMessageGroup"){
+            } 
+            else if ($msgType == "oldMessageGroup"){
                 echo "Loading messages groups/tag";
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
@@ -382,27 +421,31 @@ class ChatterBox implements MessageComponentInterface {
                 $lastTimeStamps = $yourTimeStamp.",".$groupTimeStamp;
                 $exchanges = $this->chatModel->getMessageExchangesFromGroupTags($offices,$sitenames,$type,$lastTimeStamps,10);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageIndividual") {
+            } 
+            else if ($msgType == "searchMessageIndividual") {
                 echo "Searching messages for individual chat";
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessage($number,$timestamp,$searchKey);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageGroup"){
+            } 
+            else if ($msgType == "searchMessageGroup"){
                 echo "Searching groups/tag messages...";
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessageGroup($offices, $sitenames,$searchKey);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsLoadSearched"){
+            } 
+            else if ($msgType == "smsLoadSearched"){
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getSearchedConversation($number,$type, $timestamp);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsLoadGroupSearched"){
+            } 
+            else if ($msgType == "smsLoadGroupSearched"){
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
                 $timestampYou = $decodedText->timestampYou;
@@ -411,34 +454,40 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getSearchedGroupConversation($offices,$sitenames,$type, $timestamp);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageGlobal") {
+            } 
+            else if ($msgType == "searchMessageGlobal") {
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchGintagMessages"){
+            } 
+            else if ($msgType == "searchGintagMessages"){
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchGintagMessage($type,$searchKey);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsloadGlobalSearched"){
+            } 
+            else if ($msgType == "smsloadGlobalSearched"){
                 $user = $decodedText->user;
                 $user_number =$decodedText->user_number;
                 $timestamp = $decodedText->timestamp;
                 $msg = $decodedText->sms_msg;
                 $exchanges = $this->chatModel->getSearchedGlobalConversation($user,$user_number,$timestamp,$msg);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "updateEwiRecipients"){
+            } 
+            else if ($msgType == "updateEwiRecipients"){
                 $type = $decodedText->type;
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->updateEwiRecipients($type,$data);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsloadrequesttag"){
+            } 
+            else if ($msgType == "smsloadrequesttag"){
                 $type = $decodedText->type;
                 $data = $decodedText->teams;
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
-            } else {
+            } 
+            else {
                 echo "Message will be ignored\n";
             }
         }

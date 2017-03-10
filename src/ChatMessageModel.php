@@ -252,7 +252,8 @@ class ChatMessageModel {
 
         // validate sendStatus
         if ( ($sendStatus == "PENDING") || ($sendStatus == "SENT-PI") || 
-            ($sendStatus == "SENT") || ($sendStatus == "SENT-WSS") ) {
+            ($sendStatus == "SENT") || ($sendStatus == "SENT-WSS") ||
+            ($sendStatus == "FAIL") || ($sendStatus == "FAIL-WSS") ) {
             //compose send status set clause
             $setClause = " SET send_status = '$sendStatus'";
             $setCtr++;
