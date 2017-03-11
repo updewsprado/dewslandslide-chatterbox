@@ -206,7 +206,6 @@ class ChatMessageModel {
         foreach ($recipients as $recipient) {
             // Identify the mobile network of the current number
             $mobileNetwork = $this->identifyMobileNetwork($recipient);
-
             echo "$curTime Message recipient: $recipient\n";
 
             $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id)
@@ -236,7 +235,6 @@ class ChatMessageModel {
         $recipient = str_replace("u", "", $recipient);
         $recipient = str_replace("'", "", $recipient);
         $recipient = $this->normalizeContactNumber($recipient);
-        var_dump($recipient);
 
         if ($this->isSenderValid($recipient) == false) {
             echo "Error: recipient '$recipient' is invalid.\n";
