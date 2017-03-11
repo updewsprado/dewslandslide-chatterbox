@@ -146,17 +146,19 @@ class ChatMessageModel {
             //TODO: compare the prefix to the list of sim prefixes
 
             //Mix of Smart, Sun, Talk & Text
-            $networkSmart = "00,07,08,09,10,11,12,14,18,19,20,21,22,23,24,25,28,29,30,31,
-                    32,33,34,38,39,40,42,43,44,46,47,48,49,50,89,98,99";
+            // $networkSmart = "00,07,08,09,10,11,12,14,18,19,20,21,22,23,24,25,28,29,30,31,
+            //         32,33,34,38,39,40,42,43,44,46,47,48,49,50,89,98,99";
+            $networkSmart = ["00","07","09","10","11","12","14","18","19","20","21","22","23","24","25","28","29","30","31","32","33","34","38","39","40","42","43","44","46","47","48","49","50","89","98","99"];
             //Mix of Globe and TM
-            $networkGlobe = "05,06,15,16,17,25,26,27,35,36,37,45,75,77,78,79,94,95,96,97";
+            // $networkGlobe = "05,06,15,16,17,25,26,27,35,36,37,45,75,77,78,79,94,95,96,97";
+            $networkGlobe = ["05","06","15","16","17","25","26","27","35","36","37","45","75","77","78","79","94","95","96","97"];
 
-            //Globe Number
-            if (strpos($networkSmart, $curSimPrefix)) {
+
+            if (in_array($curSimPrefix,$networkSmart)) {
                 echo "Smart Network!\n";
                 return "SMART";
             } 
-            elseif (strpos($networkGlobe, $curSimPrefix)) {
+            elseif (in_array($curSimPrefix, $networkGlobe)) {
                 echo "Globe Network!\n";
                 return "GLOBE";
             }
@@ -234,6 +236,7 @@ class ChatMessageModel {
         $recipient = str_replace("u", "", $recipient);
         $recipient = str_replace("'", "", $recipient);
         $recipient = $this->normalizeContactNumber($recipient);
+        var_dump($recipient);
 
         if ($this->isSenderValid($recipient) == false) {
             echo "Error: recipient '$recipient' is invalid.\n";
