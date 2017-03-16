@@ -2558,7 +2558,6 @@ class ChatMessageModel {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $returnOffices[$ctr] = $row['office'];
-
                 $ctr = $ctr + 1;
             }
 
@@ -2571,7 +2570,7 @@ class ChatMessageModel {
         }
 
         //Get the list of sitenames from the community contacts list
-        $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts";
+        $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts order by sitename asc";
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlSitenames);
         $result = $this->dbconn->query($sqlSitenames);
