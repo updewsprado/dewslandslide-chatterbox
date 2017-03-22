@@ -84,12 +84,20 @@
     }
 
     // get ongoing events------
-    $sql = "SELECT name from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'on-going'";
+    $sql = "SELECT name,sitio,barangay,municipality,province,public_alert_event.event_id,public_alert_release.internal_alert_level,public_alert_release.release_time from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id=public_alert_release.event_id WHERE public_alert_event.status = 'on-going'";
     $result = $conn->query($sql);
-    $site_collection = [];
+    $site_collection['name'] = [];
+    $site_collection['event_id'] = [];
+    $site_collection['internal_alert_level'] = [];
+    $site_collection['release_time'] = [];
+    $site_collection['sbmp'] = [];
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            array_push($site_collection,$row['name']);
+            array_push($site_collection['name'],$row['name']);
+            array_push($site_collection['event_id'],$row['event_id']);
+            array_push($site_collection['internal_alert_level'],$row['internal_alert_level']);
+            array_push($site_collection['release_time'],$row['release_time']);
+            array_push($site_collection['sbmp'],$row['sitio'].", ".$row['barangay'].", ".$row['municipality'].", ".$row['province']);
         }
     } else {
         echo "0 results";
@@ -98,23 +106,68 @@
     //-------------------------
     date_default_timezone_set("Singapore");
 
-    $new_time = date("g:i a", strtotime('+2 hours'));
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_RETURNTRANSFER => 1,
+        CURLOPT_URL => 'http://localhost/chatterbox/getewi',
+        CURLOPT_USERAGENT => 'Curl request for ewi composition'
+    ));
 
-    $msg = "Magandang Hapon po. Inaasahan po na magpadala ng ground data ang LEWC bago mag-".$new_time." para sa ating event monitoring. Tiyakin po ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat po kayo - Sonya Delp PHIVOLCS-DYNASLOPE";
+    $resp = curl_exec($curl);
+    curl_close($curl);
+    $response = (array) json_decode($resp);
 
-    foreach ($site_collection as $site) {
+    // get current alert ------
+    for ($counter=0; $counter < sizeof($site_collection['name']); $counter++) {
+
+        if (strlen($site_collection['internal_alert_level'][$counter]) > 4) {
+            $msg = $response[substr($site_collection['internal_alert_level'][$counter],0,2)];
+        } else {
+            $msg = $response[substr($site_collection['internal_alert_level'][$counter],0,4)];
+        }
+
+        if ($site_collection['sbmp'][$counter][0] == ",") {
+            $msg = str_replace("%%SBMP%%",ltrim($site_collection['sbmp'][$counter],","),$msg);
+        } else {
+            $msg = str_replace("%%SBMP%%",$site_collection['sbmp'][$counter],$msg);
+        }
+
+        $msg = str_replace("%%CURRENT_TIME%%",date("g:i a", strtotime('+2 minutes')),$msg);
+
+        $msg = str_replace("%%DATE%%",date('d')." ".date('F'),$msg);
+        
+        $msg = str_replace("%%GROUND_DATA_TIME%%",date("g:i a",strtotime('+212 minutes')),$msg);
+
+        $msg = str_replace("%%NEXT_EWI%%",date("g:i a",strtotime("+242 minutes")),$msg);
+
+        if (date("a") == "pm") {
+            $msg = str_replace("%%NOW_TOM%%","bukas ng",$msg);
+        } else {
+            $msg = str_replace("%%NOW_TOM%%","mamayang",$msg);
+        }
+
+
+        if (date("g:i a") == "23:58 pm") {
+            $msg = str_replace("%%N_NOW_TOM%%","bukas ng",$msg);
+        } else {
+            $msg = str_replace("%%N_NOW_TOM%%","mamayang",$msg);
+        }
+        
+
+        $msg = $msg."- Sonya Delp PHIVOLCS-DYNASLOPE";
         $toBeSent = (object) array(
             "type"=>"smssendgroup",
             "user"=>"You",
             "offices"=>["LLMC","BLGU","MLGU","PLGU","REG8"],
-            "sitenames"=>[$site],
-            "msg"=>$msg,
+            "sitenames"=>[$site_collection['name'][$counter]],
+            "msg"=> $msg,
             "timestamp"=>date('Y-m-d H:i:s'),
             "ewi_filter"=>"true",
-            "ewi_tag"=>"false",
+            "ewi_tag"=>"true",
             );
         $WebSocketClient = new WebsocketClient('localhost', 5050);
         $WebSocketClient->sendData(json_encode($toBeSent));
         unset($WebSocketClient);
     }
+    // ------------------------
 ?>
