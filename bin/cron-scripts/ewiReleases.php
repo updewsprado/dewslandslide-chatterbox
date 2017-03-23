@@ -126,6 +126,12 @@
             $msg = $response[substr($site_collection['internal_alert_level'][$counter],0,4)];
         }
 
+        if (date('a',strtotime('+2 minutes')) == "am") {
+            $msg = str_replace("%%PANAHON%%", "umaga", $msg);
+        } else {
+            $msg = str_replace("%%PANAHON%%", "hapon", $msg);
+        }
+
         if ($site_collection['sbmp'][$counter][0] == ",") {
             $msg = str_replace("%%SBMP%%",ltrim($site_collection['sbmp'][$counter],","),$msg);
         } else {
