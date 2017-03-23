@@ -84,19 +84,23 @@
     }
 
     // get ongoing events------
-    $sql = "SELECT name,sitio,barangay,municipality,province,public_alert_event.event_id,public_alert_release.internal_alert_level,public_alert_release.release_time from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id=public_alert_release.event_id WHERE public_alert_event.status = 'on-going'";
+    $sql = "SELECT id,name,sitio,barangay,municipality,province,public_alert_event.event_id,public_alert_release.internal_alert_level,public_alert_release.release_time,public_alert_trigger.timestamp as data_timestamp from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id=public_alert_release.event_id INNER JOIN public_alert_trigger ON public_alert_event.event_id=public_alert_trigger.event_id WHERE public_alert_event.status = 'on-going'";
     $result = $conn->query($sql);
     $site_collection['name'] = [];
     $site_collection['event_id'] = [];
     $site_collection['internal_alert_level'] = [];
     $site_collection['release_time'] = [];
     $site_collection['sbmp'] = [];
+    $site_collection['site_id'] = [];
+    $site_collection['data_timestamp'] = [];
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
+            array_push($site_collection['site_id'],$row['id']);
             array_push($site_collection['name'],$row['name']);
             array_push($site_collection['event_id'],$row['event_id']);
             array_push($site_collection['internal_alert_level'],$row['internal_alert_level']);
             array_push($site_collection['release_time'],$row['release_time']);
+            array_push($site_collection['data_timestamp'],$row['data_timestamp']);
             array_push($site_collection['sbmp'],$row['sitio'].", ".$row['barangay'].", ".$row['municipality'].", ".$row['province']);
         }
     } else {
@@ -118,8 +122,10 @@
     $response = (array) json_decode($resp);
 
     // get current alert ------
+    $current_timestamp = date('Y-m-d H:i:s');
+   
     for ($counter=0; $counter < sizeof($site_collection['name']); $counter++) {
-
+        $gintag_collection = [];
         if (strlen($site_collection['internal_alert_level'][$counter]) > 4) {
             $msg = $response[substr($site_collection['internal_alert_level'][$counter],0,2)];
         } else {
@@ -160,8 +166,6 @@
         } else {
             $msg = str_replace("%%N_NOW_TOM%%","mamayang",$msg);
         }
-        
-        echo $msg;
 
         $msg = $msg."- Sonya Delp PHIVOLCS-DYNASLOPE";
         $toBeSent = (object) array(
@@ -170,13 +174,69 @@
             "offices"=>["LLMC","BLGU","MLGU","PLGU","REG8"],
             "sitenames"=>[$site_collection['name'][$counter]],
             "msg"=> $msg,
-            "timestamp"=>date('Y-m-d H:i:s'),
+            "timestamp"=>$current_timestamp,
             "ewi_filter"=>"true",
             "ewi_tag"=>"true",
             );
         $WebSocketClient = new WebsocketClient('localhost', 5050);
-        $WebSocketClient->sendData(json_encode($toBeSent));
+        $callbackData = (array) json_decode($WebSocketClient->sendData(json_encode($toBeSent)));
         unset($WebSocketClient);
+
+        // Tag as #EwiMessage--
+        foreach ($callbackData["data"] as $id) {
+            $gintags = array(
+                'tag_name'=> "#EwiMessage",
+                'tag_description'=> "communications",
+                'timestamp'=> $current_timestamp,
+                'tagger'=> '56', // Do be change to Sonya Delp's ID
+                'table_element_id'=>$id[0],
+                'table_used'=> 'smsoutbox',
+                'remarks'=> "" // Leave it blank for now
+                );
+            array_push($gintag_collection,$gintags);
+        }
+        //---------------------
+        // use key 'http' even if you send the request to https://...
+        $url = "http://localhost/gintagshelper/ginTagsEntry/";
+        $data = array('gintags'=>$gintag_collection);
+        $options = array(
+            'http' => array(
+                'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+                'method'  => 'POST',
+                'content' => http_build_query($data)
+            )
+        );
+
+        $context  = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+        if ($result === FALSE) { echo "ERROR"; }
+
+        $raw_time = date("g:i a",strtotime(trim(substr($site_collection['data_timestamp'][$counter], 10))));
+
+        $data_timestamp = date("g:i a", strtotime($raw_time)+(30*60));
+
+        $narrative_details = array(
+            "event_id"=> $site_collection['event_id'][$counter],
+            "site_id"=> $site_collection['site_id'][$counter],
+            "ewi_sms_timestamp"=> $current_timestamp,
+            "narrative_template"=> "Sent ".$data_timestamp." EWI SMS to LLMC, MLGU, BLGU, PLGU"
+            );
+
+        $url = "http://localhost/narrative_generator/insertEwiNarrative/";
+        $data = array('narratives'=>$narrative_details);
+        $options = array(
+            'http' => array(
+                'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+                'method'  => 'POST',
+                'content' => http_build_query($data)
+            )
+        );
+
+        $context  = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+        if ($result === FALSE) { echo "ERROR"; }
+
+        // ---------------------------------
     }
     // ------------------------
 ?>
