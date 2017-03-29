@@ -135,7 +135,7 @@
     $today = date("l");
     switch ($today) {
         case 'Wednesday':
-            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating DRY SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - Sonya Delp PHIVOLCS-DYNASLOPE";
+            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating DRY SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - PHIVOLCS-DYNASLOPE";
             for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
                 if (in_array($month,$dry[(int) ($on_routine['season'][$routine_counter]-1)])) {
                     echo $on_routine['sitename'][$routine_counter]." - ".$on_routine['season'][$routine_counter]." :";
@@ -158,7 +158,7 @@
             break;
         case 'Friday':
         case 'Tuesday':
-            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating WET SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - Sonya Delp PHIVOLCS-DYNASLOPE";
+            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating WET SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - PHIVOLCS-DYNASLOPE";
             for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
                 if (in_array($month,$wet[(int) ($on_routine['season'][$routine_counter]-1)])){
                     echo $on_routine['sitename'][$routine_counter]." - ".$on_routine['season'][$routine_counter]." :";

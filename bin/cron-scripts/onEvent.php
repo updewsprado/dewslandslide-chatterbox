@@ -98,9 +98,15 @@
     //-------------------------
     date_default_timezone_set("Singapore");
 
-    $new_time = date("g:i a", strtotime('+2 hours'));
+    $new_time = date("g:i a", strtotime('+90 minutes'));
+    $nn_pm_am = "";
+    if (date('a') == "am") {
+        $nn_pm_am = "Umaga";
+    } else {
+        $nn_pm_am = "Hapon";
+    }
 
-    $msg = "Magandang Hapon po. Inaasahan po na magpadala ng ground data ang LEWC bago mag-".$new_time." para sa ating event monitoring. Tiyakin po ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat po kayo - Sonya Delp PHIVOLCS-DYNASLOPE";
+    $msg = "Magandang ".$nn_pm_am." po. Inaasahan po na magpadala ng ground data ang LEWC bago mag-".$new_time." para sa ating event monitoring. Tiyakin po ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat po kayo - PHIVOLCS-DYNASLOPE";
 
     foreach ($site_collection as $site) {
         $toBeSent = (object) array(
@@ -113,6 +119,7 @@
             "ewi_filter"=>"true",
             "ewi_tag"=>"false",
             );
+        
         $WebSocketClient = new WebsocketClient('localhost', 5050);
         $WebSocketClient->sendData(json_encode($toBeSent));
         unset($WebSocketClient);
