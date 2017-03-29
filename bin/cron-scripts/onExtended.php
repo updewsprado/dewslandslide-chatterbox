@@ -96,7 +96,7 @@
         return;
     }
     //-------------------------
-    $msg = "Magandang umaga po. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30 AM para sa ating extend monitoring. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - Sonya Delp PHIVOLCS-DYNASLOPE";
+    $msg = "Magandang umaga po. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30 AM para sa ating extend monitoring. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - PHIVOLCS-DYNASLOPE";
 
     date_default_timezone_set("Singapore");
     foreach ($site_collection as $site) {
