@@ -112,7 +112,7 @@
         $toBeSent = (object) array(
             "type"=>"smssendgroup",
             "user"=>"You",
-            "offices"=>["LLMC","BLGU","MLGU","PLGU","REG8"],
+            "offices"=>["LLMC"],
             "sitenames"=>[$site],
             "msg"=>$msg,
             "timestamp"=>date('Y-m-d H:i:s'),
