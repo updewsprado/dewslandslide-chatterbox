@@ -1565,17 +1565,17 @@ class ChatMessageModel {
             $sqlInbox = "";
             $sqlOutbox = "";
 
-            for ($counter = 0; $counter < sizeof($sms_id_collection); $counter++) {
+            for ($counter = 0; $counter < sizeof($sms_id_collection)-1; $counter++) {
                 if ($sms_id_collection[$counter]['table_used'] == "smsoutbox") {
                     if ($outboxCtr == 0) {
-                        $sqlOutbox  = "sms_id = '".$sms_id_collection[$counter]['id']."'";
+                        $sqlOutbox  = "WHERE sms_id = '".$sms_id_collection[$counter]['id']."'";
                     } else {
                         $sqlOutbox = $sqlOutbox." OR sms_id = ".$sms_id_collection[$counter]['id']." ";
                     }
                     $outboxCtr++;
                 } else {
                     if ($inboxCtr == 0) {
-                        $sqlInbox  = "sms_id = '".$sms_id_collection[$counter]['id']."'";
+                        $sqlInbox  = "WHERE sms_id = '".$sms_id_collection[$counter]['id']."'";
                     } else {
                         $sqlInbox = $sqlInbox." OR sms_id = '".$sms_id_collection[$counter]['id']."' ";
                     }
@@ -1583,12 +1583,23 @@ class ChatMessageModel {
                 }
             }
 
+            $queryOutbox = "SELECT DISTINCT 'You' as user,recepients as recipients, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestamp_sent,sms_id FROM smsoutbox $sqlOutbox ";
 
-            $queryOutbox = "SELECT DISTINCT 'You' as user,recepients as recipients, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestamp_sent,sms_id FROM smsoutbox WHERE $sqlOutbox AND timestamp_written IS NOT NULL ";
+            $queryInbox = "SELECT DISTINCT sim_num as user,null as recipients, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,sms_id FROM smsinbox $sqlInbox";
 
-            $queryInbox = "SELECT DISTINCT sim_num as user,null as recipients, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,sms_id FROM smsinbox WHERE $sqlInbox AND timestamp IS NOT NULL ";
+           
 
-            $query = $queryOutbox . "UNION " . $queryInbox . " ORDER BY timestamp desc";
+            if ($outboxCtr == 0 && $inboxCtr == 0) {
+                return;
+            } else if ($outboxCtr !=0 && $inboxCtr == 0){
+                $query = $queryOutbox;
+            } else if ($outboxCtr ==0 && $inboxCtr != 0){
+                $query = $queryInbox;
+            } else {
+                $query = $queryOutbox . "UNION " . $queryInbox . " ORDER BY timestamp desc";
+            }
+
+            var_dump($query);
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
 
@@ -1596,10 +1607,6 @@ class ChatMessageModel {
             $dbreturn = "";
             if ($result->num_rows > 0) {
                 while ($row = $result->fetch_assoc()) {
-
-
-
-
 
                     if ($row['user'] === "You") {
                         $dbreturn[$ctr]['user'] = $row['user'];
@@ -1662,7 +1669,6 @@ class ChatMessageModel {
 
             $msgData['data'] = $dbreturn;
             $msgData['type'] = "searchGintags";
-
             return $msgData;
         }
     }
