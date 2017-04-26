@@ -419,6 +419,36 @@ class ChatMessageModel {
        return -1;
     }
 
+    public function getLatestAlerts(){
+        $query = "SELECT * FROM site inner join public_alert_event alerts on site.id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'";
+        $this->checkConnectionDB($query);
+        $alerts = $this->dbconn->query($query);
+        $fullData['type'] = 'latestAlerts';
+        $raw_data = array();
+        $ctr = 0;
+        if ($alerts->num_rows > 0) {
+            // output data of each row
+            while ($row = $alerts->fetch_assoc()) {
+                $raw_data["id"] = $row["id"];
+                $raw_data["name"] = $row["name"];
+                $raw_data["sitio"] = $row["sitio"];
+                $raw_data["barangay"] = $row["barangay"];
+                $raw_data["province"] = $row["province"];
+                $raw_data["region"] = $row["region"];
+                $raw_data["municipality"] = $row["municipality"];
+                $raw_data["status"] = $row["status"];
+                $raw_data["internal_alert_level"] = $row["internal_alert_level"];
+                $fullData['data'][$ctr] = $raw_data;
+                $ctr++;
+            }
+        }
+        else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
+        return $fullData;
+    }
+
     //Return the quick inbox messages needed for the initial display on chatterbox
     public function getQuickInboxMessages($periodDays = 3) {
         // $start = microtime(true);
@@ -1436,7 +1466,6 @@ class ChatMessageModel {
         $sqlInbox = "SELECT DISTINCT sim_num as user,sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sms_msg LIKE '%$searchKey%'";
 
         $sql = $sqlOutbox . " UNION " . $sqlInbox . "ORDER BY timestamp desc";
-
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -1452,9 +1481,7 @@ class ChatMessageModel {
                 if ($row['user'] == 'You') {
                     $dbreturn[$ctr]['user'] = $row['user'];
                 } else {
-
                     // GET RECEPIENT ALIAS FOR INDIVIDUAL
-
                     $sqlTrimmedContact = "SELECT DISTINCT sim_num from smsinbox where timestamp like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."' UNION SELECT 'You' from smsoutbox where timestamp_written like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."'";
                     $this->checkConnectionDB($sqlTrimmedContact);
                     $trimmedContact = $this->dbconn->query($sqlTrimmedContact);
@@ -1538,17 +1565,17 @@ class ChatMessageModel {
             $sqlInbox = "";
             $sqlOutbox = "";
 
-            for ($counter = 0; $counter < sizeof($sms_id_collection); $counter++) {
+            for ($counter = 0; $counter < sizeof($sms_id_collection)-1; $counter++) {
                 if ($sms_id_collection[$counter]['table_used'] == "smsoutbox") {
                     if ($outboxCtr == 0) {
-                        $sqlOutbox  = "sms_id = '".$sms_id_collection[$counter]['id']."'";
+                        $sqlOutbox  = "WHERE sms_id = '".$sms_id_collection[$counter]['id']."'";
                     } else {
                         $sqlOutbox = $sqlOutbox." OR sms_id = ".$sms_id_collection[$counter]['id']." ";
                     }
                     $outboxCtr++;
                 } else {
                     if ($inboxCtr == 0) {
-                        $sqlInbox  = "sms_id = '".$sms_id_collection[$counter]['id']."'";
+                        $sqlInbox  = "WHERE sms_id = '".$sms_id_collection[$counter]['id']."'";
                     } else {
                         $sqlInbox = $sqlInbox." OR sms_id = '".$sms_id_collection[$counter]['id']."' ";
                     }
@@ -1556,12 +1583,23 @@ class ChatMessageModel {
                 }
             }
 
+            $queryOutbox = "SELECT DISTINCT 'You' as user,recepients as recipients, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestamp_sent,sms_id FROM smsoutbox $sqlOutbox ";
 
-            $queryOutbox = "SELECT DISTINCT 'You' as user,recepients as recipients, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestamp_sent,sms_id FROM smsoutbox WHERE $sqlOutbox AND timestamp_written IS NOT NULL ";
+            $queryInbox = "SELECT DISTINCT sim_num as user,null as recipients, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,sms_id FROM smsinbox $sqlInbox";
 
-            $queryInbox = "SELECT DISTINCT sim_num as user,null as recipients, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,sms_id FROM smsinbox WHERE $sqlInbox AND timestamp IS NOT NULL ";
+           
 
-            $query = $queryOutbox . "UNION " . $queryInbox . " ORDER BY timestamp desc";
+            if ($outboxCtr == 0 && $inboxCtr == 0) {
+                return;
+            } else if ($outboxCtr !=0 && $inboxCtr == 0){
+                $query = $queryOutbox;
+            } else if ($outboxCtr ==0 && $inboxCtr != 0){
+                $query = $queryInbox;
+            } else {
+                $query = $queryOutbox . "UNION " . $queryInbox . " ORDER BY timestamp desc";
+            }
+
+            var_dump($query);
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
 
@@ -1569,10 +1607,6 @@ class ChatMessageModel {
             $dbreturn = "";
             if ($result->num_rows > 0) {
                 while ($row = $result->fetch_assoc()) {
-
-
-
-
 
                     if ($row['user'] === "You") {
                         $dbreturn[$ctr]['user'] = $row['user'];
@@ -1635,7 +1669,6 @@ class ChatMessageModel {
 
             $msgData['data'] = $dbreturn;
             $msgData['type'] = "searchGintags";
-
             return $msgData;
         }
     }

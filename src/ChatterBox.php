@@ -252,8 +252,11 @@ class ChatterBox implements MessageComponentInterface {
 
                 //TODO: Send the quick inbox messages to the 
                 $from->send(json_encode($quickInboxMessages));
-            }
-            elseif ($msgType == "loadofficeandsitesrequest") {
+            } else if ($msgType == "latestAlerts") {
+                echo "Loading latest public alerts.";
+                $latestAlerts = $this->chatModel->getLatestAlerts();
+                $from->send(json_encode($latestAlerts));
+            } elseif ($msgType == "loadofficeandsitesrequest") {
                 echo "Loading office and sitename information...";
 
                 //Load the office and sitenames
