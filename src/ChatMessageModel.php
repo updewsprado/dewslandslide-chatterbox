@@ -205,6 +205,11 @@ class ChatMessageModel {
             // Identify the mobile network of the current number
             $mobileNetwork = $this->identifyMobileNetwork($recipient);
 
+            if (strlen($recipient) > 11){
+                $recipient = substr($recipient, 2);
+                $recipient = "0".$recipient;
+            }
+
             echo "$curTime Message recipient: $recipient\n";
 
             $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id)
