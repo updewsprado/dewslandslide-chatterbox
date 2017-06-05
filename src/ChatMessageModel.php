@@ -60,6 +60,26 @@ class ChatMessageModel {
         }
     }
 
+    public function utf8_encode_recursive ($array) {
+        $result = array();
+        foreach ($array as $key => $value)
+        {
+            if (is_array($value))
+            {
+                $result[$key] = $this->utf8_encode_recursive($value);
+            }
+            else if (is_string($value))
+            {
+                $result[$key] = utf8_encode($value);
+            }
+            else
+            {
+                $result[$key] = $value;
+            }
+        }
+        return $result;
+    }
+
     //Create the smsinbox table if it does not exist yet
     public function createSMSInboxTable() {
         $sql = "CREATE TABLE IF NOT EXISTS `senslopedb`.`smsinbox` (
@@ -178,6 +198,7 @@ class ChatMessageModel {
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
                 VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
+        var_dump($sql);
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
 
@@ -2472,6 +2493,8 @@ class ChatMessageModel {
 
                 $ctr = $ctr + 1;
             }
+
+            $dbreturn = $this->utf8_encode_recursive($dbreturn);
 
             $fullData['data'] = $dbreturn;
             echo "data size: " . $this->getArraySize($dbreturn);
