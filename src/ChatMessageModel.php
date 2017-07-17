@@ -7,171 +7,68 @@ class ChatMessageModel {
     protected $dbconn;
 
     public function __construct() {
-        //Initialize the database connection
         $this->initDBforCB();
-
-        //Cache the initial inbox messages
         $this->qiInit = true;
-        $this->getCachedQuickInboxMessages();
-    }
-
-    public function helloWorld() {
-        echo "ChatMessageModel: Hello World \n\n";
+        // $this->getCachedQuickInboxMessages();
     }
 
     public function initDBforCB() {
-        //Create a DB Connection
         $host = "localhost";
         $usr = "root";
         $pwd = "senslope";
-        $dbname = "senslopedb";
-
-        $this->dbconn = new \mysqli($host, $usr, $pwd);
-
+        $dbname = "newdb";
+        $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
-        }
-        echo "Successfully connected to database!\n";
-
-        $this->connectSenslopeDB();
-        echo "Switched to schema: senslopedb!\n";
-
-        $this->createSMSInboxTable();
-        $this->createSMSOutboxTable();
-    }
-
-    //Connect to senslopedb
-    public function connectSenslopeDB() {
-        //$success = $this->dbconn->mysqli_select_db("senslopedb");
-        $success = mysqli_select_db($this->dbconn, "senslopedb");
-
-        if (!$success) {
-            $this->createSenslopeDB();
-        }
-    }
-
-    //Create database if it does not exist yet
-    public function createSenslopeDB() {
-        $sql = "CREATE DATABASE senslopedb";
-        if ($this->dbconn->query($sql) === TRUE) {
-            echo "Database created successfully\n";
         } else {
-            die("Error creating database: " . $this->dbconn->error);
+            echo "Connection Established... \n";
         }
     }
 
     public function utf8_encode_recursive ($array) {
         $result = array();
-        foreach ($array as $key => $value)
-        {
-            if (is_array($value))
-            {
+        foreach ($array as $key => $value) {
+            if (is_array($value)) {
                 $result[$key] = $this->utf8_encode_recursive($value);
-            }
-            else if (is_string($value))
-            {
+            } else if (is_string($value)) {
                 $result[$key] = utf8_encode($value);
-            }
-            else
-            {
+            } else {
                 $result[$key] = $value;
             }
         }
         return $result;
     }
 
-    //Create the smsinbox table if it does not exist yet
-    public function createSMSInboxTable() {
-        $sql = "CREATE TABLE IF NOT EXISTS `senslopedb`.`smsinbox` (
-                  `sms_id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                  `timestamp` DATETIME NULL,
-                  `sim_num` VARCHAR(20) NULL,
-                  `sms_msg` VARCHAR(1023) NULL,
-                  `read_status` VARCHAR(20) NULL,
-                  `web_flag` VARCHAR(2) NOT NULL DEFAULT 'WU',
-                  PRIMARY KEY (`sms_id`))";
-
-        if ($this->dbconn->query($sql) === TRUE) {
-            echo "Table 'smsinbox' exists!\n";
-        } else {
-            die("Error creating table 'smsinbox': " . $this->dbconn->error);
-        }
-    }
-
-    //Create the smsoutbox table if it does not exist yet
-    public function createSMSOutboxTable() {
-        $sql = "CREATE TABLE IF NOT EXISTS `senslopedb`.`smsoutbox` (
-                  `sms_id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                  `timestamp_written` DATETIME NULL,
-                  `timestamp_sent` DATETIME NULL,
-                  `recepients` VARCHAR(1023) NULL,
-                  `sms_msg` VARCHAR(1023) NULL,
-                  `send_status` VARCHAR(20) NOT NULL DEFAULT 'UNSENT',
-                  PRIMARY KEY (`sms_id`))";
-
-        if ($this->dbconn->query($sql) === TRUE) {
-            echo "Table 'smsoutbox' exists!\n";
-        } else {
-            die("Error creating table 'smsoutbox': " . $this->dbconn->error);
-        }
-    }
-
     public function filterSpecialCharacters($message) {
-        //Filter backslash (\)
         $filteredMsg = str_replace("\\", "\\\\", $message);
-        //Filter single quote (')
         $filteredMsg = str_replace("'", "\'", $filteredMsg);
-
         return $filteredMsg;
     }
 
-    //Check connection and catch SQL that might be clue for MySQL Runaway
-    //This is the solution for the "MySQL Runaway Error"
     public function checkConnectionDB($sql = "Nothing") {
-        // Make sure the connection is still alive, if not, try to reconnect 
         if (!mysqli_ping($this->dbconn)) {
             echo 'Lost connection, exiting after query #1';
-
-            //Write the ff to the log file
-            //  1. Timestamp when the problem occurred
-            //  2. The Query to be written
-            
-            //Append the file
             $logFile = fopen("../logs/mysqlRunAwayLogs.txt", "a+");
             $t = time();
             fwrite($logFile, date("Y-m-d H:i:s") . "\n" . $sql . "\n\n");
             fclose($logFile);
-
-            //Try to reconnect
             $this->initDBforCB();
         }
     }
 
-    //Identify contact number's network
     public function identifyMobileNetwork($contactNumber) {
         try {
             $countNum = strlen($contactNumber);
-            //echo "num count = $countNum\n";
-
-            //ex. 09 '16' 8888888
             if ($countNum == 11) {
                 $curSimPrefix = substr($contactNumber, 2, 2);
-            }
-            //ex. 639 '16' 8888888
-            elseif ($countNum == 12) {
+            } elseif ($countNum == 12) {
                 $curSimPrefix = substr($contactNumber, 3, 2);
             }
 
             echo "simprefix: 09$curSimPrefix\n";
-            //TODO: compare the prefix to the list of sim prefixes
-
-            //Mix of Smart, Sun, Talk & Text
             $networkSmart = "00,07,08,09,10,11,12,14,18,19,20,21,22,23,24,25,28,29,30,31,
-                    32,33,34,38,39,40,42,43,44,46,47,48,49,50,89,98,99";
-            //Mix of Globe and TM
+            32,33,34,38,39,40,42,43,44,46,47,48,49,50,89,98,99";
             $networkGlobe = "05,06,15,16,17,25,26,27,35,36,37,45,55,56,75,77,78,79,94,95,96,97";
-
-            //Globe Number
             if (strpos($networkSmart, $curSimPrefix)) {
                 echo "Smart Network!\n";
                 return "SMART";
@@ -190,16 +87,13 @@ class ChatMessageModel {
         }
     }
 
-    //Insert data for smsinbox table
     public function insertSMSInboxEntry($timestamp, $sender, $message) {
-        //filter or check special characters
         $message = $this->filterSpecialCharacters($message);
 
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
-                VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
+        VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
         var_dump($sql);
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
 
         if ($this->dbconn->query($sql) === TRUE) {
@@ -209,11 +103,8 @@ class ChatMessageModel {
         }
     }
 
-    //Insert data for smsoutbox table
     public function insertSMSOutboxEntry($recipients, $message, $sentTS = null, $ewi_tag = false) {
-        //ewi tag ids
         $ewi_tag_id = [];
-        //filter or check special characters
         $message = $this->filterSpecialCharacters($message);
 
         if ($sentTS) {
@@ -223,7 +114,6 @@ class ChatMessageModel {
         }
         
         foreach ($recipients as $recipient) {
-            // Identify the mobile network of the current number
             $mobileNetwork = $this->identifyMobileNetwork($recipient);
 
             if (strlen($recipient) > 11){
@@ -234,9 +124,7 @@ class ChatMessageModel {
             echo "$curTime Message recipient: $recipient\n";
 
             $sql = "INSERT INTO smsoutbox (timestamp_written, recepients, sms_msg, send_status, gsm_id)
-                    VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork')";
-
-            // Make sure the connection is still alive, if not, try to reconnect 
+            VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork')";
             $this->checkConnectionDB($sql);
             $result = $this->dbconn->query($sql);
             if ($result === TRUE) {
@@ -251,10 +139,7 @@ class ChatMessageModel {
         return $ewi_tag_id;
     }
 
-    //TODO: Update a smsoutbox entry
     public function updateSMSOutboxEntry($recipient=null, $writtenTS=null, $sendStatus=null, $sentTS=null) {
-        // validate identifier: recipient
-        //Remove non number characters
         $recipient = str_replace("[", "", $recipient);
         $recipient = str_replace("]", "", $recipient);
         $recipient = str_replace("u", "", $recipient);
@@ -265,8 +150,6 @@ class ChatMessageModel {
             echo "Error: recipient '$recipient' is invalid.\n";
             return -1;
         }
-
-        // TODO: validate identifier: written timestamp
         if ($writtenTS == null) {
             echo "Error: no input for written_timestamp.\n";
             return -1;
@@ -275,54 +158,45 @@ class ChatMessageModel {
         $setCtr = 0;
         $updateQuery = "UPDATE smsoutbox ";
         $whereClause = " WHERE timestamp_written = '$writtenTS' AND recepients like '%$recipient'";
-
-        // validate sendStatus
         if ( ($sendStatus == "PENDING") || ($sendStatus == "SENT-PI") || 
             ($sendStatus == "SENT") || ($sendStatus == "SENT-WSS") ||
             ($sendStatus == "FAIL") || ($sendStatus == "FAIL-WSS") ) {
-            //compose send status set clause
             $setClause = " SET send_status = '$sendStatus'";
-            $setCtr++;
-        }
-        elseif ($sendStatus == null) {
-            // Do nothing
+        $setCtr++;
+    }
+    elseif ($sendStatus == null) {
+    }
+    else {
+        echo "Error: invalid send_status.\n";
+        return -1;
+    }
+    if ($sentTS) {
+        if ($setCtr > 0) {
+            $setClause = $setClause . ", timestamp_sent = '$sentTS'";
         }
         else {
-            echo "Error: invalid send_status.\n";
-            return -1;
+            $setClause = " SET timestamp_sent = '$sentTS'";
         }
 
-        // validate sentTS
-        if ($sentTS) {
-            if ($setCtr > 0) {
-                $setClause = $setClause . ", timestamp_sent = '$sentTS'";
-            }
-            else {
-                $setClause = " SET timestamp_sent = '$sentTS'";
-            }
-
-            $setCtr++;
-        }
-
-        if ($setCtr == 0) {
-            echo "Error: No data for updating\n";
-            return -1;
-        }
-
-        $updateQuery = $updateQuery . $setClause . $whereClause;
-        //echo "updateQuery: $updateQuery\n";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($updateQuery);
-
-        if ($this->dbconn->query($updateQuery) === TRUE) {
-            echo "record updated successfully!\n";
-            return 0;
-        } else {
-            echo "Error: " . $updateQuery . "<br>" . $this->dbconn->error;
-            return -1;
-        }
+        $setCtr++;
     }
+
+    if ($setCtr == 0) {
+        echo "Error: No data for updating\n";
+        return -1;
+    }
+
+    $updateQuery = $updateQuery . $setClause . $whereClause;
+    $this->checkConnectionDB($updateQuery);
+
+    if ($this->dbconn->query($updateQuery) === TRUE) {
+        echo "record updated successfully!\n";
+        return 0;
+    } else {
+        echo "Error: " . $updateQuery . "<br>" . $this->dbconn->error;
+        return -1;
+    }
+}
 
     public function isSenderValid($sender) {
         $patternNoNumbers = '/[^0-9+]/';
@@ -347,75 +221,55 @@ class ChatMessageModel {
     }
 
     public function convertNameToUTF8($name) {
-        //Convert the string to utf8 format
         $converted = utf8_decode($name);
-
-        //Replace "?" character with "ñ"
         return str_replace("?", "ñ", $converted);
     }
 
-    public function getCachedQuickInboxMessages($isForceLoad=false) {
-        $start = microtime(true);
+        // public function getCachedQuickInboxMessages($isForceLoad=false) {
+        //     $start = microtime(true);
 
-        $os = PHP_OS;
-        $qiResults;
+        //     $os = PHP_OS;
+        //     $qiResults;
 
-        if (strpos($os,'WIN') !== false) {
-            //echo "Running on a windows server. Not using memcached </Br>";
-            $qiResults = $this->getQuickInboxMessages();
-        }
-        elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-            //echo "Running on a Linux server. Will use memcached </Br>";
+        //     if (strpos($os,'WIN') !== false) {
+        //         $qiResults = $this->getQuickInboxMessages();
+        //     }
+        //     elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
 
-            $mem = new \Memcached();
-            $mem->addServer("127.0.0.1", 11211);
+        //         $mem = new \Memcached();
+        //         $mem->addServer("127.0.0.1", 11211);
+        //         $qiCached = $mem->get("cachedQI");
+        //         if ( ($this->qiInit == true) || $isForceLoad ) {
+        //             echo "Initialize the Quick Inbox Messages \n";
 
-            //cachedprall - Cached Public Release All
-            $qiCached = $mem->get("cachedQI");
+        //             $qiResults = $this->getQuickInboxMessages();
+        //             $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
+        //         } 
+        //         else {
+        //             $qiResults = $mem->get("cachedQI");
+        //         }
+        //     }
+        //     else {
+        //         $qiResults = $this->getQuickInboxMessages();
+        //     }
 
-            //Load quick inbox results from DB on initialization
-            if ( ($this->qiInit == true) || $isForceLoad ) {
-                echo "Initialize the Quick Inbox Messages \n";
+        //     $execution_time = microtime(true) - $start;
+        //     echo "\n\nExecution Time: $execution_time\n\n";
 
-                $qiResults = $this->getQuickInboxMessages();
-                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-            } 
-            else {
-                //Load from cache if no longer from initialization
-                $qiResults = $mem->get("cachedQI");
-            }
-        }
-        else {
-            //echo "Unknown OS for execution... Script discontinued";
-            $qiResults = $this->getQuickInboxMessages();
-        }
-
-        //echo json_encode($qiResults) . "\n\n";
-
-        $execution_time = microtime(true) - $start;
-        echo "\n\nExecution Time: $execution_time\n\n";
-
-        return $qiResults;
-    }
+        //     return $qiResults;
+        // }
 
     public function addQuickInboxMessageToCache($receivedMsg) {
-        //Get the cached results
         $os = PHP_OS;
 
         if (strpos($os,'WIN') !== false) {
-            //do nothing if on windows
             return;
         }
         elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-            //echo "Running on a Linux server. Will use memcached </Br>";
 
             $mem = new \Memcached();
             $mem->addServer("127.0.0.1", 11211);
-
-            //cachedprall - Cached Public Release All
             $qiCached = $mem->get("cachedQI");
-
-            //Load quick inbox results from DB on initialization
             if ($qiCached && ($this->qiInit == true) ) {
                 echo "Initialize the Quick Inbox Messages \n";
 
@@ -423,16 +277,12 @@ class ChatMessageModel {
                 $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
             } 
             else {
-                //delete the oldest message from array
-                array_pop($qiCached['data']);  
-                //insert latest message to array
+                array_pop($qiCached['data']);
                 array_unshift($qiCached['data'], $receivedMsg);
-                //update the cached quick inbox results
                 $mem->set("cachedQI", $qiCached) or die("couldn't save quick inbox results");
             }
         }
         else {
-            //do nothing if not on Linux
             return;
         }
     }
@@ -441,8 +291,8 @@ class ChatMessageModel {
        foreach($mdArray as $key => $row) {
           if ( $row[$field] === $value )
              return $row;
-       }
-       return -1;
+     }
+     return -1;
     }
 
     public function getLatestAlerts(){
@@ -453,7 +303,6 @@ class ChatMessageModel {
         $raw_data = array();
         $ctr = 0;
         if ($alerts->num_rows > 0) {
-            // output data of each row
             while ($row = $alerts->fetch_assoc()) {
                 $raw_data["id"] = $row["id"];
                 $raw_data["name"] = $row["name"];
@@ -475,78 +324,53 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    //Return the quick inbox messages needed for the initial display on chatterbox
-    public function getQuickInboxMessages($periodDays = 3) {
-        // $start = microtime(true);
+        // public function getQuickInboxMessages($periodDays = 3) {
+        //     $contactsList = $this->getFullnamesAndNumbers();
+        //     $sqlGetAllNumbersFromPeriod = "
+        //         SELECT * FROM smsinbox
+        //         WHERE timestamp > (now() - interval $periodDays day)
+        //         ORDER BY timestamp DESC";
+        //     $this->checkConnectionDB($sqlGetAllNumbersFromPeriod);
+        //     $resultNumbersFromPeriod = $this->dbconn->query($sqlGetAllNumbersFromPeriod);
 
-        // Get the name of the senders
-        $contactsList = $this->getFullnamesAndNumbers();
+        //     $fullData['type'] = 'smsloadquickinbox';
+        //     $distinctNumbers = "";
+        //     $allNumbers = [];
+        //     $allMessages = [];
+        //     $quickInboxMsgs = [];
+        //     $ctr = 0;
+        //     if ($resultNumbersFromPeriod->num_rows > 0) {
+        //         while ($row = $resultNumbersFromPeriod->fetch_assoc()) {
+        //             $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
 
-        // Create query to get all sim numbers for the past X days
-        $sqlGetAllNumbersFromPeriod = "
-            SELECT * FROM smsinbox
-            WHERE timestamp > (now() - interval $periodDays day)
-            ORDER BY timestamp DESC";
+        //             array_push($allNumbers, $normalizedNum);
+        //             $allMessages[$ctr]['user'] = $normalizedNum;
+        //             $allMessages[$ctr]['msg'] = $row['sms_msg'];
+        //             $allMessages[$ctr]['timestamp'] = $row['timestamp'];
+        //             $ctr++;
+        //         }
+        //         $distinctNumbers = array_unique($allNumbers);
 
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sqlGetAllNumbersFromPeriod);
-        $resultNumbersFromPeriod = $this->dbconn->query($sqlGetAllNumbersFromPeriod);
+        //         foreach ($distinctNumbers as $singleContact) {
+        //             $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
+        //             $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
+        //             array_push($quickInboxMsgs, $msgDetails);
+        //         }
 
-        $fullData['type'] = 'smsloadquickinbox';
-        $distinctNumbers = "";
-        $allNumbers = [];
-        $allMessages = [];
-        $quickInboxMsgs = [];
-        $ctr = 0;
-        if ($resultNumbersFromPeriod->num_rows > 0) {
-            // output data of each row
-            while ($row = $resultNumbersFromPeriod->fetch_assoc()) {
-                $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
+        //         $fullData['data'] = $quickInboxMsgs;
+        //     }
+        //     else {
+        //         echo "0 results\n";
+        //         $fullData['data'] = null;
+        //     }
 
-                array_push($allNumbers, $normalizedNum);
-                $allMessages[$ctr]['user'] = $normalizedNum;
-                $allMessages[$ctr]['msg'] = $row['sms_msg'];
-                $allMessages[$ctr]['timestamp'] = $row['timestamp'];
-                $ctr++;
-            }
+        //     echo "JSON DATA: " . json_encode($fullData);
+        //     $this->qiInit = false;
 
-            // Get distinct numbers
-            $distinctNumbers = array_unique($allNumbers);
-            // echo "getQuickInboxMessages() | JSON DATA: " . json_encode($distinctNumbers) . "\n";
-
-            foreach ($distinctNumbers as $singleContact) {
-                // echo "$singleContact \n";
-                $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
-                $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
-                array_push($quickInboxMsgs, $msgDetails);
-                // echo json_encode($msgDetails) . "\n";
-            }
-
-            $fullData['data'] = $quickInboxMsgs;
-        }
-        else {
-            echo "0 results\n";
-            $fullData['data'] = null;
-        }
-
-        echo "JSON DATA: " . json_encode($fullData);
-        //echo json_encode($contactsList);
-
-        // $execution_time = microtime(true) - $start;
-        // echo "\n\nExecution Time: $execution_time\n\n";
-
-        //Quick Inbox Messages have been reloaded
-        $this->qiInit = false;
-
-        return $fullData;
-    }
-
-    //Find the Fullname of a contact from a number
-    public function findFullnameFromNumber($contactsList, $normalizedNum) {
-        // foreach($contactsList as $contact) {
-        //     if(strpos($contact['numbers'], $normalizedNum) >= 0) 
-        //         return $contact['fullname'];
+        //     return $fullData;
         // }
+
+    public function findFullnameFromNumber($contactsList, $normalizedNum) {
         for ($i=0; $i < count($contactsList); $i++) { 
             if (strpos($contactsList[$i]['numbers'], $normalizedNum)) {
                 return $contactsList[$i]['fullname'];
@@ -556,57 +380,12 @@ class ChatMessageModel {
         return "unknown";
     }
 
-    //Get Fullnames and numbers in the database
-    public function getFullnamesAndNumbers() {
-        $sqlGetFullnamesAndNumbers = "
-            SELECT
-                CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                number as numbers
-            FROM communitycontacts
-            UNION
-            SELECT 
-                CONCAT(firstname, ' ', lastname) as fullname, 
-                numbers
-            FROM dewslcontacts
-            ORDER BY fullname";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sqlGetFullnamesAndNumbers);
-        $result = $this->dbconn->query($sqlGetFullnamesAndNumbers);
-
-        $ctr = 0;
-        $dbreturn = "";
-
-        if ($result->num_rows > 0) {
-            // output data of each row
-            while ($row = $result->fetch_assoc()) {
-                $dbreturn[$ctr]['fullname'] = $row['fullname'];
-                $dbreturn[$ctr]['numbers'] = $row['numbers'];
-
-                // echo "fullname: ". $row['fullname'] . ", numbers: " . $row['numbers'] . "\n";
-                // echo "fullname: ". $dbreturn[$ctr]['fullname'] . ", numbers: " . $dbreturn[$ctr]['numbers'] . "\n";
-
-                $ctr = $ctr + 1;
-            }
-
-            // echo json_encode($dbreturn);
-
-            return $dbreturn;
-        }
-        else {
-            echo "0 results\n";
-        }
-    }
-
-    //Return the message searched between Chatterbox and a number
     public function getSearchedConversation($number = null,$type = null,$timestamp = null){
         if ($type == "smsLoadSearched") {
 
             $ctr = 0;
             $sql = '';
             $sqlTargetNumbers = "";
-
-            //Construct the query for loading messages from multiple numbers
             if ($ctr > 1) {
                 for ($i = 0; $i < $ctr; $i++) { 
                     $targetNum = $number[$i];
@@ -625,16 +404,11 @@ class ChatMessageModel {
                 $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
             }
 
-            //------------- First 20 latest messages
-
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox. "AND timestamp_written >= '$timestamp' ";
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp, null as timestampsent,sms_id FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp >= '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
-            
-
-            // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
             $result = $this->dbconn->query($sql);
 
@@ -642,7 +416,6 @@ class ChatMessageModel {
             $presentConversation = "";
             $fullData['type'] = "smsLoadSearched";
             if ($result->num_rows > 0) {
-                // output data of each row
                 while ($row = $result->fetch_assoc()) {
                     $presentConversation[$ctr]['user'] = $row['user'];
                     $presentConversation[$ctr]['msg'] = $row['msg'];
@@ -659,24 +432,17 @@ class ChatMessageModel {
                 $fullData['data'] = null;
             }
 
-            //------------- END First 20 latest messages
-
-            //------------- First 20 OLD messages
-
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp,timestamp_sent as timestampsent,sms_id FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox. "AND timestamp_written < '$timestamp' ";
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg, timestamp as timestamp,null as timestampsent,sms_id FROM smsinbox WHERE " . $sqlTargetNumbersInbox." AND timestamp < '$timestamp' ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
-
-            // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($sql);
             $result = $this->dbconn->query($sql);
 
             $ctr = 0;
             $pastConversation = "";
             if ($result->num_rows > 0) {
-                // output data of each row
                 while ($row = $result->fetch_assoc()) {
                     $pastConversation[$ctr]['user'] = $row['user'];
                     $pastConversation[$ctr]['msg'] = $row['msg'];
@@ -692,7 +458,6 @@ class ChatMessageModel {
                 echo "0 results\n";
                 $fullData['data'] = null;
             }
-            //------------- END First 20 OLD messages
 
             $allArray = array_merge($pastConversation,$presentConversation);
             $fullData['data'] = $allArray;
@@ -755,11 +520,11 @@ class ChatMessageModel {
             echo "sitenames: $subQuerySitenames \n";
 
             $sql = '';
-            
+
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                                FROM communitycontacts 
-                                WHERE office in $subQueryOffices 
-                                AND sitename in $subQuerySitenames";
+            FROM communitycontacts 
+            WHERE office in $subQueryOffices 
+            AND sitename in $subQuerySitenames";
 
             $this->checkConnectionDB($sqlTargetNumbers);
             $result = $this->dbconn->query($sqlTargetNumbers);
@@ -838,8 +603,6 @@ class ChatMessageModel {
                 }
             }
 
-            // FETCH THE LAST 20 MESSAGES
-
             $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp,timestamp_sent as timestamp_sent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$timestampYou' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox GROUP BY (timestamp)";
 
 
@@ -882,10 +645,6 @@ class ChatMessageModel {
                 $pastMessages['data'] = null;
             }
 
-            // END LAST 20
-
-            // LATEST 20
-
             $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestamp_sent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$timestampYou' order by sms_id limit 1) x on timestamp_written.sms_id >= x.sms_id WHERE $sqlTargetNumbersOutbox GROUP BY (timestamp)";
 
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,timestamp.sms_id FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$timestampGroup' order by sms_id limit 1) x on timestamp.sms_id >= x.sms_id WHERE $sqlTargetNumbersInbox ";
@@ -904,7 +663,7 @@ class ChatMessageModel {
                     $dbreturn[$ctr]['user'] = $row['user'];
                     $dbreturn[$ctr]['msg'] = $row['msg'];
                     $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                     $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
+                    $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
                     $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
                     foreach ($contactInfoData['data'] as $singleContact) {
                         if ($singleContact['number'] == $normalized) {
@@ -926,8 +685,6 @@ class ChatMessageModel {
                 echo "0 results\n";
                 $latestMessages['data'] = null;
             }
-
-            // END LATEST 20
             $msgData = [];
             $msgData['data'] = array_merge(array_reverse($pastMessages['data']),$latestMessages['data']);
             $msgData['type'] = 'smsLoadGroupSearched';
@@ -942,8 +699,6 @@ class ChatMessageModel {
         $ctr = 0;
         $sql = '';
         $sqlTargetNumbers = "";
-
-        //Get the recepient number and trim it.
         if ($user_number == "You") {
             $sql = "SELECT DISTINCT 'You' as user, recepients as recepients FROM smsoutbox WHERE sms_msg LIKE '%$msg%' AND timestamp_written = '$timestamp'";
 
@@ -956,80 +711,11 @@ class ChatMessageModel {
 
                     if (strlen($row['recepients']) == 12){
                        $contactTrimmed = substr($row['recepients'], 2);
-                    } else if (strlen($row['recepients']) == 11){
-                        $contactTrimmed = substr($row['recepients'], 1);
-                    } else {
-                        $contactTrimmed = $row['recepients'];
-                    }
-                    $ctr = $ctr + 1;
-                }
-            }
-            else {
-                echo "0 results\n";
-                $fullData['data'] = null;
-            }
-
-
-        } else {
-            if (strlen($user_number) == 12){
-               $contactTrimmed = substr($user_number, 2);
-            } else if (strlen($user_number) == 11){
-                $contactTrimmed = substr($user_number, 1);
-            } else {
-                $contactTrimmed = $user_number;
-            }
-        }
-
-        //Get the Recepients name
-        $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
-        $this->checkConnectionDB($sqlTargetIndividualAlias);
-        $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
-        if ($resultAlias->num_rows > 0) {
-            while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
-                $alias= $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
-                break;
-            }
-        } else {
-            // GET RECEPIENT ALIAS FOR Group
-            $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
-            $this->checkConnectionDB($sqlTargetGroupAlias);
-            $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
-            if ($resultGroupAlias->num_rows > 0) {
-                while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
-                  $alias = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
-                   break;
-                }
-            } else {
-                $alias = "You";
-            }
-        }
-
-        //------------- First 20 latest messages
-
-        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written > '$timestamp' ";
-
-        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp > '$timestamp' ";
-
-        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
-
-        $this->checkConnectionDB($sql);
-        $result = $this->dbconn->query($sql);
-
-        $ctr = 0;
-        $presentConversation = "";
-        $fullData['type'] = "smsloadGlobalSearched";
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                if ($row['user'] == "You"){
-                    $presentConversation[$ctr]['user'] = "You";
+                   } else if (strlen($row['recepients']) == 11){
+                    $contactTrimmed = substr($row['recepients'], 1);
                 } else {
-                    $presentConversation[$ctr]['user'] = $alias;
+                    $contactTrimmed = $row['recepients'];
                 }
-                $presentConversation[$ctr]['msg'] = $row['msg'];
-                $presentConversation[$ctr]['timestamp'] = $row['timestamp'];
-                $presentConversation[$ctr]['timestamp_sent'] = $row['timestampsent'];
-                $presentConversation[$ctr]['type'] = 'smsloadGlobalSearched';
-
                 $ctr = $ctr + 1;
             }
         }
@@ -1038,50 +724,105 @@ class ChatMessageModel {
             $fullData['data'] = null;
         }
 
-        //------------- END First 20 latest messages
 
-        //------------- First 20 OLD messages
-
-        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written <= '$timestamp' ";
-
-        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp <= '$timestamp' ";
-
-        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sql);
-        $result = $this->dbconn->query($sql);
-
-        $ctr = 0;
-        $pastConversation = "";
-        if ($result->num_rows > 0) {
-            // output data of each row
-            while ($row = $result->fetch_assoc()) {
-                if ($row['user'] == "You"){
-                    $pastConversation[$ctr]['user'] = "You";
-                } else {
-                    $pastConversation[$ctr]['user'] = $alias;
-                }
-                $pastConversation[$ctr]['msg'] = $row['msg'];
-                $pastConversation[$ctr]['timestamp'] = $row['timestamp'];
-                $pastConversation[$ctr]['timestamp_sent'] = $row['timestampsent'];
-                $pastConversation[$ctr]['type'] = 'smsloadGlobalSearched';
-
-                $ctr = $ctr + 1;
-            }
+    } else {
+        if (strlen($user_number) == 12){
+           $contactTrimmed = substr($user_number, 2);
+       } else if (strlen($user_number) == 11){
+        $contactTrimmed = substr($user_number, 1);
+    } else {
+        $contactTrimmed = $user_number;
+    }
+    }
+    $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
+    $this->checkConnectionDB($sqlTargetIndividualAlias);
+    $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
+    if ($resultAlias->num_rows > 0) {
+        while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
+            $alias= $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
+            break;
         }
-        else {
-            echo "0 results\n";
-            $fullData['data'] = null;
-        }
-        //------------- END First 20 OLD messages
-
-        $allArray = array_merge($presentConversation,$pastConversation);
-        $fullData['data'] = $allArray;
-        return $fullData;
+    } else {
+        $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
+        $this->checkConnectionDB($sqlTargetGroupAlias);
+        $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
+        if ($resultGroupAlias->num_rows > 0) {
+            while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
+              $alias = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
+              break;
+          }
+      } else {
+        $alias = "You";
+    }
     }
 
-    //Return the message exchanges between Chatterbox and a number
+    $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written > '$timestamp' ";
+
+    $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp > '$timestamp' ";
+
+    $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp asc LIMIT 20";
+
+    $this->checkConnectionDB($sql);
+    $result = $this->dbconn->query($sql);
+
+    $ctr = 0;
+    $presentConversation = "";
+    $fullData['type'] = "smsloadGlobalSearched";
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            if ($row['user'] == "You"){
+                $presentConversation[$ctr]['user'] = "You";
+            } else {
+                $presentConversation[$ctr]['user'] = $alias;
+            }
+            $presentConversation[$ctr]['msg'] = $row['msg'];
+            $presentConversation[$ctr]['timestamp'] = $row['timestamp'];
+            $presentConversation[$ctr]['timestamp_sent'] = $row['timestampsent'];
+            $presentConversation[$ctr]['type'] = 'smsloadGlobalSearched';
+
+            $ctr = $ctr + 1;
+        }
+    }
+    else {
+        echo "0 results\n";
+        $fullData['data'] = null;
+    }
+
+    $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox WHERE recepients LIKE '%".$contactTrimmed."%' AND timestamp_written <= '$timestamp' ";
+
+    $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sim_num LIKE '%".$contactTrimmed."%' AND timestamp <= '$timestamp' ";
+
+    $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT 20";
+    $this->checkConnectionDB($sql);
+    $result = $this->dbconn->query($sql);
+
+    $ctr = 0;
+    $pastConversation = "";
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            if ($row['user'] == "You"){
+                $pastConversation[$ctr]['user'] = "You";
+            } else {
+                $pastConversation[$ctr]['user'] = $alias;
+            }
+            $pastConversation[$ctr]['msg'] = $row['msg'];
+            $pastConversation[$ctr]['timestamp'] = $row['timestamp'];
+            $pastConversation[$ctr]['timestamp_sent'] = $row['timestampsent'];
+            $pastConversation[$ctr]['type'] = 'smsloadGlobalSearched';
+
+            $ctr = $ctr + 1;
+        }
+    }
+    else {
+        echo "0 results\n";
+        $fullData['data'] = null;
+    }
+
+    $allArray = array_merge($presentConversation,$pastConversation);
+    $fullData['data'] = $allArray;
+    return $fullData;
+    }
+
     public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20,$tags = null) {
         $ctr = 0;
         $employeeTags = [];
@@ -1097,7 +838,6 @@ class ChatMessageModel {
                 return -1;
             } else {
                 foreach ($number as $test) {
-                    //echo "target: $number\n";
                     echo "target: $test\n";
                     $ctr++;
                 }
@@ -1106,8 +846,6 @@ class ChatMessageModel {
 
         $sql = '';
         $sqlTargetNumbers = "";
-
-        //Construct the query for loading messages from multiple numbers
         if ($ctr > 1) {
             for ($i = 0; $i < $ctr; $i++) {
                 if ($type == "oldMessageGroupEmployee") {
@@ -1129,8 +867,6 @@ class ChatMessageModel {
             $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
             $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
         }
-
-        //Construct the final query
         if ($type == "oldMessage" || $type == "oldMessageGroupEmployee") {
 
             $timeStampArray = explode(',', $timestamp);
@@ -1152,40 +888,38 @@ class ChatMessageModel {
             }
 
             $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp, timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
+            timestamp_written as timestamp, timestamp_sent as timestampsent,timestamp_written.sms_id FROM smsoutbox timestamp_written inner join (select sms_id from smsoutbox where timestamp_written = '$yourLastTimeStamp' order by sms_id limit 1) x on timestamp_written.sms_id < x.sms_id WHERE $sqlTargetNumbersOutbox";
 
 
             $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                            timestamp as timestamp, null as timestampsent,timestamp.sms_id
-                        FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$indiLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
+            timestamp as timestamp, null as timestampsent,timestamp.sms_id
+            FROM smsinbox timestamp inner join (select sms_id from smsinbox where timestamp = '$indiLastTimeStamp' order by sms_id limit 1) x on timestamp.sms_id < x.sms_id WHERE $sqlTargetNumbersInbox ";
 
             $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
 
         } else {
             if ($timestamp == null) {
                 $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
-                            FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
+                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
+                FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox;
 
                 $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                                timestamp as timestamp, null as timestampsent,sms_id
-                            FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
+                timestamp as timestamp, null as timestampsent,sms_id
+                FROM smsinbox WHERE " . $sqlTargetNumbersInbox;
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
             } else {
                 $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, 
-                                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
-                            FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
+                timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
+                FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND timestamp_written < '$timestamp' ";
 
                 $sqlInbox = "SELECT sim_num as user, sms_msg as msg,
-                                timestamp as timestamp, null as timestampsent,sms_id
-                            FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
+                timestamp as timestamp, null as timestampsent,sms_id
+                FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND timestamp < '$timestamp' ";
 
                 $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
             }
         }
-
-        // Make sure the connection is still alive, if not, try to reconnect 
 
 
         $this->checkConnectionDB($sql);
@@ -1202,7 +936,6 @@ class ChatMessageModel {
         }
 
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 if ($type == "oldMessageGroupEmployee") {
                     $employeeTags = $this->getEmpTagNumbers($tags);
@@ -1236,44 +969,41 @@ class ChatMessageModel {
             }
 
             $query = "SELECT table_element_id FROM gintags WHERE ".$ids."";
-            // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
             $idCollection = [];
             if ($result->num_rows > 0) {
-                 while ($row = $result->fetch_assoc()) {
-                    array_push($idCollection,$row["table_element_id"]);
-                 }
+             while ($row = $result->fetch_assoc()) {
+                array_push($idCollection,$row["table_element_id"]);
             }
+        }
 
-            for ($x = 0; $x < sizeof($dbreturn); $x++) {
-                for ($y = 0; $y < sizeof($idCollection); $y++) {
-                    if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
-                        $dbreturn[$x]["hasTag"] = 1;
-                        break;
-                    } else {
-                        $dbreturn[$x]["hasTag"] = 0;
-                    }
+        for ($x = 0; $x < sizeof($dbreturn); $x++) {
+            for ($y = 0; $y < sizeof($idCollection); $y++) {
+                if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
+                    $dbreturn[$x]["hasTag"] = 1;
+                    break;
+                } else {
+                    $dbreturn[$x]["hasTag"] = 0;
                 }
             }
-
-
-            $fullData['data'] = $dbreturn;
-        }
-        else {
-            echo "0 results\n";
-            $fullData['data'] = null;
         }
 
-        return $fullData;
+
+        $fullData['data'] = $dbreturn;
+    }
+    else {
+        echo "0 results\n";
+        $fullData['data'] = null;
+    }
+
+    return $fullData;
     }
 
     public function searchMessage($number,$timestamp,$searchKey){
         $ctr = 0;
         $sql = '';
         $sqlTargetNumbers = "";
-
-        //Construct the query for loading messages from multiple numbers
         if ($ctr > 1) {
             for ($i = 0; $i < $ctr; $i++) { 
                 $targetNum = $number[$i];
@@ -1291,15 +1021,11 @@ class ChatMessageModel {
             $sqlTargetNumbersOutbox = "recepients LIKE '%$targetNum' ";
             $sqlTargetNumbersInbox = "sim_num LIKE '%$targetNum' ";
         }
-
-        //Construct the query for searching
         $sqlOutbox = "SELECT 'You' as user, sms_msg as msg, timestamp_written as timestamp, timestamp_sent as timestampsent FROM smsoutbox WHERE " . $sqlTargetNumbersOutbox . "AND sms_msg LIKE '%".$searchKey."%'";
 
         $sqlInbox = "SELECT sim_num as user, sms_msg as msg,timestamp as timestamp, null as timestampsent FROM smsinbox WHERE " . $sqlTargetNumbersInbox . "AND sms_msg LIKE '%".$searchKey."%'";
 
         $sql = $sqlOutbox . " UNION " . $sqlInbox . "ORDER BY timestamp desc";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -1309,7 +1035,6 @@ class ChatMessageModel {
 
 
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['user'] = $row['user'];
                 $dbreturn[$ctr]['msg'] = $row['msg'];
@@ -1379,19 +1104,13 @@ class ChatMessageModel {
         echo "sitenames: $subQuerySitenames \n";
 
         $sql = '';
-
-        //TODO: construct query for loading the numbers from the tags selected
-        //  by the user
         $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                            FROM communitycontacts 
-                            WHERE office in $subQueryOffices 
-                            AND sitename in $subQuerySitenames";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        FROM communitycontacts 
+        WHERE office in $subQueryOffices 
+        AND sitename in $subQuerySitenames";
         $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $numbers = explode(",", $row['number']);
 
@@ -1410,10 +1129,6 @@ class ChatMessageModel {
             echo "0 numbers found\n";
             $contactInfoData['data'] = null;
         }
-
-        //echo "JSON output ($ctr): " . json_encode($contactInfoData);
-
-        //Construct the query for loading messages from multiple numbers
         $num_numbers = sizeof($contactInfoData['data']);
         if ($num_numbers >= 1) {
             for ($i = 0; $i < $num_numbers; $i++) { 
@@ -1432,15 +1147,11 @@ class ChatMessageModel {
             $sqlTargetNumbersOutbox = " ";
             $sqlTargetNumbersInbox = " ";
         }
-
-        //Construct the final query
         $sqlOutbox = "SELECT DISTINCT user,msg,timestamp,timestamp_sent FROM (SELECT 'You' as user,sms_msg as msg,timestamp_written as timestamp,timestamp_sent as timestamp_sent FROM smsoutbox WHERE ".$sqlTargetNumbersOutbox.") as outbox WHERE msg LIKE '%$searchKey%'";   
 
         $sqlInbox = "SELECT DISTINCT user,msg,timestamp,null as timestamp_sent FROM (SELECT sim_num as user,sms_msg as msg,timestamp as timestamp, null as timestamp_sent FROM smsinbox WHERE ".$sqlTargetNumbersInbox.") as inbox WHERE msg LIKE '%$searchKey%'";
 
         $sql = $sqlOutbox . " UNION " . $sqlInbox . " ORDER BY timestamp desc";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -1449,17 +1160,13 @@ class ChatMessageModel {
         $msgData['type'] = 'searchMessageGroup';
 
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['user'] = $row['user'];
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
                 $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
                 $dbreturn[$ctr]['type'] = "searchMessageGroup";
-                //Normalize the user's number
                 $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
-
-                //Add "office" and "sitename" data using the "contactInfoData" array
                 foreach ($contactInfoData['data'] as $singleContact) {
                     if ($singleContact['number'] == $normalized) {
                         $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
@@ -1480,19 +1187,15 @@ class ChatMessageModel {
             $msgData['data'] = null;
         }
 
-        //echo json_encode($msgData);
-
         return $msgData;
     }
 
     public function searchMessageGlobal($type,$searchKey){
-        //Construct the query for searching
         $sqlOutbox = "SELECT DISTINCT 'You' as user,sms_msg as msg, timestamp_written as timestamp,timestamp_sent as timestampsent FROM smsoutbox WHERE sms_msg LIKE '%$searchKey%'";
 
         $sqlInbox = "SELECT DISTINCT sim_num as user,sms_msg as msg, timestamp as timestamp, null as timestampsent FROM smsinbox WHERE sms_msg LIKE '%$searchKey%'";
 
         $sql = $sqlOutbox . " UNION " . $sqlInbox . "ORDER BY timestamp desc";
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -1501,13 +1204,11 @@ class ChatMessageModel {
         $fullData['type'] = 'searchMessageGlobal';
 
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
 
                 if ($row['user'] == 'You') {
                     $dbreturn[$ctr]['user'] = $row['user'];
                 } else {
-                    // GET RECEPIENT ALIAS FOR INDIVIDUAL
                     $sqlTrimmedContact = "SELECT DISTINCT sim_num from smsinbox where timestamp like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."' UNION SELECT 'You' from smsoutbox where timestamp_written like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."'";
                     $this->checkConnectionDB($sqlTrimmedContact);
                     $trimmedContact = $this->dbconn->query($sqlTrimmedContact);
@@ -1515,54 +1216,53 @@ class ChatMessageModel {
                         while ($trimmed = $trimmedContact->fetch_assoc()) {
                             if (strlen($trimmed['sim_num']) == 12){
                                $contactTrimmed = substr($trimmed['sim_num'], 2);
-                            } else if (strlen($trimmed['sim_num']) == 11){
-                                $contactTrimmed = substr($trimmed['sim_num'], 1);
-                            } else {
-                                $contactTrimmed = $trimmed['sim_num'];
-                            }
-                        }
-                    }
-
-
-                    $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
-                    $this->checkConnectionDB($sqlTargetIndividualAlias);
-                    $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
-                    if ($resultAlias->num_rows > 0) {
-                        while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
-                            $dbreturn[$ctr]['user'] = $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
-                            break;
-                        }
-                    } else {
-                        // GET RECEPIENT ALIAS FOR Group
-                        $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
-                        $this->checkConnectionDB($sqlTargetGroupAlias);
-                        $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
-                        if ($resultGroupAlias->num_rows > 0) {
-                            while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
-                              $dbreturn[$ctr]['user'] = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
-                               break;
-                            }
+                           } else if (strlen($trimmed['sim_num']) == 11){
+                            $contactTrimmed = substr($trimmed['sim_num'], 1);
                         } else {
-                            $dbreturn[$ctr]['user'] = "Unknown - ".$row['user'];
+                            $contactTrimmed = $trimmed['sim_num'];
                         }
                     }
                 }
 
-                $dbreturn[$ctr]['user_number'] = $row['user'];
-                $dbreturn[$ctr]['msg'] = $row['msg'];
-                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                $dbreturn[$ctr]['timestamp_sent'] = $row['timestampsent'];
-                $dbreturn[$ctr]['type'] = 'searchMessageGlobal';
-                $ctr = $ctr + 1;
-            }
 
-            $fullData['data'] = $dbreturn;
+                $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
+                $this->checkConnectionDB($sqlTargetIndividualAlias);
+                $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
+                if ($resultAlias->num_rows > 0) {
+                    while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
+                        $dbreturn[$ctr]['user'] = $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
+                        break;
+                    }
+                } else {
+                    $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
+                    $this->checkConnectionDB($sqlTargetGroupAlias);
+                    $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
+                    if ($resultGroupAlias->num_rows > 0) {
+                        while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
+                          $dbreturn[$ctr]['user'] = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
+                          break;
+                      }
+                  } else {
+                    $dbreturn[$ctr]['user'] = "Unknown - ".$row['user'];
+                }
+            }
         }
-        else {
-            echo "0 results\n";
-            $fullData['data'] = null;
-        }
-        return $fullData;
+
+        $dbreturn[$ctr]['user_number'] = $row['user'];
+        $dbreturn[$ctr]['msg'] = $row['msg'];
+        $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+        $dbreturn[$ctr]['timestamp_sent'] = $row['timestampsent'];
+        $dbreturn[$ctr]['type'] = 'searchMessageGlobal';
+        $ctr = $ctr + 1;
+    }
+
+    $fullData['data'] = $dbreturn;
+    }
+    else {
+        echo "0 results\n";
+        $fullData['data'] = null;
+    }
+    return $fullData;
     }
 
     public function searchGintagMessage($type,$searchKey){
@@ -1571,11 +1271,9 @@ class ChatMessageModel {
         }
 
         $query = "SELECT table_element_id,table_used FROM gintags inner join gintags_reference ON gintags.tag_id_fk=gintags_reference.tag_id WHERE gintags_reference.tag_name LIKE'%".$searchKey."%';";
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($query);
         $result = $this->dbconn->query($query);
         if ($result->num_rows > 0) {
-            // output data of each row
             $sms_id_collection = [];
             $ctr = 0;
 
@@ -1613,7 +1311,7 @@ class ChatMessageModel {
 
             $queryInbox = "SELECT DISTINCT sim_num as user,null as recipients, sms_msg as msg,timestamp as timestamp, null as timestamp_sent,sms_id FROM smsinbox $sqlInbox";
 
-           
+
 
             if ($outboxCtr == 0 && $inboxCtr == 0) {
                 return;
@@ -1637,7 +1335,6 @@ class ChatMessageModel {
                     if ($row['user'] === "You") {
                         $dbreturn[$ctr]['user'] = $row['user'];
                     } else {
-                        // GET RECEPIENT ALIAS FOR INDIVIDUAL
                         $sqlTrimmedContact = "SELECT DISTINCT sim_num from smsinbox where timestamp like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."' UNION SELECT 'You' from smsoutbox where timestamp_written like '%".$row['timestamp']."%' AND sms_msg='".$row['msg']."'";
                         $this->checkConnectionDB($sqlTrimmedContact);
                         $trimmedContact = $this->dbconn->query($sqlTrimmedContact);
@@ -1645,70 +1342,64 @@ class ChatMessageModel {
                             while ($trimmed = $trimmedContact->fetch_assoc()) {
                                 if (strlen($trimmed['sim_num']) == 12){
                                    $contactTrimmed = substr($trimmed['sim_num'], 2);
-                                } else if (strlen($trimmed['sim_num']) == 11){
-                                    $contactTrimmed = substr($trimmed['sim_num'], 1);
-                                } else {
-                                    $contactTrimmed = $trimmed['sim_num'];
-                                }
-                            }
-                        }
-
-
-                        $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
-                        $this->checkConnectionDB($sqlTargetIndividualAlias);
-                        $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
-                        if ($resultAlias->num_rows > 0) {
-                            while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
-                                $dbreturn[$ctr]['user'] = $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
-                                break;
-                            }
-                        } else {
-                            // GET RECEPIENT ALIAS FOR Group
-                            $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
-                            $this->checkConnectionDB($sqlTargetGroupAlias);
-                            $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
-                            if ($resultGroupAlias->num_rows > 0) {
-                                while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
-                                  $dbreturn[$ctr]['user'] = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
-                                   break;
-                                }
+                               } else if (strlen($trimmed['sim_num']) == 11){
+                                $contactTrimmed = substr($trimmed['sim_num'], 1);
                             } else {
-                                $dbreturn[$ctr]['user'] = "Unknown - ".$row['user'];
+                                $contactTrimmed = $trimmed['sim_num'];
                             }
                         }
                     }
 
 
-
-                    $dbreturn[$ctr]['user_number'] = $row['user'];
-                    $dbreturn[$ctr]['type'] = "searchGintags";
-                    $dbreturn[$ctr]['recipients'] = $row['recipients'];
-                    $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                    $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
-                    $dbreturn[$ctr]['msg'] = $row['msg'];
-                    $dbreturn[$ctr]['sms_id'] = $row['sms_id'];
-                    $ctr++;
+                    $sqlTargetIndividualAlias = "select firstname,lastname from dewslcontacts where numbers LIKE '%".$contactTrimmed."%'";
+                    $this->checkConnectionDB($sqlTargetIndividualAlias);
+                    $resultAlias = $this->dbconn->query($sqlTargetIndividualAlias);
+                    if ($resultAlias->num_rows > 0) {
+                        while ($rowIndiAlias = $resultAlias->fetch_assoc()) {
+                            $dbreturn[$ctr]['user'] = $rowIndiAlias['firstname']." ".$rowIndiAlias['lastname'];
+                            break;
+                        }
+                    } else {
+                        $sqlTargetGroupAlias = "select * from communitycontacts where number LIKE '%".$contactTrimmed."%'";
+                        $this->checkConnectionDB($sqlTargetGroupAlias);
+                        $resultGroupAlias = $this->dbconn->query($sqlTargetGroupAlias);
+                        if ($resultGroupAlias->num_rows > 0) {
+                            while ($rowGroupAlias = $resultGroupAlias->fetch_assoc()) {
+                              $dbreturn[$ctr]['user'] = $rowGroupAlias['sitename']." ".$rowGroupAlias['office']." ".$rowGroupAlias['prefix']." ".$rowGroupAlias['firstname']." ".$rowGroupAlias['lastname'];
+                              break;
+                          }
+                      } else {
+                        $dbreturn[$ctr]['user'] = "Unknown - ".$row['user'];
+                    }
                 }
-            } else {
-                echo "NO RESULTS";
             }
 
-            $msgData['data'] = $dbreturn;
-            $msgData['type'] = "searchGintags";
-            return $msgData;
+
+
+            $dbreturn[$ctr]['user_number'] = $row['user'];
+            $dbreturn[$ctr]['type'] = "searchGintags";
+            $dbreturn[$ctr]['recipients'] = $row['recipients'];
+            $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+            $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
+            $dbreturn[$ctr]['msg'] = $row['msg'];
+            $dbreturn[$ctr]['sms_id'] = $row['sms_id'];
+            $ctr++;
         }
+    } else {
+        echo "NO RESULTS";
     }
-    
-    //Normalize a contact number
+
+    $msgData['data'] = $dbreturn;
+    $msgData['type'] = "searchGintags";
+    return $msgData;
+    }
+    }
+
     public function normalizeContactNumber($contactNumber) {
         $countNum = strlen($contactNumber);
-        //echo "num count = $countNum\n";
-
-        //ex. 09168888888
         if ($countNum == 11) {
             $contactNumber = substr($contactNumber, 1);
         }
-        //ex. 639168888888
         elseif ($countNum == 12) {
             $contactNumber = substr($contactNumber, 2);
         }
@@ -1716,7 +1407,6 @@ class ChatMessageModel {
         return $contactNumber;
     }
 
-    //Return the contact numbers from the group tags
     public function getContactNumbersFromGroupTags($offices = null, $sitenames = null,$ewi_filter = null) {
         $ctr = 0;
 
@@ -1761,27 +1451,20 @@ class ChatMessageModel {
         echo "sitenames: $subQuerySitenames \n";
 
         $sql = '';
-        
-
-        //construct query for loading the numbers from the tags selected
-        //  by the user
         if ($ewi_filter == "true") {
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                                FROM communitycontacts 
-                                WHERE office in $subQueryOffices 
-                                AND sitename in $subQuerySitenames AND ewirecipient = true";
+            FROM communitycontacts 
+            WHERE office in $subQueryOffices 
+            AND sitename in $subQuerySitenames AND ewirecipient = true";
         } else {
             $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                    FROM communitycontacts 
-                    WHERE office in $subQueryOffices 
-                    AND sitename in $subQuerySitenames";
+            FROM communitycontacts 
+            WHERE office in $subQueryOffices 
+            AND sitename in $subQuerySitenames";
         }
-
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $numbers = explode(",", $row['number']);
 
@@ -1808,30 +1491,29 @@ class ChatMessageModel {
         $ctr = 0;
         $dbreturn = "";
         $sqlTargetNumbers = "SELECT office, sitename, lastname,firstname, number, ewirecipient
-                            FROM communitycontacts 
-                            WHERE office in $offices
-                            AND sitename in $sitenames";
+        FROM communitycontacts 
+        WHERE office in $offices
+        AND sitename in $sitenames";
         $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $numbers = explode(",", $row['number']);
-                    if ($row['ewirecipient'] == NULL) {
-                        foreach ($numbers as $number) {
-                            $dbreturn[$ctr]['office'] = $row['office'];
-                            $dbreturn[$ctr]['sitename'] = $row['sitename'];
-                            $dbreturn[$ctr]['lastname'] = (string)$row['lastname'];
-                            $dbreturn[$ctr]['firstname'] = (string)$row['firstname'];
-                            $dbreturn[$ctr]['number'] = $number;
-                            $dbreturn[$ctr]['ewirecipient'] = $row['ewirecipient'];
-                            $ctr = $ctr + 1;
-                            $resultData['type'] = "hasNullEWIRecipient";
-                            $resultData['hasNull'] = true;
-                        }
-                    } else {
-                            $resultData['hasNull'] = false;
+                if ($row['ewirecipient'] == NULL) {
+                    foreach ($numbers as $number) {
+                        $dbreturn[$ctr]['office'] = $row['office'];
+                        $dbreturn[$ctr]['sitename'] = $row['sitename'];
+                        $dbreturn[$ctr]['lastname'] = (string)$row['lastname'];
+                        $dbreturn[$ctr]['firstname'] = (string)$row['firstname'];
+                        $dbreturn[$ctr]['number'] = $number;
+                        $dbreturn[$ctr]['ewirecipient'] = $row['ewirecipient'];
+                        $ctr = $ctr + 1;
+                        $resultData['type'] = "hasNullEWIRecipient";
+                        $resultData['hasNull'] = true;
                     }
+                } else {
+                    $resultData['hasNull'] = false;
+                }
             }
         } else {
             echo "0 numbers found\n";
@@ -1879,13 +1561,9 @@ class ChatMessageModel {
             $ctrSites++;
         }
         $filterSitenames = $filterSitenames . ")";
-
-        // UPDATES ALL THE CONTACTS EWI RECIPIENTS TO FALSE.
         $sql = "UPDATE communitycontacts SET ewirecipient = false WHERE sitename IN $filterSitenames";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
-
-        // UPDATES SELECTED CONTACTS EWI RECIPIENTS TO TRUE.
         foreach ($data as $info) {
             array_push($numbers,$info->number);
         }
@@ -1903,10 +1581,8 @@ class ChatMessageModel {
         $result = $this->dbconn->query($sql);
         $data['type'] = "resumeLoading";
         return $data;
-
     }
 
-    //Return the message exchanges between Chatterbox and a group
     public function getMessageExchangesFromGroupTags($offices = null, $sitenames = null,$type = null,$lastTimeStamps = null, $limit = 70) {
         $ctr = 0;
 
@@ -1958,25 +1634,19 @@ class ChatMessageModel {
         echo "sitenames: $subQuerySitenames \n";
 
         $sql = '';
-        
+
         $result = $this->getEwiRecepients($subQueryOffices,$subQuerySitenames);
 
         if ($result['hasNull'] == true) {
             return $result;
         }
-
-        //TODO: construct query for loading the numbers from the tags selected
-        //  by the user
         $sqlTargetNumbers = "SELECT office, sitename, lastname, number 
-                            FROM communitycontacts 
-                            WHERE office in $subQueryOffices 
-                            AND sitename in $subQuerySitenames";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        FROM communitycontacts 
+        WHERE office in $subQueryOffices 
+        AND sitename in $subQuerySitenames";
         $this->checkConnectionDB($sqlTargetNumbers);
         $result = $this->dbconn->query($sqlTargetNumbers);
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $numbers = explode(",", $row['number']);
 
@@ -1995,10 +1665,6 @@ class ChatMessageModel {
             echo "0 numbers found\n";
             $contactInfoData['data'] = null;
         }
-
-        //echo "JSON output ($ctr): " . json_encode($contactInfoData);
-
-        //Construct the query for loading messages from multiple numbers
         $num_numbers = sizeof($contactInfoData['data']);
         if ($num_numbers >= 1) {
             for ($i = 0; $i < $num_numbers; $i++) { 
@@ -2046,32 +1712,28 @@ class ChatMessageModel {
             $sql = $sqlOutbox."UNION ".$sqlInbox."ORDER BY timestamp desc LIMIT $limit";
 
         } else {
-            //Construct the final query
             $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
-                            timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
-                        FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL GROUP BY (timestamp)";
-  
+            timestamp_written as timestamp, timestamp_sent as timestampsent,sms_id
+            FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL GROUP BY (timestamp)";
+
             $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
-                            timestamp as timestamp, null as timestamp_sent,sms_id
-                        FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
+            timestamp as timestamp, null as timestamp_sent,sms_id
+            FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
 
             $sql = $sqlOutbox . "UNION " . $sqlInbox . " ORDER BY timestamp desc LIMIT $limit";
         }
-
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
         $dbreturn = "";
-            if ($type == "oldMessageGroup"){
+        if ($type == "oldMessageGroup"){
             $msgData['type'] = 'oldMessageGroup';
         } else {
             $msgData['type'] = 'smsloadrequestgroup';
         }
 
         if ($result->num_rows > 0) {
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['sms_id'] = $row['sms_id'];
                 if ($row['user'] == "You") {
@@ -2083,11 +1745,7 @@ class ChatMessageModel {
                 $dbreturn[$ctr]['msg'] = $row['msg'];
                 $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
                 $dbreturn[$ctr]['timestamp_sent'] = $row['timestampsent'];
-
-                //Normalize the user's number
                 $normalized = $this->normalizeContactNumber($dbreturn[$ctr]['user']);
-
-                //Add "office" and "sitename" data using the "contactInfoData" array
                 foreach ($contactInfoData['data'] as $singleContact) {
                     if ($singleContact['number'] == $normalized) {
                         $dbreturn[$ctr]['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
@@ -2110,39 +1768,33 @@ class ChatMessageModel {
             }
 
             $query = "SELECT table_element_id FROM gintags WHERE ".$ids."";
-            // Make sure the connection is still alive, if not, try to reconnect 
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
             $idCollection = [];
             if ($result->num_rows > 0) {
-                 while ($row = $result->fetch_assoc()) {
-                    array_push($idCollection,$row["table_element_id"]);
-                 }
+             while ($row = $result->fetch_assoc()) {
+                array_push($idCollection,$row["table_element_id"]);
             }
+        }
 
-            for ($x = 0; $x < sizeof($dbreturn); $x++) {
-                for ($y = 0; $y < sizeof($idCollection); $y++) {
-                    if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
-                        $dbreturn[$x]["hasTag"] = 1;
-                        break;
-                    } else {
-                        $dbreturn[$x]["hasTag"] = 0;
-                    }
+        for ($x = 0; $x < sizeof($dbreturn); $x++) {
+            for ($y = 0; $y < sizeof($idCollection); $y++) {
+                if ($dbreturn[$x]["sms_id"] == $idCollection[$y]) {
+                    $dbreturn[$x]["hasTag"] = 1;
+                    break;
+                } else {
+                    $dbreturn[$x]["hasTag"] = 0;
                 }
             }
-
-            $msgData['data'] = $dbreturn;
-        }
-        else {
-            echo "0 results\n";
-            $msgData['data'] = null;
         }
 
-        return $msgData;
+        $msgData['data'] = $dbreturn;
+    } else {
+        echo "0 results\n";
+        $msgData['data'] = null;
     }
 
-    public function gintagsMarker(){
-
+    return $msgData;
     }
 
     public function getEmpTagNumbers($data){
@@ -2172,129 +1824,18 @@ class ChatMessageModel {
                         }
 
                     } else {
-                         $emptag[$e_ctr]['number']  = $row['numbers'];
-                    }
-                    if ($temp != "" || $temp != NULL) {
-                        $e_ctr = $temp;
-                    } else {
-                        $e_ctr = $e_ctr+1;
-                    }
-                    $employeeTags = $emptag;  
+                     $emptag[$e_ctr]['number']  = $row['numbers'];
+                 }
+                 if ($temp != "" || $temp != NULL) {
+                    $e_ctr = $temp;
+                } else {
+                    $e_ctr = $e_ctr+1;
                 }
+                $employeeTags = $emptag;  
             }
         }
-        return $employeeTags;
     }
-
-    public function getMessageExchangesFromEmployeeTags($type = null,$data = null,$limit = 70){
-        $ctr = 0;
-        $ctrTags = 0;
-        $employeeTags = [];
-        $employeeTargetNumber = [];
-
-        $employeeTags = $this->getEmpTagNumbers($data);
-
-        foreach ($data as $tag) {
-            if ($ctrTags == 0) {
-                $sqlTargetNumbersPerTag = "grouptags LIKE '%$tag%' ";
-            } else {
-                $sqlTargetNumbersPerTag = $sqlTargetNumbersPerTag . "OR grouptags LIKE '%$tag%' ";
-            }
-            $ctrTags++;
-        }
-
-        $sqlTargetNumbers = "SELECT DISTINCT numbers,grouptags FROM dewslcontacts WHERE ".$sqlTargetNumbersPerTag;
-        $this->checkConnectionDB($sqlTargetNumbers);
-        $result = $this->dbconn->query($sqlTargetNumbers);
-
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $targetEmpNumbers = "";
-                if (strlen($row['numbers']) == 9) {
-                    $targetEmpNumbers = "63".$row['numbers'];
-                } else if (strlen($row['numbers']) == 11) {
-                    $targetEmpNumbers = "63".substr($row['numbers'],1);
-                } else if (strlen($row['numbers']) > 12){
-                    $numbers = explode(",", $row['numbers']);
-                    foreach ($numbers as $number) {
-                        array_push($employeeTargetNumber, "63".substr($number,1));
-                    }
-                } else {
-                    $targetEmpNumbers = $row['numbers'];
-                }
-                if ($targetEmpNumbers != "") {
-                  array_push($employeeTargetNumber, $targetEmpNumbers);                  
-                }
-                    $dbreturn[$ctr]['tag'] = $row['grouptags'];
-            }
-            $contactInfoData['data'] = $dbreturn;
-        }
-        else {
-            echo "0 numbers found\n";
-            $contactInfoData['data'] = null;
-        }
-
-        $num_numbers = sizeof($employeeTargetNumber);
-        if ($num_numbers >= 1) {
-            for ($i = 0; $i < $num_numbers; $i++) { 
-                if ($i == 0) {
-                    $sqlTargetNumbersOutbox = "recepients LIKE '%$employeeTargetNumber[$i]' ";
-                    $sqlTargetNumbersInbox = "sim_num LIKE '%$employeeTargetNumber[$i]' ";
-                } else {
-                    $sqlTargetNumbersOutbox = $sqlTargetNumbersOutbox . "OR recepients LIKE '%$employeeTargetNumber[$i]' ";
-                    $sqlTargetNumbersInbox = $sqlTargetNumbersInbox . "OR sim_num LIKE '%$employeeTargetNumber[$i]' ";
-                }
-            }
-        } else {
-            $sqlTargetNumbersOutbox = " ";
-            $sqlTargetNumbersInbox = " ";
-        }
-
-        //Construct the final query
-        $sqlOutbox = "SELECT DISTINCT 'You' as user, sms_msg as msg, 
-                        timestamp_written as timestamp, timestamp_sent as timestampsent
-                    FROM smsoutbox WHERE $sqlTargetNumbersOutbox AND timestamp_written IS NOT NULL ";
-
-        $sqlInbox = "SELECT DISTINCT sim_num as user, sms_msg as msg,
-                        timestamp as timestamp, null as timestampsent
-                    FROM smsinbox WHERE $sqlTargetNumbersInbox AND timestamp IS NOT NULL ";
-
-        $sql = $sqlOutbox . "UNION " . $sqlInbox . "ORDER BY timestamp desc LIMIT $limit";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sql);
-        $result = $this->dbconn->query($sql);
-        $msgData['type'] = 'loadEmployeeTag';
-
-        if ($result->num_rows > 0) {
-            // output data of each row
-            while ($row = $result->fetch_assoc()) {
-                if ($row['user'] == "You") {
-                    $dbreturn[$ctr]['user'] = $row['user'];
-                } else {
-                    for ($x = 0;$x < sizeof($employeeTags);$x++) {
-                        if ($employeeTags[$x]['number'] == $row['user']) {
-                            $dbreturn[$ctr]['user'] = strtoupper($employeeTags[$x]['tags']);
-                        }
-                    }
-                }
-
-                $dbreturn[$ctr]['msg'] = $row['msg'];
-                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
-                $dbreturn[$ctr]['timestamp_sent'] = $row['timestampsent'];
-                $dbreturn[$ctr]['type'] = "loadEmployeeTag";
-
-                $ctr = $ctr + 1;
-            }
-
-            $msgData['data'] = $dbreturn;
-        }
-        else {
-            echo "0 results\n";
-            $msgData['data'] = null;
-        }
-
-        return $msgData;
+    return $employeeTags;
     }
 
     public function getArraySize($arr) {
@@ -2316,21 +1857,19 @@ class ChatMessageModel {
     public function getCommunityContact($sitename, $office) {
         if ( ($office == "all") || ($office == null) ) {
             $sql = "SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                        number as numbers
-                    FROM communitycontacts
-                    WHERE sitename like '%$sitename%'
-                    ORDER BY fullname";
+            CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+            number as numbers
+            FROM communitycontacts
+            WHERE sitename like '%$sitename%'
+            ORDER BY fullname";
         } else {
             $sql = "SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                        number as numbers
-                    FROM communitycontacts
-                    WHERE sitename like '%$sitename%' AND office = '$office'
-                    ORDER BY fullname";
+            CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+            number as numbers
+            FROM communitycontacts
+            WHERE sitename like '%$sitename%' AND office = '$office'
+            ORDER BY fullname";
         }
-
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -2341,8 +1880,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
@@ -2357,27 +1894,23 @@ class ChatMessageModel {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
-        //echo json_encode($fullData);
         return $fullData;
     }
 
     public function getContactsFromName($queryName) {
         $sql = "SELECT * FROM
-                    (SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                        number as numbers
-                    FROM communitycontacts
-                    UNION
-                    SELECT 
-                        CONCAT(firstname, ' ', lastname) as fullname, 
-                        numbers
-                    FROM dewslcontacts
-                    ORDER BY fullname) as fullcontacts
-                WHERE
-                    fullname LIKE '%$queryName%'";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        (SELECT
+        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+        number as numbers
+        FROM communitycontacts
+        UNION
+        SELECT 
+        CONCAT(firstname, ' ', lastname) as fullname, 
+        numbers
+        FROM dewslcontacts
+        ORDER BY fullname) as fullcontacts
+        WHERE
+        fullname LIKE '%$queryName%'";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -2388,8 +1921,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
@@ -2404,38 +1935,29 @@ class ChatMessageModel {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
-        //echo json_encode($fullData);
         return $fullData;
     }
 
-    //Get contact name from number
     public function getNameFromNumber($contactNumber) {
-        //normalize the number
         $normalized = $this->normalizeContactNumber($contactNumber);
-
-        //TODO: create query to get name from the contact number if it exists
         $sql = "SELECT * FROM 
-                    (SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                        number as numbers
-                    FROM communitycontacts
-                    UNION
-                    SELECT
-                        CONCAT(firstname, ' ', lastname) as fullname, 
-                        numbers
-                    FROM dewslcontacts) as contactNames
-                WHERE
-                    numbers LIKE '%$normalized%'";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        (SELECT
+        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+        number as numbers
+        FROM communitycontacts
+        UNION
+        SELECT
+        CONCAT(firstname, ' ', lastname) as fullname, 
+        numbers
+        FROM dewslcontacts) as contactNames
+        WHERE
+        numbers LIKE '%$normalized%'";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $dbreturn = [];
         if ($result->num_rows > 0) {
             $ctr = 0;
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 if ($ctr == 0) {
                     $dbreturn['fullname'] = $row['fullname'];
@@ -2459,22 +1981,7 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM
-                    (SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                        number as numbers
-                    FROM communitycontacts
-                    UNION
-                    SELECT 
-                        CONCAT(firstname, ' ', lastname) as fullname, 
-                        numbers
-                    FROM dewslcontacts
-                    ORDER BY fullname) as fullcontacts
-                WHERE
-                    fullname LIKE '%$queryName%'
-                    OR numbers LIKE '%$queryName%'";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(organization.org_name,' ',sites.site_code,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.users_id RIGHT JOIN organization ON user_organization.org_scope = organization.org_scope RIGHT JOIN sites ON user_organization.psgc = sites.psgc RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -2485,12 +1992,9 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
-                $dbreturn[$ctr]['numbers'] = $row['numbers'];
-
+                $dbreturn[$ctr]['id'] = $row['id'];
                 $ctr = $ctr + 1;
             }
 
@@ -2503,26 +2007,22 @@ class ChatMessageModel {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
-        //echo json_encode($fullData);
         return $fullData;
     }
 
     public function getNameSuggestions($queryName) {
         $sql = "SELECT * FROM
-                    (SELECT
-                        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname
-                    FROM communitycontacts
-                    UNION
-                    SELECT 
-                        CONCAT(firstname, ' ', lastname) as fullname
-                    FROM dewslcontacts
-                    ORDER BY fullname) as fullcontacts
-                WHERE
-                    fullname LIKE '%$queryName%'
-                    OR numbers LIKE '%$queryName%'";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        (SELECT
+        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname
+        FROM communitycontacts
+        UNION
+        SELECT 
+        CONCAT(firstname, ' ', lastname) as fullname
+        FROM dewslcontacts
+        ORDER BY fullname) as fullcontacts
+        WHERE
+        fullname LIKE '%$queryName%'
+        OR numbers LIKE '%$queryName%'";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -2533,8 +2033,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr] = $this->convertNameToUTF8($row['fullname']);
 
@@ -2548,26 +2046,20 @@ class ChatMessageModel {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
-        //echo json_encode($fullData);
         return $fullData;
     }
 
-    //Return the normalized contact list for both DEWSL and Community
-    //currently exceeds the web socket bandwidth (9115 bytes)
     public function getAllContactsList() {
         $sql = "SELECT
-                    CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
-                    number as numbers
-                FROM communitycontacts
-                UNION
-                SELECT 
-                    CONCAT(firstname, ' ', lastname) as fullname, 
-                    numbers
-                FROM dewslcontacts
-                ORDER BY fullname";
-
-        // Make sure the connection is still alive, if not, try to reconnect 
+        CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
+        number as numbers
+        FROM communitycontacts
+        UNION
+        SELECT 
+        CONCAT(firstname, ' ', lastname) as fullname, 
+        numbers
+        FROM dewslcontacts
+        ORDER BY fullname";
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -2578,8 +2070,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $row['fullname'];
                 $dbreturn[$ctr]['numbers'] = $row['numbers'];
@@ -2594,19 +2084,12 @@ class ChatMessageModel {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
-        //echo json_encode($fullData);
         return $fullData;
     }
 
-    //This will only be called only one time and only if the user clicks
-    //  on the "advanced search option"
     public function getAllOfficesAndSites() {
         $fullData['type'] = 'loadofficeandsites';
-
-        //Get the list of offices from the community contacts list
         $sqlOffices = "SELECT DISTINCT office FROM communitycontacts";
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlOffices);
         $result = $this->dbconn->query($sqlOffices);
 
@@ -2616,8 +2099,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total_offices'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $returnOffices[$ctr] = $row['office'];
                 $ctr = $ctr + 1;
@@ -2630,10 +2111,7 @@ class ChatMessageModel {
             echo "0 results for offices\n";
             $fullData['offices'] = null;
         }
-
-        //Get the list of sitenames from the community contacts list
         $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts order by sitename asc";
-        // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlSitenames);
         $result = $this->dbconn->query($sqlSitenames);
 
@@ -2643,8 +2121,6 @@ class ChatMessageModel {
         if ($result->num_rows > 0) {
             $fullData['total_sites'] = $result->num_rows;
             echo $result->num_rows . " results\n";
-
-            // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $returnSitenames[$ctr] = $row['sitename'];
 
@@ -2658,8 +2134,1130 @@ class ChatMessageModel {
             echo "0 results for sitenames\n";
             $fullData['sitenames'] = null;
         }
-
-        // echo json_encode($fullData);
         return $fullData;
+    }
+
+    public function getAllCmmtyContacts() {
+        $this->checkConnectionDB();
+        $returnCmmtyContacts = [];
+        $returnData = [];
+        $ctr = 0;
+        $query = "SELECT * FROM users";
+        $result = $this->dbconn->query($query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $returnCmmtyContacts[$ctr]['user_id'] = $row['user_id'];
+                $returnCmmtyContacts[$ctr]['salutation'] = $row['salutation'];
+                $returnCmmtyContacts[$ctr]['firstname'] = $row['firstname'];
+                $returnCmmtyContacts[$ctr]['lastname'] = $row['lastname'];
+                $returnCmmtyContacts[$ctr]['middlename'] = $row['middlename'];
+                $returnCmmtyContacts[$ctr]['nickname'] = $row['nickname'];
+                $returnCmmtyContacts[$ctr]['birthday'] = $row['birthday'];
+                $returnCmmtyContacts[$ctr]['gender'] = $row['sex'];
+                $returnCmmtyContacts[$ctr]['active_status'] = $row['status'];
+                $ctr++;
+            }
+        } else {
+            echo "No results..";
+        }
+        $returnData['type'] = 'fetchedCmmtyContacts';
+        $returnData['data'] = $returnCmmtyContacts;
+        return $returnData;
+    }
+
+    public function getAllDwslContacts() {
+        $this->checkConnectionDB();
+        $returnDwslContacts = [];
+        $finContact = [];
+        $returnTeams = [];
+        $returnData = [];
+        $ctr = 0;
+        $query = "SELECT * FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id INNER JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id";
+        $result = $this->dbconn->query($query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $returnDwslContacts[$ctr]['user_id'] = $row['user_id'];
+                $returnDwslContacts[$ctr]['salutation'] = $row['salutation'];
+                $returnDwslContacts[$ctr]['firstname'] = $row['firstname'];
+                $returnDwslContacts[$ctr]['lastname'] = $row['lastname'];
+                $returnDwslContacts[$ctr]['middlename'] = $row['middlename'];
+                $returnDwslContacts[$ctr]['nickname'] = $row['nickname'];
+                $returnDwslContacts[$ctr]['birthday'] = $row['birthday'];
+                $returnDwslContacts[$ctr]['gender'] = $row['sex'];
+                $returnDwslContacts[$ctr]['active_status'] = $row['status'];
+                $returnTeams[$ctr]['team'] = $row['team_name'];
+                $ctr++;
+            }
+        } else {
+            echo "No results..";
+        }
+
+        for ($x = 0; $x < $ctr; $x++) {
+            if (!in_array($returnDwslContacts[$x],$finContact)) {
+                array_push($finContact,$returnDwslContacts[$x]);
+
+            }
+        }
+
+        for ($x = 0; $x < sizeof($finContact); $x++) {
+            $finContact[$x]['team'] = "";
+        }
+
+        for ($x = 0; $x < $ctr; $x++) {
+            for ($y = 0; $y < sizeof($finContact); $y++) {
+                if ($finContact[$y]['user_id'] == $returnDwslContacts[$x]['user_id']) {
+                    $finContact[$y]['team'] = ltrim($finContact[$y]['team'].",".$returnTeams[$x]['team'],',');
+                }
+            }
+        }
+
+        $returnData['type'] = 'fetchedDwslContacts';
+        $returnData['data'] = $finContact;
+        return $returnData;
+    }
+
+    public function getDwslContact($id) {
+        $returnData = [];
+        $returnContact = [];
+        $returnMobileNumbers = [];
+        $returnLandlineNumbers = [];
+        $returnEmail = [];
+        $returnTeam = [];
+        $ctr = 0;
+        $this->checkConnectionDB();
+        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status,user_mobile.mobile_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks as landline_remarks,dewsl_team_members.members_id,dewsl_team_members.users_users_id,dewsl_team_members.dewsl_teams_team_id,dewsl_teams.team_id,dewsl_teams.team_name,dewsl_teams.remarks, user_emails.email_id,user_emails.email FROM users LEFT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id LEFT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id LEFT JOIN user_emails ON users.user_id = user_emails.user_id WHERE users.user_id = '$id' order by lastname desc;";
+        $result = $this->dbconn->query($query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                if (empty($returnContact)) {
+                    $returnContact['id'] = $row['id'];
+                    $returnContact['salutation'] = $row['salutation'];
+                    $returnContact['firstname'] = $row['firstname'];
+                    $returnContact['lastname'] = $row['lastname'];
+                    $returnContact['middlename'] = $row['middlename'];
+                    $returnContact['nickname'] = $row['nickname'];
+                    $returnContact['gender'] = $row['sex'];
+                    $returnContact['birthday'] = $row['birthday'];
+                    $returnContact['contact_active_status'] = $row['status'];
+                    $returnMobileNumbers[$ctr]['number_id'] = $row['mobile_id'];
+                    $returnMobileNumbers[$ctr]['number'] = $row['sim_num'];
+                    $returnMobileNumbers[$ctr]['priority'] = $row['priority'];
+                    $returnMobileNumbers[$ctr]['number_status'] = $row['mobile_status'];
+                    $returnLandlineNumbers[$ctr]['landline_id'] = $row['landline_id'];
+                    $returnLandlineNumbers[$ctr]['landline_number'] = $row['landline_num'];
+                    $returnLandlineNumbers[$ctr]['landline_remarks'] = $row['landline_remarks'];
+                    $returnTeam[$ctr]['member_id'] = $row['members_id'];
+                    $returnTeam[$ctr]['team_id'] = $row['team_id'];
+                    $returnTeam[$ctr]['team_ref_id'] = $row['dewsl_teams_team_id'];
+                    $returnTeam[$ctr]['team_name'] = $row['team_name'];
+                    $returnEmail[$ctr]['email_id'] = $row['email_id'];
+                    $returnEmail[$ctr]['email'] = $row['email'];
+                    $ctr++;
+                } else {
+                    $returnMobileNumbers[$ctr]['number_id'] = $row['mobile_id'];
+                    $returnMobileNumbers[$ctr]['number'] = $row['sim_num'];
+                    $returnMobileNumbers[$ctr]['priority'] = $row['priority'];
+                    $returnMobileNumbers[$ctr]['number_status'] = $row['mobile_status'];
+                    $returnLandlineNumbers[$ctr]['landline_id'] = $row['landline_id'];
+                    $returnLandlineNumbers[$ctr]['landline_number'] = $row['landline_num'];
+                    $returnLandlineNumbers[$ctr]['landline_remarks'] = $row['landline_remarks'];
+                    $returnTeam[$ctr]['member_id'] = $row['members_id'];
+                    $returnTeam[$ctr]['team_id'] = $row['team_id'];
+                    $returnTeam[$ctr]['team_ref_id'] = $row['dewsl_teams_team_id'];
+                    $returnTeam[$ctr]['team_name'] = $row['team_name'];
+                    $returnEmail[$ctr]['email_id'] = $row['email_id'];
+                    $returnEmail[$ctr]['email'] = $row['email'];
+                    $ctr++;
+                }
+            }
+        } else {
+            echo "No results..";
+        }
+
+        $finLandline = [];
+        $finMobile = [];
+        $finTeam = [];
+        $finEmail = [];
+        for ($x=0; $x < $ctr; $x++) {
+            if (!in_array($returnMobileNumbers[$x],$finMobile)) {
+                array_push($finMobile,$returnMobileNumbers[$x]);
+            }
+
+            if (!in_array($returnLandlineNumbers[$x], $finLandline)) {
+                array_push($finLandline, $returnLandlineNumbers[$x]);
+            }
+
+            if (!in_array($returnTeam[$x], $finTeam)) {
+                array_push($finTeam,$returnTeam[$x]);
+            }
+
+            if (!in_array($returnEmail[$x], $finEmail)) {
+                array_push($finEmail,$returnEmail[$x]);
+            }
+        }
+
+        $returnData['contact_info'] = $returnContact;
+        $returnData['email_data'] = $finEmail;
+        $returnData['mobile_data'] = $finMobile;
+        $returnData['landline_data'] = $finLandline;
+        $returnData['team_data'] = $finTeam;
+        $returnObj['data'] = $returnData;
+        $returnObj['type'] = "fetchedSelectedDwslContact";
+
+        return $returnObj;
+    }
+
+    public function getCmmtyContact($id) {
+        $returnData = [];
+        $returnContact = [];
+        $returnMobile = [];
+        $returnLandline = [];
+        $returnEwiStatus = [];
+        $returnOrg = [];
+        $ctr = 0;
+        $this->checkConnectionDB();
+        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.users_id as org_users_id,user_organization.user_org_id as org_id,user_organization.org_scope,user_organization.psgc,user_organization.remarks as org_remarks, organization.org_name FROM users RIGHT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id LEFT JOIN user_organization ON users.user_id = user_organization.users_id LEFT JOIN organization ON user_organization.org_scope = organization.org_scope WHERE users.user_id = '$id' order by lastname desc;";
+        $result = $this->dbconn->query($query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                if (empty($returnContact)) {
+                    $returnContact['id'] = $row['id'];
+                    $returnContact['salutation'] = $row['salutation'];
+                    $returnContact['firstname'] = $row['firstname'];
+                    $returnContact['lastname'] = $row['lastname'];
+                    $returnContact['middlename'] = $row['middlename'];
+                    $returnContact['nickname'] = $row['nickname'];
+                    $returnContact['gender'] = $row['sex'];
+                    $returnContact['birthday'] = $row['birthday'];
+                    $returnContact['contact_active_status'] = $row['active_status'];
+                    $returnMobile[$ctr]['number_id'] = $row['number_id'];
+                    $returnMobile[$ctr]['number'] = $row['sim_num'];
+                    $returnMobile[$ctr]['priority'] = $row['priority'];
+                    $returnMobile[$ctr]['number_status'] = $row['mobile_status'];
+                    $returnLandline[$ctr]['landline_id'] = $row['landline_id'];
+                    $returnLandline[$ctr]['landline_number'] = $row['landline_num'];
+                    $returnLandline[$ctr]['landline_remarks'] = $row['remarks'];
+                    $returnEwiStatus[$ctr]['ewi_mobile_id'] = $row['ewi_mobile_id'];
+                    $returnEwiStatus[$ctr]['ewi_status'] = $row['ewi_status'];
+                    $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
+                    $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
+                    $returnOrg[$ctr]['org_id'] = $row['org_id'];
+                    $returnOrg[$ctr]['org_scope'] = $row['org_scope'];
+                    $returnOrg[$ctr]['org_psgc'] = $row['psgc'];
+                    $returnOrg[$ctr]['org_remarks'] = $row['org_remarks'];
+                    $returnOrg[$ctr]['org_name'] = $row['org_name'];
+                    $ctr++;
+                } else {
+                    $returnMobile[$ctr]['number_id'] = $row['number_id'];
+                    $returnMobile[$ctr]['number'] = $row['sim_num'];
+                    $returnMobile[$ctr]['priority'] = $row['priority'];
+                    $returnMobile[$ctr]['number_status'] = $row['mobile_status'];
+                    $returnLandline[$ctr]['landline_id'] = $row['landline_id'];
+                    $returnLandline[$ctr]['landline_number'] = $row['landline_num'];
+                    $returnLandline[$ctr]['landline_remarks'] = $row['remarks'];
+                    $returnEwiStatus[$ctr]['ewi_mobile_id'] = $row['ewi_mobile_id'];
+                    $returnEwiStatus[$ctr]['ewi_status'] = $row['ewi_status'];
+                    $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
+                    $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
+                    $returnOrg[$ctr]['org_id'] = $row['org_id'];
+                    $returnOrg[$ctr]['org_scope'] = $row['org_scope'];
+                    $returnOrg[$ctr]['org_psgc'] = $row['psgc'];
+                    $returnOrg[$ctr]['org_remarks'] = $row['org_remarks'];
+                    $returnOrg[$ctr]['org_name'] = $row['org_name'];
+                    $ctr++;
+                }
+            }
+        } else {
+            echo "No results..";
+        }
+
+        $finMobile = [];
+        $finLandline = [];
+        $finOrg = [];
+        $finEwi = [];
+
+        for ($x = 0; $x < $ctr; $x++) {
+            if (!in_array($returnMobile[$x],$finMobile)) {
+                array_push($finMobile,$returnMobile[$x]);
+            }
+
+            if (!in_array($returnLandline[$x],$finLandline)) {
+                array_push($finLandline,$returnLandline[$x]);
+            }
+
+            if (!in_array($returnOrg[$x],$finOrg)) {
+                array_push($finOrg,$returnOrg[$x]);
+            }
+
+            if (!in_array($returnEwiStatus[$x],$finEwi)) {
+                array_push($finEwi,$returnEwiStatus[$x]);
+            }
+        }
+        $returnData['contact_info'] = $returnContact;
+        $returnData['mobile_data'] = $finMobile;
+        $returnData['landline_data'] = $finLandline;
+        $returnData['ewi_data'] = $finEwi;
+        $returnData['org_data'] = $finOrg;
+        $returnData['list_of_sites'] = $this->getAllSites();
+        $returnData['list_of_orgs'] = $this->getAllOrganization();
+        $returnObj['data'] = $returnData;
+        $returnObj['type'] = "fetchedSelectedCmmtyContact";
+        return $returnObj;
+    }
+
+    public function updateDwslContact($data) {
+        $query_contact_info = "UPDATE users SET firstname='$data->firstname',lastname='$data->lastname',middlename='$data->middlename',salutation='$data->salutation',birthday='$data->birthdate',sex='$data->gender',status=$data->contact_active_status WHERE user_id = $data->id;";
+        $result = $this->dbconn->query($query_contact_info);
+        if ($result == true) {
+            $flag = true;
+            $emails = explode(',',$data->email_address);
+            $teams = explode(',',$data->teams);
+            $remove_email = "DELETE FROM user_emails WHERE user_id='$data->id'";
+            $result = $this->dbconn->query($remove_email);
+            if ($emails[0] != "") {
+                for ($counter = 0; $counter < sizeof($emails); $counter++) {
+                    try {
+                        $insert_new_emails = "INSERT INTO user_emails VALUES(0,'$data->id','$emails[$counter]')";
+                        $result = $this->dbconn->query($insert_new_emails);
+                    } catch (Exception $e) {
+                        $flag = false;
+                    }
+                }
+            }
+
+            try {
+                $remove_teams = "DELETE FROM dewsl_team_members WHERE users_users_id='$data->id'";
+                $result = $this->dbconn->query($remove_teams);
+            } catch (Exception $e) {
+                $flag = false;
+            }
+
+            if ($teams[0] != "") {
+                for ($counter = 0; $counter < sizeof($teams); $counter++) {
+                    $check_if_existing = "SELECT * FROM dewsl_teams WHERE team_name ='$teams[$counter]'";
+                    $result = $this->dbconn->query($check_if_existing);
+                    if ($result->num_rows == 0) {
+                        $insert_new_teams = "INSERT INTO dewsl_teams VALUES (0,'$teams[$counter]','')";
+                        $result = $this->dbconn->query($insert_new_teams);
+                        $newly_added_team = "SELECT * FROM dewsl_teams WHERE team_name ='$teams[$counter]'";
+                        $result = $this->dbconn->query($newly_added_team);
+                        $team_details = $result->fetch_assoc();
+                        $insert_team_member = "INSERT INTO dewsl_team_members VALUES (0,'$data->id','".$team_details['team_id']."')";
+                        $result = $this->dbconn->query($insert_team_member);
+                    } else {
+                        $team_details = $result->fetch_assoc();
+                        $insert_team_member = "INSERT INTO dewsl_team_members VALUES (0,'$data->id','".$team_details['team_id']."')";
+                        $result = $this->dbconn->query($insert_team_member);
+                    }
+                }
+            }
+
+            if (sizeof($data->numbers) == 0) {
+                try {
+                    $num_exist = "DELETE FROM user_mobile WHERE user_id='".$data->id."'";
+                    $result = $this->dbconn->query($num_exist);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            } else {
+                for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
+                    if ($data->numbers[$num_counter]->mobile_id != "" && $data->numbers[$num_counter]->mobile_number != "") {
+                        try {
+                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            $result = $this->dbconn->query($num_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else if ($data->numbers[$num_counter]->mobile_number == "") {
+                        try {
+                            $num_exist = "DELETE FROM user_mobile WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            $result = $this->dbconn->query($num_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                            $result = $this->dbconn->query($new_num);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                }
+            }
+
+            if (sizeof($data->landline) == 0) {
+                try {
+                    $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->id."'";
+                    $result = $this->dbconn->query($landline_exist);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            } else {
+                for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+                    if ($data->landline[$landline_counter]->landline_id != "" && $data->landline[$landline_counter]->landline_number != "") {
+                        try {
+                            $landline_exist = "UPDATE user_landlines SET landline_num = '".$data->landline[$landline_counter]->landline_number."', remarks = '".$data->landline[$landline_counter]->landline_remarks."' WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+                            $result = $this->dbconn->query($landline_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else if ($data->landline[$landline_counter]->landline_number == "") {
+                        try {
+                            $landline_exist = "DELETE FROM user_landlines WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+                            $result = $this->dbconn->query($landline_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                            $result = $this->dbconn->query($new_landline); 
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                }
+            }
+
+            if ($flag == false) {
+                $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
+            } else {
+                $return_data['return_msg'] = "Successfully updated contact.";
+            }
+            $return_data['status'] = $flag;
+        } else {
+            $return_data['status'] = $result;
+            $return_data['return_msg'] = "Contact update failed, Please recheck inputs.";
+
+        }
+        $return_data['type'] = "updatedDwslContact";
+        return $return_data;
+    }
+
+    public function updateCmmtyContact($data) {
+        $flag = true;
+        $query_contact_info = "UPDATE users SET firstname='$data->firstname',lastname='$data->lastname',middlename='$data->middlename',nickname='$data->nickname',salutation='$data->salutation',birthday='$data->birthdate',sex='$data->gender',status=$data->contact_active_status WHERE user_id = $data->id;";
+        $result = $this->dbconn->query($query_contact_info);
+        if ($result == true) {
+            if (sizeof($data->numbers) == 0) {
+                try {
+                    $num_exist = "DELETE FROM user_mobile WHERE user_id='".$data->id."'";
+                    $result = $this->dbconn->query($num_exist);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            } else {
+                for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
+                    if ($data->numbers[$num_counter]->mobile_id != "" && $data->numbers[$num_counter]->mobile_number != "") {
+                        try {
+                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            $result = $this->dbconn->query($num_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else if ($data->numbers[$num_counter]->mobile_number == "") {
+                        try {
+                            $num_exist = "DELETE FROM user_mobile WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            $result = $this->dbconn->query($num_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                            $result = $this->dbconn->query($new_num);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                }
+            }
+
+            if (sizeof($data->landline) == 0) {
+                try {
+                    $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->id."'";
+                    $result = $this->dbconn->query($landline_exist);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            } else {
+                for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+                    if ($data->landline[$landline_counter]->landline_id != "" && $data->landline[$landline_counter]->landline_number != "") {
+                        try {
+                            $landline_exist = "UPDATE user_landlines SET landline_num = '".$data->landline[$landline_counter]->landline_number."', remarks = '".$data->landline[$landline_counter]->landline_remarks."' WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+                            $result = $this->dbconn->query($landline_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else if ($data->landline[$landline_counter]->landline_number == "") {
+                        try {
+                            $landline_exist = "DELETE FROM user_landlines WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+                            $result = $this->dbconn->query($landline_exist);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                            $result = $this->dbconn->query($new_landline); 
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                }
+            }
+
+            if ($data->ewi_recipient == "") {
+                try {
+                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->id."'";
+                    $result = $this->dbconn->query($check_if_existing);
+                    if ($result->num_rows == 0) {
+                        try {
+                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'Inactive','','".$data->id."')";
+                            $result = $this->dbconn->query($insert_ewi_status);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->id."'";
+                            $result = $this->dbconn->query($update_existing);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            } else {
+                try {
+                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->id."'";
+                    $result = $this->dbconn->query($check_if_existing);
+                    if ($result->num_rows == 0) {
+                        try {
+                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->id."')";
+                            $result = $this->dbconn->query($insert_ewi_status);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    } else {
+                        try {
+                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->id."'";
+                            $result = $this->dbconn->query($update_existing);
+                        } catch (Exception $e) {
+                            $flag = false;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            }
+
+            $site_query = "";
+            for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
+                if ($counter == 0) {
+                    $site_query = "site_code = '".$data->sites[$counter]."'";
+                } else {
+                    $site_query = $site_query." OR site_code = '".$data->sites[$counter]."'";
+                }
+            }
+
+            $psgc = [];
+            $ctr = 0;
+            try {
+                $get_psgc = "SELECT psgc FROM sites WHERE ".$site_query;
+                $psgc_collection = $this->dbconn->query($get_psgc);
+                while ($row = $psgc_collection->fetch_assoc()) {
+                    $psgc[$ctr] = $row['psgc'];
+                    $ctr++;
+                }
+            } catch (Exception $e) {
+                $flag = false;
+            }
+
+            $org_scope_query = "";
+            for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
+                if ($counter == 0) {
+                    $org_scope_query = "org_name = '".$data->organizations[$counter]."'";
+                } else {
+                    $org_scope_query = $org_scope_query." OR org_name = '".$data->organizations[$counter]."'";
+                }
+            }
+
+            $scopes = [];
+            $ctr = 0;
+            try {
+                $get_org_scope = "SELECT org_scope FROM organization WHERE ".$org_scope_query;
+                $scope_collection = $this->dbconn->query($get_org_scope);
+                while ($row = $scope_collection->fetch_assoc()) {
+                    $scopes[$ctr] = $row['org_scope'];
+                    $ctr++;
+                }
+            } catch (Exception $e) {
+                $flag = false;
+            }
+
+            try {
+                $delete_orgs = "DELETE FROM user_organization WHERE users_id = '".$data->id."'";
+                $result = $this->dbconn->query($delete_orgs);
+            } catch (Exception $e) {
+                $flag = false;
+            }
+
+            for ($counter = 0; $counter < sizeof($psgc); $counter++) {
+                for ($sub_counter = 0; $sub_counter < sizeof($scopes); $sub_counter++) {
+                    try {
+                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$scopes[$sub_counter]."','".$psgc[$counter]."','')";
+                        $result_org = $this->dbconn->query($insert_org);
+                    } catch (Exception $e) {
+                        $flag = false;
+                    }
+                }
+            }
+            if ($flag == false) {
+                $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
+            } else {
+                $return_data['return_msg'] = "Successfully updated contact.";
+            }
+            $return_data['status'] = $flag;
+        } else {
+            $return_data['status'] = $result;
+            $return_data['return_msg'] = "Contact update failed, Please recheck inputs.";
+        }
+        $return_data['type'] = "updatedCmmtyContact";
+        return $return_data;
+    }
+
+    public function getAllSites() {
+        $sites = [];
+        $ctr = 0;
+        $all_sites_query = "SELECT * FROM sites;";
+        $result = $this->dbconn->query($all_sites_query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $sites[$ctr]["site_id"] = $row["site_id"];
+                $sites[$ctr]["site_code"] = $row["site_code"];
+                $sites[$ctr]["purok"] = $row["purok"];
+                $sites[$ctr]["sitio"] = $row["sitio"];
+                $sites[$ctr]["barangay"] = $row["barangay"];
+                $sites[$ctr]["municipality"] = $row["municipality"];
+                $sites[$ctr]["province"] = $row["province"];
+                $sites[$ctr]["region"] = $row["region"];
+                $sites[$ctr]["psgc"] = $row["psgc"];
+                $ctr++;
+            }
+        }
+        return $sites;
+    }
+
+    public function getAllOrganization() {
+        $orgs = [];
+        $ctr = 0;
+        $all_organization_query = "SELECT * FROM organization;";
+        $result = $this->dbconn->query($all_organization_query);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $orgs[$ctr]["org_id"] = $row["org_id"];
+                $orgs[$ctr]["org_scope"] = $row["org_scope"];
+                $orgs[$ctr]["org_name"] = $row["org_name"];
+                $ctr++;
+            }
+        }
+        return $orgs;
+    }
+
+    public function createDwlsContact($data) {
+        $flag = true;
+        $emails = explode(',',$data->email_address);
+        $teams = explode(',',$data->teams);
+        try {
+            $query_contact_info = "INSERT INTO users VALUES (0,'$data->salutation','$data->firstname','$data->middlename','$data->lastname','$data->nickname','$data->birthdate','$data->gender','$data->contact_active_status');";
+            $result = $this->dbconn->query($query_contact_info);
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        try {
+            $get_last_id = "SELECT LAST_INSERT_ID();";
+            $result = $this->dbconn->query($get_last_id);
+            $data->id = $result->fetch_assoc()["LAST_INSERT_ID()"];
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        if ($emails[0] != "") {
+            for ($counter = 0; $counter < sizeof($emails); $counter++) {
+                try {
+                    $insert_new_emails = "INSERT INTO user_emails VALUES(0,'$data->id','$emails[$counter]')";
+                    $result = $this->dbconn->query($insert_new_emails);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            }
+        }
+
+        if ($teams[0] != "") {
+            for ($counter = 0; $counter < sizeof($teams); $counter++) {
+                $check_if_existing = "SELECT * FROM dewsl_teams WHERE team_name ='$teams[$counter]'";
+                $result = $this->dbconn->query($check_if_existing);
+                if ($result->num_rows == 0) {
+                    $insert_new_teams = "INSERT INTO dewsl_teams VALUES (0,'$teams[$counter]','')";
+                    $result = $this->dbconn->query($insert_new_teams);
+                    $newly_added_team = "SELECT * FROM dewsl_teams WHERE team_name ='$teams[$counter]'";
+                    $result = $this->dbconn->query($newly_added_team);
+                    $team_details = $result->fetch_assoc();
+                    $insert_team_member = "INSERT INTO dewsl_team_members VALUES (0,'$data->id','".$team_details['team_id']."')";
+                    $result = $this->dbconn->query($insert_team_member);
+                } else {
+                    $team_details = $result->fetch_assoc();
+                    $insert_team_member = "INSERT INTO dewsl_team_members VALUES (0,'$data->id','".$team_details['team_id']."')";
+                    $result = $this->dbconn->query($insert_team_member);
+                }
+            }
+        }
+
+        for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
+            try {
+                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                $result = $this->dbconn->query($new_num);
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
+
+        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+            try {
+                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                $result = $this->dbconn->query($new_landline); 
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
+
+        if ($flag == false) {
+            $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
+        } else {
+            $return_data['return_msg'] = "Successfully added new contact.";
+        }
+        $return_data['status'] = $flag;
+
+        $return_data['type'] = "newAddedDwslContact";
+        return $return_data;
+    }
+
+    public function createCommContact($data) {
+        $flag = true;
+        try {
+            $query_contact_info = "INSERT INTO users VALUES (0,'$data->salutation','$data->firstname','$data->middlename','$data->lastname','$data->nickname','$data->birthdate','$data->gender','$data->contact_active_status');";
+            $result = $this->dbconn->query($query_contact_info);
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        try {
+            $get_last_id = "SELECT LAST_INSERT_ID();";
+            $result = $this->dbconn->query($get_last_id);
+            $data->id = $result->fetch_assoc()["LAST_INSERT_ID()"];
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
+            try {
+                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                $result = $this->dbconn->query($new_num);
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
+
+        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+            try {
+                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                $result = $this->dbconn->query($new_landline); 
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
+
+        $site_query = "";
+        for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
+            if ($counter == 0) {
+                $site_query = "site_code = '".$data->sites[$counter]."'";
+            } else {
+                $site_query = $site_query." OR site_code = '".$data->sites[$counter]."'";
+            }
+        }
+
+        $psgc = [];
+        $ctr = 0;
+        try {
+            $get_psgc = "SELECT psgc FROM sites WHERE ".$site_query;
+            $psgc_collection = $this->dbconn->query($get_psgc);
+            while ($row = $psgc_collection->fetch_assoc()) {
+                $psgc[$ctr] = $row['psgc'];
+                $ctr++;
+            }
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        $org_scope_query = "";
+        for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
+            if ($counter == 0) {
+                $org_scope_query = "org_name = '".$data->organizations[$counter]."'";
+            } else {
+                $org_scope_query = $org_scope_query." OR org_name = '".$data->organizations[$counter]."'";
+            }
+        }
+
+        $scopes = [];
+        $ctr = 0;
+        try {
+            $get_org_scope = "SELECT org_scope FROM organization WHERE ".$org_scope_query;
+            $scope_collection = $this->dbconn->query($get_org_scope);
+            while ($row = $scope_collection->fetch_assoc()) {
+                $scopes[$ctr] = $row['org_scope'];
+                $ctr++;
+            }
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        try {
+            $delete_orgs = "DELETE FROM user_organization WHERE users_id = '".$data->id."'";
+            $result = $this->dbconn->query($delete_orgs);
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        for ($counter = 0; $counter < sizeof($psgc); $counter++) {
+            for ($sub_counter = 0; $sub_counter < sizeof($scopes); $sub_counter++) {
+                try {
+                    $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$scopes[$sub_counter]."','".$psgc[$counter]."','')";
+                    $result_org = $this->dbconn->query($insert_org);
+                } catch (Exception $e) {
+                    $flag = false;
+                }
+            }
+        }
+
+        try {
+            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->id."')";
+            $result = $this->dbconn->query($insert_ewi_status);
+        } catch (Exception $e) {
+            $flag = false;
+        }
+
+        if ($flag == false) {
+            $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
+        } else {
+            $return_data['return_msg'] = "Successfully added new contact.";
+        }
+        $return_data['status'] = $flag;
+
+        $return_data['type'] = "newAddedCommContact";
+        return $return_data;
+    }
+
+    public function getSmsForGroups($organizations,$sitenames) {
+        $mobile_data = [];
+        $mobile_numbers = [];
+        $recipient_ids = [];
+        $mobile_ids = [];
+        $ctr = 0;
+        $site_query = "";
+        $org_query = "";
+        try {
+            for ($sub_counter = 0; $sub_counter < sizeof($sitenames); $sub_counter++) {
+                if ($sub_counter == 0) {
+                    $site_query = "sites.site_code ='".$sitenames[$sub_counter]."'";
+                } else {
+                    $site_query = $site_query." OR sites.site_code ='".$sitenames[$sub_counter]."'";
+                }
+            }
+
+            for ($sub_counter = 0; $sub_counter < sizeof($organizations); $sub_counter++) {
+                if ($sub_counter == 0) {
+                    $org_query = "organization.org_name = '".$organizations[$sub_counter]."'";
+                } else {
+                    $org_query = $org_query." OR organization.org_name = '".$organizations[$sub_counter]."'";
+                }
+            }
+
+            $get_mobile_ids_query = "SELECT * FROM user_mobile INNER JOIN users ON users.user_id = user_mobile.user_id LEFT JOIN user_organization ON user_organization.users_id = users.user_id LEFT JOIN sites ON sites.psgc = user_organization.psgc LEFT JOIN organization ON organization.org_scope = user_organization.org_scope WHERE (".$site_query.") AND (".$org_query.")";
+            var_dump($get_mobile_ids_query);
+            $mobile_ids_raw = $this->dbconn->query($get_mobile_ids_query);
+            if ($mobile_ids_raw->num_rows != 0) {
+                while ($row = $mobile_ids_raw->fetch_assoc()) {
+                    if (!in_array($row['user_id'],$recipient_ids)) {
+                        array_push($recipient_ids,$row['user_id']);    
+                        $mobile_numbers[$ctr]['mobile_id'] = $row['mobile_id'];
+                        $mobile_numbers[$ctr]['user_id'] = $row['user_id'];
+                        $mobile_numbers[$ctr]['sim_num'] = $row['sim_num'];
+                        $mobile_numbers[$ctr]['number_priority'] = $row['priority'];
+                        $mobile_numbers[$ctr]['mobile_active_status'] = $row['mobile_status'];
+                        $mobile_data[$ctr]['user_id'] = $row['user_id'];
+                        $mobile_data[$ctr]['salutation'] = $row['salutation'];
+                        $mobile_data[$ctr]['firstname'] = $row['firstname'];
+                        $mobile_data[$ctr]['middlename'] = $row['middlename'];
+                        $mobile_data[$ctr]['lastname'] = $row['lastname'];
+                        $mobile_data[$ctr]['site_code'] = $row['site_code'];
+                        $mobile_data[$ctr]['site_id'] = $row['site_id'];
+                        $mobile_data[$ctr]['site_code'] = $row['site_code'];
+                        $mobile_data[$ctr]['purok'] = $row['purok'];
+                        $mobile_data[$ctr]['sitio'] = $row['sitio'];
+                        $mobile_data[$ctr]['barangay'] = $row['barangay'];
+                        $mobile_data[$ctr]['municipality'] = $row['municipality'];
+                        $mobile_data[$ctr]['province'] = $row['province'];
+                        $mobile_data[$ctr]['region'] = $row['region'];
+                        $mobile_data[$ctr]['psgc'] = $row['psgc'];
+                        $ctr++;
+                    } else {
+                        $mobile_numbers[$ctr]['user_id'] = $row['user_id'];
+                        $mobile_numbers[$ctr]['mobile_id'] = $row['mobile_id'];
+                        $mobile_numbers[$ctr]['sim_num'] = $row['sim_num'];
+                        $mobile_numbers[$ctr]['number_priority'] = $row['priority'];
+                        $mobile_numbers[$ctr]['mobile_active_status'] = $row['mobile_status'];
+                        $ctr++;
+                    }
+                }
+            } else {
+                $return_data['status'] = 'success';
+                $return_data['data'] = [];
+                $return_data['result_msg'] = 'No message fetched.';
+                $return_data['type'] = 'fetchGroupSms';
+                return $return_data;
+            }
+
+            for ($counter = 0; $counter < sizeof($mobile_data); $counter++) {
+                $mobile_data[$counter]['mobile_numbers'] = [];
+                for ($sub_counter = 0; $sub_counter < sizeof($mobile_numbers); $sub_counter++) {
+                    var_dump($mobile_data[$counter]);
+                    var_dump($mobile_numbers[$sub_counter]);
+                    if ($mobile_data[$counter]['user_id'] == $mobile_numbers[$sub_counter]['user_id']) {
+                        array_push($mobile_data[$counter]['mobile_numbers'],$mobile_numbers[$sub_counter]);
+                    }
+                }
+            }
+
+            for ($counter = 0; $counter < sizeof($mobile_data); $counter++) {
+                for ($sub_counter = 0; $sub_counter < sizeof($mobile_data[$counter]['mobile_numbers']); $sub_counter++) {
+                    array_push($mobile_ids,$mobile_data[$counter]['mobile_numbers'][$sub_counter]['mobile_id']);
+
+                }
+            }
+            
+            $mobile_id_sub_query = "";
+            for ($counter = 0; $counter < sizeof($mobile_ids); $counter++) {
+                if ($counter == 0 ) {
+                    $mobile_id_sub_query = "mobile_id = '".$mobile_ids[$counter]."'";
+                } else {
+                    $mobile_id_sub_query = $mobile_id_sub_query." OR mobile_id = '".$mobile_ids[$counter]."'";
+                }
+            }
+
+            $inbox_outbox_collection = [];
+            try {
+                $inbox_query = "SELECT * FROM newdb.smsinbox_users WHERE ".$mobile_id_sub_query." LIMIT 70";
+                $test_fetch_inboxes = $this->dbconn->query($inbox_query);
+                if ($test_fetch_inboxes->num_rows != 0) {
+                    while ($row = $test_fetch_inboxes->fetch_assoc()) {
+                        array_push($inbox_outbox_collection,$row);
+                    }
+                }
+
+                $outbox_query = "SELECT * FROM newdb.smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$mobile_id_sub_query." LIMIT 70";
+                $test_fetch_outboxes = $this->dbconn->query($outbox_query);
+                if ($test_fetch_outboxes->num_rows != 0) {
+                    while ($row = $test_fetch_outboxes->fetch_assoc()) {
+                        array_push($inbox_outbox_collection,$row);
+                    }
+                }
+
+                $data = [];
+                $ctr = 0;
+                $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
+                for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
+                    if (isset($inbox_outbox_collection[$sms_counter]['outbox_id'])) {
+                        for ($contact_counter = 0; $contact_counter < sizeof($mobile_data); $contact_counter++) {
+                            for ($number_counter = 0; $number_counter < sizeof($mobile_data[$contact_counter]['mobile_numbers']); $number_counter++) {
+                                if ($mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['mobile_id'] == $inbox_outbox_collection[$sms_counter]['mobile_id']) {
+                                    $data[$ctr]['sms_id'] = $inbox_outbox_collection[$sms_counter]['outbox_id'];
+                                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
+                                    $data[$ctr]['timestamp'] = $inbox_outbox_collection[$sms_counter]['ts_written'];
+                                    $data[$ctr]['timestamp_sent'] = $inbox_outbox_collection[$sms_counter]['ts_sent'];
+                                    $data[$ctr]['name'] = 'You';
+                                    $data[$ctr]['recipient_user_id'] = $mobile_data[$contact_counter]['user_id'];
+                                    $data[$ctr]['recipient_name'] = $mobile_data[$contact_counter]['salutation']." ".$mobile_data[$contact_counter]['firstname']." ".$mobile_data[$contact_counter]['lastname'];
+                                    $data[$ctr]['recipient_mobile_id'] = $mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['mobile_id'];
+                                    $data[$ctr]['recipient_sim_num'] = $mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['sim_num'];
+                                    $data[$ctr]['recipient_site_code'] = $mobile_data[$contact_counter]['site_code'];
+                                    $ctr++;
+                                }
+                            }
+                        }
+                    } else {  
+                        for ($contact_counter = 0; $contact_counter < sizeof($mobile_data); $contact_counter++) {
+                            for ($number_counter = 0; $number_counter < sizeof($mobile_data[$contact_counter]['mobile_numbers']); $number_counter++) {
+                                if ($mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['mobile_id'] == $inbox_outbox_collection[$sms_counter]['mobile_id']) {
+                                    $data[$ctr]['sms_id'] = $inbox_outbox_collection[$sms_counter]['inbox_id'];
+                                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
+                                    $data[$ctr]['timestamp'] = $inbox_outbox_collection[$sms_counter]['ts_received'];
+                                    $data[$ctr]['user_id'] = $mobile_data[$contact_counter]['user_id'];
+                                    $data[$ctr]['name'] = $mobile_data[$contact_counter]['salutation']." ".$mobile_data[$contact_counter]['firstname']." ".$mobile_data[$contact_counter]['lastname'];
+                                    $data[$ctr]['mobile_id'] = $mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['mobile_id'];
+                                    $data[$ctr]['sim_num'] = $mobile_data[$contact_counter]['mobile_numbers'][$number_counter]['sim_num'];
+                                    $data[$ctr]['site_code'] = $mobile_data[$contact_counter]['site_code'];
+                                    $ctr++;
+                                }
+                            }
+                        }
+                    }
+                }
+                $return_data['status'] = 'success';
+                $return_data['data'] = $data;
+                $return_data['result_msg'] = 'Messages fetched.';
+                
+            } catch (Exception $e) {
+                $return_data['result_msg'] = 'Message fetch failed, please contact SWAT for more details';
+                $return_data['status'] = 'failed';
+            }
+        } catch (Exception $e) {
+            $return_data['status'] = 'failed';
+            $return_data['result_msg'] = 'Message fetch failed, please contact SWAT for more details';
+        }
+        $return_data['type'] = 'fetchGroupSms';
+        return $return_data;
+    }
+
+    public function getSmsPerContact($fullname,$timestamp,$limit=20) {
+        $contact_details_raw = explode(" ",$fullname);
+        $contact_details = [];
+        $where_query = "";
+        for ($counter = 0; $counter < sizeof($contact_details_raw); $counter++) {
+            if ($contact_details_raw[$counter] != "" && $contact_details_raw[$counter] != "-") {
+                array_push($contact_details,$contact_details_raw[$counter]);
+            }
+        }
+
+        for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
+            $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+        }
+        
+        $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.users_id = users.user_id RIGHT JOIN organization ON user_organization.org_scope = organization.org_scope RIGHT JOIN sites ON user_organization.psgc = sites.psgc WHERE organization.org_name LIKE '%".$contact_details[0]."%' AND sites.site_code LIKE '%".$contact_details[1]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
+        $numbers = $this->dbconn->query($get_numbers_query);
+        var_dump($numbers->fetch_assoc());
+        exit;
+        $inbox_outbox_collection = [];
+        $data = [];
+        $mobile_ids = [];
+        $return_data = [];
+        $ctr = 0;
+        try {
+            $smsinbox_query = "SELECT * FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id RIGHT JOIN users ON user_mobile.user_id = users.user_id WHERE user_mobile.sim_num LIKE '%$number%' LIMIT $limit;";
+            var_dump($smsinbox_query);
+            $fetch_inbox = $this->dbconn->query($smsinbox_query);
+            if ($fetch_inbox->num_rows != 0) {
+                while($row = $fetch_inbox->fetch_assoc()) {
+                    array_push($inbox_outbox_collection,$row);
+                }
+            } else {
+                // Do nothing for now.
+            }
+
+            $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE user_mobile.sim_num LIKE '%$number%' LIMIT $limit";
+            var_dump($smsoutbox_query);
+            $fetch_outbox = $this->dbconn->query($smsoutbox_query);
+            if ($fetch_outbox->num_rows != 0) {
+                while($row = $fetch_outbox->fetch_assoc()) {
+                    array_push($inbox_outbox_collection,$row);
+                }
+            } else {
+                // Do nothing for now.
+            }
+
+            $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
+            var_dump($inbox_outbox_collection);
+            for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
+                if (isset($inbox_outbox_collection[$sms_counter]['outbox_id'])) {
+                    $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['outbox_id'];
+                    $data[$ctr]['ts_written'] = $inbox_outbox_collection[$sms_counter]['ts_written'];
+                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
+                    $data[$ctr]['stat_id'] = $inbox_outbox_collection[$sms_counter]['stat_id'];
+                    $data[$ctr]['mobile_id'] = $inbox_outbox_collection[$sms_counter]['mobile_id'];
+                    $data[$ctr]['ts_sent'] = $inbox_outbox_collection[$sms_counter]['ts_sent'];
+                    $data[$ctr]['sent_status'] = $inbox_outbox_collection[$sms_counter]['send_status'];
+                    $data[$ctr]['web_status'] = $inbox_outbox_collection[$sms_counter]['web_status'];
+                    $data[$ctr]['gsm_id'] = $inbox_outbox_collection[$sms_counter]['gsm_id'];
+                    $data[$ctr]['user_id'] = $inbox_outbox_collection[$sms_counter]['user_id'];
+                    $data[$ctr]['sim_num'] = $inbox_outbox_collection[$sms_counter]['sim_num'];
+                    $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
+                    $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
+                    $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
+                } else {
+                    $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['inbox_id'];
+                    $data[$ctr]['ts_received'] = $inbox_outbox_collection[$sms_counter]['ts_received'];
+                    $data[$ctr]['mobile_id'] = $inbox_outbox_collection[$sms_counter]['mobile_id'];
+                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
+                    $data[$ctr]['read_status'] = $inbox_outbox_collection[$sms_counter]['read_status'];
+                    $data[$ctr]['web_status'] = $inbox_outbox_collection[$sms_counter]['web_status'];
+                    $data[$ctr]['gsm_id'] = $inbox_outbox_collection[$sms_counter]['gsm_id'];
+                    $data[$ctr]['user_id'] = $inbox_outbox_collection[$sms_counter]['user_id'];
+                    $data[$ctr]['sim_num'] = $inbox_outbox_collection[$sms_counter]['sim_num'];
+                    $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
+                    $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
+                    $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
+                }
+            }
+            $return_data['status'] = 'success';
+            $return_data['data'] = $data;
+            $return_data['result_msg'] = 'Messages fetched.';
+        } catch (Exception $e) {
+            $return_data['result_msg'] = 'Message fetch failed, please contact SWAT for more details';
+            $return_data['status'] = 'failed';
+        }
+
+        $return_data['type'] = 'fetchSms';
+        return $return_data;
+    }
+
+    // UTILITIES
+    function sort_msgs($arr) {
+        $size = count($arr);
+        for ($i=0; $i<$size; $i++) {
+            for ($j=0; $j<$size-1-$i; $j++) {
+                if (isset($arr[$j]['outbox_id'])) {
+                    if (isset($arr[$j+1]['ts_written'])) {
+                        if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_written'])) {
+                            $this->swap($arr, $j, $j+1);
+                        }
+                    } else {
+                        if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_written'])) {
+                            $this->swap($arr, $j, $j+1);
+                        }
+                    }
+                } else {
+                    if (isset($arr[$j+1]['ts_received'])) {
+                        if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_received'])) {
+                            $this->swap($arr, $j, $j+1);
+                        }
+                    } else {
+                        if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_received'])) {
+                            $this->swap($arr, $j, $j+1);
+                        }
+                    }
+                }
+
+            }
+        }
+        return $arr;
+    }
+     
+    function swap(&$arr, $a, $b) {
+        $tmp = $arr[$a];
+        $arr[$a] = $arr[$b];
+        $arr[$b] = $tmp;
     }
 }
