@@ -3135,6 +3135,13 @@ class ChatMessageModel {
     public function getSmsPerContact($fullname,$timestamp,$limit=20) {
         $contact_details_raw = explode(" ",$fullname);
         $contact_details = [];
+        $inbox_outbox_collection = [];
+        $number_query = "";
+        $data = [];
+        $mobile_ids = [];
+        $return_data = [];
+        $ctr = 0;
+
         $where_query = "";
         for ($counter = 0; $counter < sizeof($contact_details_raw); $counter++) {
             if ($contact_details_raw[$counter] != "" && $contact_details_raw[$counter] != "-") {
@@ -3142,44 +3149,58 @@ class ChatMessageModel {
             }
         }
 
-        for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
-            $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+        $org_team_checker_query = "SELECT * FROM dewsl_teams WHERE team_name LIKE '%".$contact_details[0]."%'";
+        $is_org = $this->dbconn->query($org_team_checker_query);
+        if ($is_org->num_rows != 0) {
+            for ($counter = 2; $counter < sizeof($contact_details); $counter++) {
+                $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+            }
+            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id RIGHT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id WHERE dewsl_teams.team_name LIKE '%".$contact_details[0]."%' AND users.salutation = '".$contact_details[1]."' ".$where_query.";";
+        } else {
+            for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
+                $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+            }
+            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.users_id = users.user_id RIGHT JOIN organization ON user_organization.org_scope = organization.org_scope RIGHT JOIN sites ON user_organization.psgc = sites.psgc WHERE organization.org_name LIKE '%".$contact_details[0]."%' AND sites.site_code LIKE '%".$contact_details[1]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
         }
-        
-        $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.users_id = users.user_id RIGHT JOIN organization ON user_organization.org_scope = organization.org_scope RIGHT JOIN sites ON user_organization.psgc = sites.psgc WHERE organization.org_name LIKE '%".$contact_details[0]."%' AND sites.site_code LIKE '%".$contact_details[1]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
+
         $numbers = $this->dbconn->query($get_numbers_query);
-        var_dump($numbers->fetch_assoc());
-        exit;
-        $inbox_outbox_collection = [];
-        $data = [];
-        $mobile_ids = [];
-        $return_data = [];
-        $ctr = 0;
+        if ($numbers->num_rows != 0) {
+            while ($row = $numbers->fetch_assoc()) {
+                if ($ctr == 0) {
+                    $number_query = "user_mobile.sim_num LIKE '%".$row['sim_num']."%' ";
+                    $ctr++;
+                } else {
+                    $number_query = $number_query."OR user_mobile.sim_num LIKE '%".$row['sim_num']."%' ";
+                    $ctr++;
+                }
+            }
+        } else {
+            echo "No number fetched!";
+        }
+
         try {
-            $smsinbox_query = "SELECT * FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id RIGHT JOIN users ON user_mobile.user_id = users.user_id WHERE user_mobile.sim_num LIKE '%$number%' LIMIT $limit;";
-            var_dump($smsinbox_query);
+            $smsinbox_query = "SELECT * FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id RIGHT JOIN users ON user_mobile.user_id = users.user_id WHERE ".$number_query." LIMIT $limit;";
             $fetch_inbox = $this->dbconn->query($smsinbox_query);
             if ($fetch_inbox->num_rows != 0) {
                 while($row = $fetch_inbox->fetch_assoc()) {
                     array_push($inbox_outbox_collection,$row);
                 }
             } else {
-                // Do nothing for now.
+                echo "No message fetched!";
             }
 
-            $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE user_mobile.sim_num LIKE '%$number%' LIMIT $limit";
-            var_dump($smsoutbox_query);
+            $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE ".$number_query." LIMIT $limit";
             $fetch_outbox = $this->dbconn->query($smsoutbox_query);
             if ($fetch_outbox->num_rows != 0) {
                 while($row = $fetch_outbox->fetch_assoc()) {
                     array_push($inbox_outbox_collection,$row);
                 }
             } else {
-                // Do nothing for now.
+                echo "No message fetched!";
             }
 
             $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
-            var_dump($inbox_outbox_collection);
+            $ctr = 0;
             for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
                 if (isset($inbox_outbox_collection[$sms_counter]['outbox_id'])) {
                     $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['outbox_id'];
@@ -3196,6 +3217,7 @@ class ChatMessageModel {
                     $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
                     $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
                     $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
+                    $ctr++;
                 } else {
                     $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['inbox_id'];
                     $data[$ctr]['ts_received'] = $inbox_outbox_collection[$sms_counter]['ts_received'];
@@ -3209,6 +3231,7 @@ class ChatMessageModel {
                     $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
                     $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
                     $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
+                    $ctr++;
                 }
             }
             $return_data['status'] = 'success';
