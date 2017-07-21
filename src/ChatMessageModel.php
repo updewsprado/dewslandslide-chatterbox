@@ -2005,7 +2005,8 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(organization.org_name,' ',sites.site_code,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.users_id RIGHT JOIN organization ON user_organization.fk_org_id = organization.org_id RIGHT JOIN sites ON user_organization.psgc = sites.psgc RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(site.site_code,' ',user_organization.org_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id) as fullcontact UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+
         var_dump($sql);
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -2341,7 +2342,8 @@ class ChatMessageModel {
         $returnOrg = [];
         $ctr = 0;
         $this->checkConnectionDB();
-        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.users_id as org_users_id,user_organization.user_org_id as org_id,user_organization.psgc,user_organization.remarks as org_remarks, organization.org_name FROM users RIGHT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id LEFT JOIN user_organization ON users.user_id = user_organization.users_id LEFT JOIN organization ON user_organization.fk_org_id = organization.org_id WHERE users.user_id = '$id' order by lastname desc;";
+        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.user_id as org_users_id,user_organization.org_id as org_id,sites.psgc_source,user_organization.org_name,sites.site_code FROM users RIGHT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id LEFT JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE users.user_id = '$id' order by lastname desc;";
+        var_dump($query);
         $result = $this->dbconn->query($query);
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
@@ -2367,9 +2369,9 @@ class ChatMessageModel {
                     $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
                     $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
-                    $returnOrg[$ctr]['org_psgc'] = $row['psgc'];
-                    $returnOrg[$ctr]['org_remarks'] = $row['org_remarks'];
-                    $returnOrg[$ctr]['org_name'] = $row['org_name'];
+                    $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
+                    $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
+                    $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
                 } else {
                     $returnMobile[$ctr]['number_id'] = $row['number_id'];
@@ -2384,9 +2386,9 @@ class ChatMessageModel {
                     $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
                     $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
-                    $returnOrg[$ctr]['org_psgc'] = $row['psgc'];
-                    $returnOrg[$ctr]['org_remarks'] = $row['org_remarks'];
-                    $returnOrg[$ctr]['org_name'] = $row['org_name'];
+                    $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
+                    $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
+                    $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
                 }
             }
@@ -2569,6 +2571,7 @@ class ChatMessageModel {
                     $result = $this->dbconn->query($num_exist);
                 } catch (Exception $e) {
                     $flag = false;
+                    echo $e->getMessage();
                 }
             } else {
                 for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
@@ -2578,6 +2581,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($num_exist);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else if ($data->numbers[$num_counter]->mobile_number == "") {
                         try {
@@ -2585,6 +2589,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($num_exist);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else {
                         try {
@@ -2592,6 +2597,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($new_num);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     }
                 }
@@ -2603,6 +2609,7 @@ class ChatMessageModel {
                     $result = $this->dbconn->query($landline_exist);
                 } catch (Exception $e) {
                     $flag = false;
+                    echo $e->getMessage();
                 }
             } else {
                 for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
@@ -2612,6 +2619,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($landline_exist);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else if ($data->landline[$landline_counter]->landline_number == "") {
                         try {
@@ -2619,6 +2627,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($landline_exist);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else {
                         try {
@@ -2626,6 +2635,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($new_landline); 
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     }
                 }
@@ -2641,6 +2651,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($insert_ewi_status);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else {
                         try {
@@ -2648,10 +2659,12 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($update_existing);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     }
                 } catch (Exception $e) {
                     $flag = false;
+                    echo $e->getMessage();
                 }
             } else {
                 try {
@@ -2663,6 +2676,7 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($insert_ewi_status);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     } else {
                         try {
@@ -2670,55 +2684,61 @@ class ChatMessageModel {
                             $result = $this->dbconn->query($update_existing);
                         } catch (Exception $e) {
                             $flag = false;
+                            echo $e->getMessage();
                         }
                     }
                 } catch (Exception $e) {
                     $flag = false;
+                    echo $e->getMessage();
                 }
             }
 
-            $site_query = "";
-            for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
-                if ($counter == 0) {
-                    $site_query = "site_code = '".$data->sites[$counter]."'";
-                } else {
-                    $site_query = $site_query." OR site_code = '".$data->sites[$counter]."'";
-                }
-            }
-
-            $psgc = [];
-            $ctr = 0;
-            try {
-                $get_psgc = "SELECT psgc FROM sites WHERE ".$site_query;
-                $psgc_collection = $this->dbconn->query($get_psgc);
-                while ($row = $psgc_collection->fetch_assoc()) {
-                    $psgc[$ctr] = $row['psgc'];
-                    $ctr++;
-                }
-            } catch (Exception $e) {
-                $flag = false;
-            }
-
-            $org_scope_query = "";
+            $scope_query = "";
             for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
                 if ($counter == 0) {
-                    $org_scope_query = "org_name = '".$data->organizations[$counter]."'";
+                    $scope_query = "org_name = '".$data->organizations[$counter]."'";
                 } else {
-                    $org_scope_query = $org_scope_query." OR org_name = '".$data->organizations[$counter]."'";
+                    $scope_query = $scope_query." OR org_name = '".$data->organizations[$counter]."'";
                 }
             }
 
-            $scopes = [];
-            $ctr = 0;
+            $psgc_query = "";
+            for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
+                if ($counter == 0) {
+                    $psgc_query = "site_code = '".$data->sites[$counter]."'";
+                } else {
+                    $psgc_query = $psgc_query." OR site_code = '".$data->sites[$counter]."'";
+                }   
+            }
+
             try {
-                $get_org_scope = "SELECT org_scope FROM organization WHERE ".$org_scope_query;
-                $scope_collection = $this->dbconn->query($get_org_scope);
-                while ($row = $scope_collection->fetch_assoc()) {
-                    $scopes[$ctr] = $row['org_scope'];
-                    $ctr++;
+                $get_scope = "SELECT org_scope FROM organization WHERE ".$scope_query.";";
+                $scope_result = $this->dbconn->query($get_scope);
+                $ctr = 0;
+                $scope = [];
+                if ($scope_result->num_rows != 0) {
+                    while ($row = $scope_result->fetch_assoc()) {
+                        array_push($scope,$row['org_scope']);
+                    }
                 }
             } catch (Exception $e) {
                 $flag = false;
+                echo $e->getMessage();
+            }
+
+            try {
+                $get_psgc = "SELECT psgc FROM sites WHERE ".$psgc_query.";";
+                $psgc_result = $this->dbconn->query($get_psgc);
+                $ctr = 0;
+                $psgc = [];
+                if ($psgc_result->num_rows != 0) {
+                    while ($row = $psgc_result->fetch_assoc()) {
+                        array_push($psgc,$row['psgc']);
+                    }
+                }
+            } catch (Exception $e) {
+                $flag = false;
+                echo $e->getMessage();
             }
 
             try {
@@ -2726,15 +2746,18 @@ class ChatMessageModel {
                 $result = $this->dbconn->query($delete_orgs);
             } catch (Exception $e) {
                 $flag = false;
+                echo $e->getMessage();
             }
 
-            for ($counter = 0; $counter < sizeof($psgc); $counter++) {
-                for ($sub_counter = 0; $sub_counter < sizeof($scopes); $sub_counter++) {
+            for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
+                for ($sub_counter = 0; $sub_counter < sizeof($data->organizations); $sub_counter++) {
                     try {
-                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$scopes[$sub_counter]."','".$psgc[$counter]."','')";
+                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$data->sites[$counter]."','".$data->organizations[$sub_counter]."','".$scope[$sub_counter]."','".$psgc[$counter]."','0')";
+                        var_dump($insert_org);
                         $result_org = $this->dbconn->query($insert_org);
                     } catch (Exception $e) {
                         $flag = false;
+                        echo $e->getMessage();
                     }
                 }
             }
@@ -2767,7 +2790,7 @@ class ChatMessageModel {
                 $sites[$ctr]["municipality"] = $row["municipality"];
                 $sites[$ctr]["province"] = $row["province"];
                 $sites[$ctr]["region"] = $row["region"];
-                $sites[$ctr]["psgc"] = $row["psgc"];
+                $sites[$ctr]["psgc_source"] = $row["psgc_source"];
                 $ctr++;
             }
         }
