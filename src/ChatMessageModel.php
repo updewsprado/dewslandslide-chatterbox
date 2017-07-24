@@ -2342,7 +2342,7 @@ class ChatMessageModel {
         $returnOrg = [];
         $ctr = 0;
         $this->checkConnectionDB();
-        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.user_id as org_users_id,user_organization.org_id as org_id,sites.psgc_source,user_organization.org_name,sites.site_code FROM users RIGHT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id LEFT JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE users.user_id = '$id' order by lastname desc;";
+        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.user_id as org_users_id,user_organization.org_id as org_id,user_organization.scope,sites.psgc_source,user_organization.org_name,sites.site_code FROM users RIGHT JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_landlines ON users.user_id = user_landlines.user_id LEFT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id LEFT JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE users.user_id = '$id' order by lastname desc;";
         var_dump($query);
         $result = $this->dbconn->query($query);
         if ($result->num_rows > 0) {
@@ -2370,6 +2370,7 @@ class ChatMessageModel {
                     $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
                     $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
+                    $returnOrg[$ctr]['org_scope'] = $row['scope'];
                     $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
                     $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
@@ -2387,6 +2388,7 @@ class ChatMessageModel {
                     $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
                     $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
+                    $returnOrg[$ctr]['org_scope'] = $row['scope'];
                     $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
                     $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
