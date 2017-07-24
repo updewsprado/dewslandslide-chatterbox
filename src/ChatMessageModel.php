@@ -2729,13 +2729,13 @@ class ChatMessageModel {
             }
 
             try {
-                $get_psgc = "SELECT psgc FROM sites WHERE ".$psgc_query.";";
+                $get_psgc = "SELECT site_id FROM sites WHERE ".$psgc_query.";";
                 $psgc_result = $this->dbconn->query($get_psgc);
                 $ctr = 0;
                 $psgc = [];
                 if ($psgc_result->num_rows != 0) {
                     while ($row = $psgc_result->fetch_assoc()) {
-                        array_push($psgc,$row['psgc']);
+                        array_push($psgc,$row['site_id']);
                     }
                 }
             } catch (Exception $e) {
@@ -2744,7 +2744,8 @@ class ChatMessageModel {
             }
 
             try {
-                $delete_orgs = "DELETE FROM user_organization WHERE users_id = '".$data->id."'";
+                $delete_orgs = "DELETE FROM user_organization WHERE user_id = '".$data->id."'";
+                var_dump($delete_orgs);
                 $result = $this->dbconn->query($delete_orgs);
             } catch (Exception $e) {
                 $flag = false;
@@ -2754,8 +2755,7 @@ class ChatMessageModel {
             for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
                 for ($sub_counter = 0; $sub_counter < sizeof($data->organizations); $sub_counter++) {
                     try {
-                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$data->sites[$counter]."','".$data->organizations[$sub_counter]."','".$scope[$sub_counter]."','".$psgc[$counter]."','0')";
-                        var_dump($insert_org);
+                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$psgc[$counter]."','".$data->organizations[$sub_counter]."','".$scope[$sub_counter]."')";
                         $result_org = $this->dbconn->query($insert_org);
                     } catch (Exception $e) {
                         $flag = false;
