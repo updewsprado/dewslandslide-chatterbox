@@ -372,7 +372,7 @@ class ChatMessageModel {
     }
 
     public function getFullnamesAndNumbers() {
-        $sqlGetFullnamesAndNumbers = "SELECT * FROM (SELECT UPPER(CONCAT(organization.org_name,' ',sites.site_code,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN user_organization ON users.user_id = user_organization.users_id LEFT JOIN organization ON user_organization.fk_org_id = organization.org_id LEFT JOIN sites ON user_organization.psgc = sites.psgc LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id LEFT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact";
+        $sqlGetFullnamesAndNumbers = "SELECT * FROM (SELECT UPPER(CONCAT(organization.org_name,' ',sites.site_code,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN user_organization ON users.user_id = user_organization.users_id LEFT JOIN organization ON user_organization.fk_org_id = organization.org_id LEFT JOIN sites ON user_organization.psgc = sites.psgc LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id LEFT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact;";
         var_dump($sqlGetFullnamesAndNumbers);
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlGetFullnamesAndNumbers);
@@ -2352,10 +2352,8 @@ class ChatMessageModel {
         }
 
         // refactor this code
-        $query = "SELECT users.user_id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_organization.org_id,user_organization.org_name,user_organization.scope,organization.org_id as organization_id,user_mobile.mobile_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.remarks,sites.site_id,sites.site_code,sites.psgc_source FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN user_ewi_status ON user_ewi_status.users_id = users.user_id LEFT JOIN organization ON user_organization.org_name = organization.org_name LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN user_landlines ON user_landlines.user_id = users.user_id LEFT JOIN user_emails ON user_emails.user_id = users.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE users.user_id = '$id' order by lastname desc;";
+        $query = "SELECT users.user_id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_organization.org_id,user_organization.org_name,user_organization.scope,organization.org_id as organization_id,user_mobile.mobile_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.remarks,sites.site_id,sites.site_code,sites.psgc_source,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN user_ewi_status ON user_ewi_status.users_id = users.user_id LEFT JOIN organization ON user_organization.org_name = organization.org_name LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN user_landlines ON user_landlines.user_id = users.user_id LEFT JOIN user_emails ON user_emails.user_id = users.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE users.user_id = '$id' order by lastname desc;";
         $result = $this->dbconn->query($query);
-        var_dump($result->fetch_assoc());
-        exit;
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 if (empty($returnContact)) {
@@ -2368,7 +2366,7 @@ class ChatMessageModel {
                     $returnContact['gender'] = $row['sex'];
                     $returnContact['birthday'] = $row['birthday'];
                     $returnContact['contact_active_status'] = $row['active_status'];
-                    $returnMobile[$ctr]['number_id'] = $row['number_id'];
+                    $returnMobile[$ctr]['number_id'] = $row['mobile_id'];
                     $returnMobile[$ctr]['number'] = $row['sim_num'];
                     $returnMobile[$ctr]['priority'] = $row['priority'];
                     $returnMobile[$ctr]['number_status'] = $row['mobile_status'];
