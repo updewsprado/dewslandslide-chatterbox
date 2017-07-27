@@ -2342,14 +2342,24 @@ class ChatMessageModel {
         $returnOrg = [];
         $ctr = 0;
         $this->checkConnectionDB();
+
+        // EWI status checker.
+        $if_ewi_updated = "SELECT * FROM user_ewi_status WHERE users_id = '$id'";
+        $ewi_update = $this->dbconn->query($if_ewi_updated);
+        if ($ewi_update->num_rows == 0) {
+            $update_ewi_status = "INSERT INTO user_ewi_status VALUES(0,'Active','','$id')";
+            $update = $this->dbconn->query($update_ewi_status);
+        }
+
         // refactor this code
-        $query = "SELECT users.user_id as id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_mobile.mobile_id as number_id,user_mobile.user_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.user_id,user_landlines.landline_num,user_landlines.remarks,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks,user_organization.user_id as org_users_id,user_organization.org_id as org_id,user_organization.scope,sites.psgc_source,user_organization.org_name,sites.site_code FROM users INNER JOIN user_mobile ON users.user_id = user_mobile.user_id RIGHT JOIN user_landlines ON users.user_id = user_landlines.user_id RIGHT JOIN user_ewi_status ON users.user_id = user_ewi_status.users_id RIGHT JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE users.user_id = '$id' order by lastname desc;";
-        var_dump($query);
+        $query = "SELECT users.user_id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_organization.org_id,user_organization.org_name,user_organization.scope,organization.org_id as organization_id,user_mobile.mobile_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.remarks,sites.site_id,sites.site_code,sites.psgc_source FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN user_ewi_status ON user_ewi_status.users_id = users.user_id LEFT JOIN organization ON user_organization.org_name = organization.org_name LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN user_landlines ON user_landlines.user_id = users.user_id LEFT JOIN user_emails ON user_emails.user_id = users.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE users.user_id = '$id' order by lastname desc;";
         $result = $this->dbconn->query($query);
+        var_dump($result->fetch_assoc());
+        exit;
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 if (empty($returnContact)) {
-                    $returnContact['id'] = $row['id'];
+                    $returnContact['id'] = $row['user_id'];
                     $returnContact['salutation'] = $row['salutation'];
                     $returnContact['firstname'] = $row['firstname'];
                     $returnContact['lastname'] = $row['lastname'];
@@ -2368,8 +2378,8 @@ class ChatMessageModel {
                     $returnEwiStatus[$ctr]['ewi_mobile_id'] = $row['ewi_mobile_id'];
                     $returnEwiStatus[$ctr]['ewi_status'] = $row['ewi_status'];
                     $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
-                    $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
+                    $returnOrg[$ctr]['organization_id'] = $row['organization_id'];
                     $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
                     $returnOrg[$ctr]['org_scope'] = $row['scope'];
                     $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
@@ -2430,6 +2440,10 @@ class ChatMessageModel {
         $returnData['list_of_orgs'] = $this->getAllOrganization();
         $returnObj['data'] = $returnData;
         $returnObj['type'] = "fetchedSelectedCmmtyContact";
+        var_dump($finEwi);
+        var_dump($finOrg);
+        var_dump($returnContact);
+        var_dump($finMobile);
         return $returnObj;
     }
 
