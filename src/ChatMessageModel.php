@@ -225,39 +225,39 @@ class ChatMessageModel {
         return str_replace("?", "ñ", $converted);
     }
 
-        public function getCachedQuickInboxMessages($isForceLoad=false) {
+    public function getCachedQuickInboxMessages($isForceLoad=false) {
 
-            $start = microtime(true);
+        $start = microtime(true);
 
-            $os = PHP_OS;
-            $qiResults;
+        $os = PHP_OS;
+        $qiResults;
 
-            if (strpos($os,'WIN') !== false) {
+        if (strpos($os,'WIN') !== false) {
+            $qiResults = $this->getQuickInboxMessages();
+        } elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
+
+            $mem = new \Memcached();
+            $mem->addServer("127.0.0.1", 11211);
+            $qiCached = $mem->get("cachedQI");
+            if ( ($this->qiInit == true) || $isForceLoad ) {
+                echo "Initialize the Quick Inbox Messages \n";
+
                 $qiResults = $this->getQuickInboxMessages();
-            } elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-
-                $mem = new \Memcached();
-                $mem->addServer("127.0.0.1", 11211);
-                $qiCached = $mem->get("cachedQI");
-                if ( ($this->qiInit == true) || $isForceLoad ) {
-                    echo "Initialize the Quick Inbox Messages \n";
-
-                    $qiResults = $this->getQuickInboxMessages();
-                    $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-                } 
-                else {
-                    $qiResults = $mem->get("cachedQI");
-                }
-            }
+                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
+            } 
             else {
-                $qiResults = $this->getQuickInboxMessages();
+                $qiResults = $mem->get("cachedQI");
             }
-
-            $execution_time = microtime(true) - $start;
-            echo "\n\nExecution Time: $execution_time\n\n";
-
-            return $qiResults;
         }
+        else {
+            $qiResults = $this->getQuickInboxMessages();
+        }
+
+        $execution_time = microtime(true) - $start;
+        echo "\n\nExecution Time: $execution_time\n\n";
+
+        return $qiResults;
+    }
 
     public function addQuickInboxMessageToCache($receivedMsg) {
         $os = PHP_OS;
@@ -372,8 +372,7 @@ class ChatMessageModel {
     }
 
     public function getFullnamesAndNumbers() {
-        $sqlGetFullnamesAndNumbers = "SELECT * FROM (SELECT UPPER(CONCAT(organization.org_name,' ',sites.site_code,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN user_organization ON users.user_id = user_organization.users_id LEFT JOIN organization ON user_organization.fk_org_id = organization.org_id LEFT JOIN sites ON user_organization.psgc = sites.psgc LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as numbers FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id LEFT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact;";
-        var_dump($sqlGetFullnamesAndNumbers);
+        $sqlGetFullnamesAndNumbers = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_organization ON user_organization.user_id = users.user_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN sites ON user_organization.fk_site_id = sites.site_id) as fullcontact UNION SELECT * FROM (SELECT UPPER(CONCAT(dewsl_teams.team_code,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id LEFT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id) as fullcontact;";
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sqlGetFullnamesAndNumbers);
         $result = $this->dbconn->query($sqlGetFullnamesAndNumbers);
@@ -383,7 +382,7 @@ class ChatMessageModel {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $row['fullname'];
-                $dbreturn[$ctr]['numbers'] = $row['numbers'];
+                $dbreturn[$ctr]['number'] = $row['number'];
                 $ctr++;
             }
             // echo json_encode($dbreturn);
@@ -3032,21 +3031,21 @@ class ChatMessageModel {
         try {
             for ($sub_counter = 0; $sub_counter < sizeof($sitenames); $sub_counter++) {
                 if ($sub_counter == 0) {
-                    $site_query = "sites.site_code ='".$sitenames[$sub_counter]."'";
+                    $site_query = "sites.site_code ='".strtoupper($sitenames[$sub_counter])."'";
                 } else {
-                    $site_query = $site_query." OR sites.site_code ='".$sitenames[$sub_counter]."'";
+                    $site_query = $site_query." OR sites.site_code ='".strtoupper($sitenames[$sub_counter])."'";
                 }
             }
 
             for ($sub_counter = 0; $sub_counter < sizeof($organizations); $sub_counter++) {
                 if ($sub_counter == 0) {
-                    $org_query = "organization.org_name = '".$organizations[$sub_counter]."'";
+                    $org_query = "user_organization.org_name = '".strtoupper($organizations[$sub_counter])."'";
                 } else {
-                    $org_query = $org_query." OR organization.org_name = '".$organizations[$sub_counter]."'";
+                    $org_query = $org_query." OR user_organization.org_name = '".strtoupper($organizations[$sub_counter])."'";
                 }
             }
 
-            $get_mobile_ids_query = "SELECT * FROM user_mobile INNER JOIN users ON users.user_id = user_mobile.user_id LEFT JOIN user_organization ON user_organization.users_id = users.user_id LEFT JOIN sites ON sites.psgc = user_organization.psgc LEFT JOIN organization ON user_organization.fk_org_id = organization.org_id WHERE (".$site_query.") AND (".$org_query.")";
+            $get_mobile_ids_query = "SELECT * FROM users INNER JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE (".$site_query.") AND (".$org_query.")";
             var_dump($get_mobile_ids_query);
             $mobile_ids_raw = $this->dbconn->query($get_mobile_ids_query);
             if ($mobile_ids_raw->num_rows != 0) {
