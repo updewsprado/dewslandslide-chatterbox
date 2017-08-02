@@ -481,6 +481,7 @@ class ChatMessageModel {
 
         // Get the name of the senders
         $contactsList = $this->getFullnamesAndNumbers();
+        $sitesOnEvent = $this->getLatestAlerts();
 
         // Create query to get all sim numbers for the past X days
         $sqlGetAllNumbersFromPeriod = "
@@ -502,7 +503,6 @@ class ChatMessageModel {
             // output data of each row
             while ($row = $resultNumbersFromPeriod->fetch_assoc()) {
                 $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
-
                 array_push($allNumbers, $normalizedNum);
                 $allMessages[$ctr]['user'] = $normalizedNum;
                 $allMessages[$ctr]['msg'] = $row['sms_msg'];
@@ -518,17 +518,23 @@ class ChatMessageModel {
                 // echo "$singleContact \n";
                 $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
                 $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
+                $raw_name = explode(" ",$msgDetails['name']);
+                foreach ($sitesOnEvent['data'] as $siteEvent) {
+                    if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
+                        $msgDetails['onevent'] = 1;
+                    } else {
+                        $msgDetails['onevent'] = 0;
+                    }
+                }
                 array_push($quickInboxMsgs, $msgDetails);
                 // echo json_encode($msgDetails) . "\n";
             }
 
             $fullData['data'] = $quickInboxMsgs;
-        }
-        else {
+        } else {
             echo "0 results\n";
             $fullData['data'] = null;
         }
-
         echo "JSON DATA: " . json_encode($fullData);
         //echo json_encode($contactsList);
 
