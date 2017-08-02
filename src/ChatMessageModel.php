@@ -522,6 +522,7 @@ class ChatMessageModel {
                 foreach ($sitesOnEvent['data'] as $siteEvent) {
                     if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
                         $msgDetails['onevent'] = 1;
+                        break;
                     } else {
                         $msgDetails['onevent'] = 0;
                     }
@@ -543,7 +544,6 @@ class ChatMessageModel {
 
         //Quick Inbox Messages have been reloaded
         $this->qiInit = false;
-
         return $fullData;
     }
 
@@ -2450,11 +2450,13 @@ class ChatMessageModel {
                 else {
                     $dbreturn['fullname'] = $dbreturn['fullname'] . ', ' . $row['fullname'];
                 }
-                
+
                 $raw_name = explode(" ",$dbreturn['fullname']);
                 foreach ($sitesOnEvent['data'] as $siteEvent) {
+                    var_dump(strtoupper($siteEvent['name']));
                     if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
                         $dbreturn['onevent'] = 1;
+                        break;
                     } else {
                         $dbreturn['onevent'] = 0;
                     }
