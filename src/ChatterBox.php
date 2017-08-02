@@ -142,6 +142,7 @@ class ChatterBox implements MessageComponentInterface {
                     $displayMsg['user'] = $sender;
                     $displayMsg['name'] = $name['fullname'];
                     $displayMsg['msg'] = $rcvMsg;
+                    $displayMsg['onevent'] = $name['onevent'];
                     $displayMsgJSON = json_encode($displayMsg);
 
                     //broadcast JSON message from GSM to all connected clients

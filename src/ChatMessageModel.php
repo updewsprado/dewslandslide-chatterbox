@@ -2419,6 +2419,7 @@ class ChatMessageModel {
     public function getNameFromNumber($contactNumber) {
         //normalize the number
         $normalized = $this->normalizeContactNumber($contactNumber);
+        $sitesOnEvent = $this->getLatestAlerts();
 
         //TODO: create query to get name from the contact number if it exists
         $sql = "SELECT * FROM 
@@ -2449,7 +2450,15 @@ class ChatMessageModel {
                 else {
                     $dbreturn['fullname'] = $dbreturn['fullname'] . ', ' . $row['fullname'];
                 }
-
+                
+                $raw_name = explode(" ",$dbreturn['fullname']);
+                foreach ($sitesOnEvent['data'] as $siteEvent) {
+                    if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
+                        $dbreturn['onevent'] = 1;
+                    } else {
+                        $dbreturn['onevent'] = 0;
+                    }
+                }
                 $ctr++;
             }
 
