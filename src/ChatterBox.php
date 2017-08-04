@@ -433,16 +433,29 @@ class ChatterBox implements MessageComponentInterface {
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessage($number,$timestamp,$searchKey);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "searchMessageGroup"){
+            } else if ($msgType == "searchMessageGroup"){
                 echo "Searching groups/tag messages...";
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessageGroup($offices, $sitenames,$searchKey);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "smsLoadSearched"){
+            } else if ($msgType == "searchTimestampsent") {
+                var_dump($decodedText);
+                $fromDate = $decodedText->searchFromDate;
+                $toDate = $decodedText->searchToDate;
+                $exchanges = $this->chatModel->searchTimestampsent($fromDate,$toDate);
+            } else if ($msgType == "searchTimestampwritten") {
+                $fromDate = $decodedText->searchFromDate;
+                $toDate = $decodedText->searchToDate;
+                $exchanges = $this->chatModel->searchTimestampwritten($fromDate,$toDate);
+            } else if ($msgType == "searchUnknownNumber") {
+                $unknownNumber = $decodedText->unknownNumber;
+                $exchanges = $this->chatModel->searchUnknownNumber($unknownNumber);
+            } else if ($msgType == "searchGeneralMessages") {
+                $genMessage = $decodedText->searchGeneralMessages;
+                $exchanges = $this->chatModel->searchGeneralMessages($genMessage);
+            } else if ($msgType == "smsLoadSearched"){
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
                 $type = $decodedText->type;

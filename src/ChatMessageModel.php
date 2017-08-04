@@ -1704,6 +1704,51 @@ class ChatMessageModel {
             return $msgData;
         }
     }
+
+    public function searchTimestampsent($fromDate,$toDate){
+        $getSmsViaRange =  "SELECT sms_id,recepients as sim_num,sms_msg,timestamp_written as timestamp,timestamp_sent from smsoutbox WHERE timestamp_sent BETWEEN '$fromDate' AND '$toDate' ORDER by timestamp_sent DESC";
+        var_dump($getSmsViaRange);
+        $this->checkConnectionDB($getSmsViaRange);
+        $result = $this->dbconn->query($getSmsViaRange);
+        $ctr = 0;
+        $msgData = [];
+        $dbreturn = [];
+        $msgData['type'] = "searchedTimestampsent";
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $dbreturn[$ctr]['user_id'] = $row['sms_id'];
+                $dbreturn[$ctr]['user'] = $row['sim_num'];
+                $dbreturn[$ctr]['msg'] = $row['sms_msg'];
+                $dbreturn[$ctr]['timestamp'] = $row['timestamp'];
+                $dbreturn[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
+                $dbreturn[$ctr]['type'] = "searchedTimestampsent";
+                $ctr++;
+            }
+        } else {
+            echo "0 results\n";
+
+        }
+        var_dump($dbreturn);
+    }
+    
+    public function searchTimestampwritten($fromDate,$toDate){
+        $getSmsViaRange =  "SELECT timestamp_written as timestamp,timestamp_sent from smsoutbox WHERE timestamp_written BETWEEN '$fromDate' AND '$toDate' ORDER by timestamp_sent DESC";
+        $this->checkConnectionDB($getSmsViaRange);
+        $result = $this->dbconn->query($getSmsViaRange);
+        var_dump($result);
+    }
+
+    public function searchUnknownNumber($unknownNumber){
+        // TODO
+    }
+
+    public function searchGeneralMessages($genMessage){
+        $getAllMessages = "SELECT * FROM (SELECT sms_msg,null as timestamp_sent,timestamp,sms_id FROM smsinbox UNION SELECT sms_msg,timestamp_sent,timestamp_written as timestamp,sms_id FROM smsoutbox ) as all_sms WHERE sms_msg = '$gnMessage'";
+        $this->checkConnectionDB($getAllMessages);
+        $result = $this->dbconn->query($getAllMessages);
+        var_dump($result);
+    }
     
     //Normalize a contact number
     public function normalizeContactNumber($contactNumber) {
