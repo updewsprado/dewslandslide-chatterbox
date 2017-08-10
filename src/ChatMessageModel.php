@@ -1491,7 +1491,7 @@ class ChatMessageModel {
         return $msgData;
     }
 
-    public function searchMessageGlobal($type,$searchKey = 100){
+    public function searchMessageGlobal($type,$searchKey,$searchLimit = 100){
         //Construct the query for searching
         $sqlOutbox = "SELECT DISTINCT 'You' as user,sms_msg as msg, timestamp_written as timestamp,timestamp_sent as timestampsent FROM smsoutbox WHERE sms_msg LIKE '%$searchKey%'";
 
