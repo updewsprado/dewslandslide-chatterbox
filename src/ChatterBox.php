@@ -475,6 +475,11 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getSearchedGroupConversation($offices,$sitenames,$type, $timestamp);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsLoadTimestampsentSearched") {
+                $exchanges = $this->chatModel->getSearchedConversationViaTimestampsent($decodedText);
+                // var_dump($exchanges);
+            } else if ($msgType == "smsLoadTimestampwrittenSearched") {
+                var_dump($decodedText);
             } else if ($msgType == "searchMessageGlobal") {
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;

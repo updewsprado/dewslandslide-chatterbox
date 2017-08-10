@@ -1087,6 +1087,10 @@ class ChatMessageModel {
         return $fullData;
     }
 
+    public function getSearchedConversationViaTimestampsent($data) {
+        var_dump($data);
+    }
+
     //Return the message exchanges between Chatterbox and a number
     public function getMessageExchanges($number = null,$type = null,$timestamp = null, $limit = 20,$tags = null) {
         $ctr = 0;
