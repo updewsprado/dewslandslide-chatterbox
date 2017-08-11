@@ -1088,7 +1088,49 @@ class ChatMessageModel {
     }
 
     public function getSearchedConversationViaTimestampsent($data) {
-        var_dump($data);
+
+        if (strlen($data->user_number) == 12){
+            $data->user_number = substr($data->user_number, 2);
+        } else if (strlen($data->user_number) == 11){
+            $data->user_number = substr($data->user_number, 1);
+        } else {
+            $data->user_number = $data->user_number;
+        }
+
+        $query_inbox_latest_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp <= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent <= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
+
+        $this->checkConnectionDB($query_inbox_latest_20);
+        $past_results = $this->dbconn->query($query_inbox_latest_20);
+        var_dump($past_results);
+
+        $query_inbox_past_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp >= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent >= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
+
+        $this->checkConnectionDB($query_inbox_past_20);
+        $latest_results = $this->dbconn->query($query_inbox_past_20);
+        var_dump($latest_results);
+    }
+
+    public function getSearchedConversationViaTimestampwritten($data) {
+
+        if (strlen($data->user_number) == 12){
+            $data->user_number = substr($data->user_number, 2);
+        } else if (strlen($data->user_number) == 11){
+            $data->user_number = substr($data->user_number, 1);
+        } else {
+            $data->user_number = $data->user_number;
+        }
+
+        $query_inbox_latest_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp <= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent <= '".$data->timestamp."') as sms order by timestamp_written desc limit 21";
+        
+        $this->checkConnectionDB($query_inbox_latest_20);
+        $past_results = $this->dbconn->query($query_inbox_latest_20);
+        var_dump($past_results);
+
+        $query_inbox_past_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp >= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent >= '".$data->timestamp."') as sms order by timestamp_written desc limit 21";
+    
+        $this->checkConnectionDB($query_inbox_past_20);
+        $latest_results = $this->dbconn->query($query_inbox_past_20);
+        var_dump($latest_results);
     }
 
     //Return the message exchanges between Chatterbox and a number

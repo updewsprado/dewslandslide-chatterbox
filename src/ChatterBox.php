@@ -479,7 +479,8 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getSearchedConversationViaTimestampsent($decodedText);
                 // var_dump($exchanges);
             } else if ($msgType == "smsLoadTimestampwrittenSearched") {
-                var_dump($decodedText);
+                $exchanges = $this->chatModel->getSearchedConversationViaTimestampwritten($decodedText);
+                
             } else if ($msgType == "searchMessageGlobal") {
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
