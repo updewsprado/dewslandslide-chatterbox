@@ -1089,6 +1089,10 @@ class ChatMessageModel {
 
     public function getSearchedConversationViaTimestampsent($data) {
 
+        $ctr = 0;
+        $pastConversation = "";
+        $latestConversation = "";
+        $conversation = [];
         if (strlen($data->user_number) == 12){
             $data->user_number = substr($data->user_number, 2);
         } else if (strlen($data->user_number) == 11){
@@ -1097,17 +1101,50 @@ class ChatMessageModel {
             $data->user_number = $data->user_number;
         }
 
-        $query_inbox_latest_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp <= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent <= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
+        $query_inbox_latest_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp <= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_sent,smsoutbox.timestamp_written,smsoutbox.sms_msg as msg,'You' as sender,smsoutbox.recepients as recipient FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent <= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
         var_dump($query_inbox_latest_20);
-
         $this->checkConnectionDB($query_inbox_latest_20);
         $past_results = $this->dbconn->query($query_inbox_latest_20);
+        if ($past_results->num_rows > 0) {
+            while ($row = $past_results->fetch_assoc()) {
+                $pastConversation[$ctr]['id'] = $row['id'];
+                $pastConversation[$ctr]['recipient'] = $row['recipient'];
+                $pastConversation[$ctr]['sender'] = $row['sender'];
+                $pastConversation[$ctr]['msg'] = $row['msg'];
+                $pastConversation[$ctr]['timestamp'] = $row['timestamp_written'];
+                $pastConversation[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
+                $pastConversation[$ctr]['type'] = 'smsloadTimestampsentSearched';
+                $ctr++; 
+           }
+        } else {
+            echo "0 results\n";
+            $pastConversation = null;
+        }
 
-        $query_inbox_past_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp >= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_written,smsoutbox.timestamp_sent,smsoutbox.recepients as recipient,'You' as sender,smsoutbox.sms_msg as msg FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent >= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
-        var_dump($query_inbox_past_20);
-        
+        $query_inbox_past_20 = "SELECT * FROM (SELECT smsinbox.sms_id as id,smsinbox.timestamp as timestamp_sent,null as timestamp_written,smsinbox.sms_msg as msg,sim_num as sender,'You' as recipient FROM smsinbox WHERE sim_num LIKE '%".$data->user_number."%' AND timestamp >= '".$data->timestamp."' UNION SELECT smsoutbox.sms_id as id,smsoutbox.timestamp_sent,smsoutbox.timestamp_written,smsoutbox.sms_msg as msg,'You' as sender,smsoutbox.recepients as recipient FROM senslopedb.smsoutbox WHERE recepients LIKE '%".$data->user_number."%' AND timestamp_sent >= '".$data->timestamp."') as sms order by timestamp_sent desc limit 21";
         $this->checkConnectionDB($query_inbox_past_20);
         $latest_results = $this->dbconn->query($query_inbox_past_20);
+        var_dump($query_inbox_past_20);
+        $ctr = 0;
+        if ($latest_results->num_rows > 0) {
+            while ($row = $latest_results->fetch_assoc()) {
+                $latestConversion[$ctr]['id'] = $row['id'];
+                $latestConversion[$ctr]['recipient'] = $row['recipient'];
+                $latestConversion[$ctr]['sender'] = $row['sender'];
+                $latestConversion[$ctr]['msg'] = $row['msg'];
+                $latestConversion[$ctr]['timestamp'] = $row['timestamp_written'];
+                $latestConversion[$ctr]['timestamp_sent'] = $row['timestamp_sent'];
+                $latestConversion[$ctr]['type'] = 'smsloadTimestampsentSearched';
+                $ctr++; 
+           }
+        } else {
+            echo "0 results\n";
+            $latestConversion = null;
+        }
+        
+        $conversation['data'] = array_merge($latestConversion,$pastConversation);
+        $conversation['type'] = "smsloadTimestampsentSearched";
+        return $conversation;
     }
 
     public function getSearchedConversationViaTimestampwritten($data) {

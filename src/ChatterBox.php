@@ -477,7 +477,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "smsLoadTimestampsentSearched") {
                 $exchanges = $this->chatModel->getSearchedConversationViaTimestampsent($decodedText);
-                // var_dump($exchanges);
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "smsLoadTimestampwrittenSearched") {
                 $exchanges = $this->chatModel->getSearchedConversationViaTimestampwritten($decodedText);
                 
