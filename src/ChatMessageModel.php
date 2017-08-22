@@ -1973,11 +1973,10 @@ class ChatMessageModel {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
                 $numbers = explode(",", $row['number']);
-
                 foreach ($numbers as $number) {
                     $dbreturn[$ctr]['office'] = $row['office'];
                     $dbreturn[$ctr]['sitename'] = $row['sitename'];
-                    $dbreturn[$ctr]['number'] = $number;
+                    $dbreturn[$ctr]['number'] = trim($number);
 
                     $ctr = $ctr + 1;
                 }

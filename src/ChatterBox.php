@@ -188,7 +188,6 @@ class ChatterBox implements MessageComponentInterface {
 
                 //Get contact numbers using group tags
                 $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames,$ewiRecipient);
-
                 $numContacts = count($contacts['data']);
                 $allMsgs = [];
 
