@@ -452,13 +452,10 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->searchTimestampwritten($fromDate,$toDate,$searchLimit);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "searchUnknownNumber") {
-                $unknownNumber = $decodedText->unknownNumber;
+                $searchKey = $decodedText->searchKey;
                 $searchLimit = $decodedText->searchLimit;
-                $exchanges = $this->chatModel->searchUnknownNumber($unknownNumber,$searchLimit);
-            } else if ($msgType == "searchGeneralMessages") {
-                $genMessage = $decodedText->searchGeneralMessages;
-                $searchLimit = $decodedText->searchLimit;
-                $exchanges = $this->chatModel->searchGeneralMessages($genMessage,$searchLimit);
+                $exchanges = $this->chatModel->searchUnknownNumber($searchKey,$searchLimit);
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "smsLoadSearched"){
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
@@ -479,7 +476,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "smsLoadTimestampwrittenSearched") {
                 $exchanges = $this->chatModel->getSearchedConversationViaTimestampwritten($decodedText);
-                
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "searchMessageGlobal") {
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
