@@ -65,7 +65,9 @@ class ChatterBox implements MessageComponentInterface {
                                 $recipients = [$numbers[$x]["number"]];
                                 $sentMsg = $decodedText->msg;
                                 $sentTS = $decodedText->timestamp;
-                                $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
+                                if (!isset($decodedText->retry)) {
+                                    $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
+                                }
                                 $displayMsg['type'] = "smssend";
                                 $displayMsg['timestamp'] = $sentTS;
                                 $displayMsg['user'] = "You";
@@ -84,9 +86,8 @@ class ChatterBox implements MessageComponentInterface {
                                 array_push($tempNumber,$numbers[$x]["number"]);  
                             }
                         }
-
                     } else {
-                        //store data in 'smsoutbox' table
+
                         $recipients = $decodedText->numbers;
                         $sentMsg = $decodedText->msg;
                         $sentTS = $decodedText->timestamp;
@@ -94,10 +95,15 @@ class ChatterBox implements MessageComponentInterface {
 
                         echo "sentTS = $sentTS \n";
 
-                        $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS,$ewitag);
-                        if (!empty($result_ewi_entry)){
-                            array_push($temp_tag_id,$result_ewi_entry);
+                        var_dump(isset($decodedText->retry));
+                        if (!isset($decodedText->retry)) {
+                            //store data in 'smsoutbox' table
+                            $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS,$ewitag);
+                            if (!empty($result_ewi_entry)){
+                                array_push($temp_tag_id,$result_ewi_entry);
+                            }
                         }
+
                         $displayMsg['type'] = "smssend";
                         $displayMsg['timestamp'] = $sentTS;
                         $displayMsg['user'] = "You";
@@ -113,9 +119,9 @@ class ChatterBox implements MessageComponentInterface {
                                 $client->send($displayMsgJSON);
                             }
                         }
-                    $ewi_tag_id['data'] = $temp_tag_id;
-                    $ewi_tag_id['type'] = "ewi_tagging";
-                    $from->send(json_encode($ewi_tag_id)); 
+                        $ewi_tag_id['data'] = $temp_tag_id;
+                        $ewi_tag_id['type'] = "ewi_tagging";
+                        $from->send(json_encode($ewi_tag_id)); 
                     }    
                 }
                 //saving "smsrcv"
@@ -313,9 +319,11 @@ class ChatterBox implements MessageComponentInterface {
                 echo "\n\n$writtenTS, $recipients, $sendStatus\n\n";
 
                 //Attempt to Update the smsoutbox entry
-                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
+                if (!isset($decodedText->retry)) {
+                    $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
                                                         $writtenTS, $sendStatus);
-
+                }
+                
                 if ($updateStatus >= 0) {
                     //Send the acknowledgment to all connected web socket clients
                     foreach ($this->clients as $client) {
