@@ -85,9 +85,9 @@
     }
 
     // -------------------------
-    // $sql = "SELECT * FROM smsoutbox WHERE timestamp_written BETWEEN '".date('Y-m-d H:i:s',strtotime('-4 hours'))."' AND '".date('Y-m-d H:i:s',strtotime('-15 minutes'))."' AND send_status = 'fail'";
+    echo "\n\nResending messages from ".date('Y-m-d H:i:s',strtotime('-4 hours'))." TO ".date('Y-m-d H:i:s',strtotime('-15 minutes'));
+    $sql = "SELECT * FROM smsoutbox WHERE timestamp_written BETWEEN '".date('Y-m-d H:i:s',strtotime('-4 hours'))."' AND '".date('Y-m-d H:i:s',strtotime('-15 minutes'))."' AND (send_status LIKE '%pending%' OR send_status LIKE '%fail%') ORDER BY timestamp_written";
 
-    $sql = "SELECT sms_id,timestamp_written,recepients,sms_msg,send_status FROM smsoutbox WHERE timestamp_written BETWEEN '2017-08-24 03:42:37' AND '".date('Y-m-d H:i:s')."' AND (send_status LIKE '%pending%' OR send_status LIKE '%fail%') ORDER BY timestamp_written";
     $result = $conn->query($sql);
 
     $ctr = 0;
@@ -124,8 +124,7 @@
         }
         
     } else {
-        echo "0 results";
-        echo $sql;
+        echo "\n\nNo message flagged for resending..";
         return;
     }
 ?>
