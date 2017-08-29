@@ -86,7 +86,7 @@
 
     // -------------------------
     echo "\n\nResending messages from ".date('Y-m-d H:i:s',strtotime('-4 hours'))." TO ".date('Y-m-d H:i:s',strtotime('-15 minutes'));
-    $sql = "SELECT * FROM smsoutbox WHERE timestamp_written BETWEEN '".date('Y-m-d H:i:s',strtotime('-4 hours'))."' AND '".date('Y-m-d H:i:s',strtotime('-15 minutes'))."' AND (send_status LIKE '%pending%' OR send_status LIKE '%fail%') ORDER BY timestamp_written";
+    $sql = "SELECT * FROM smsoutbox WHERE timestamp_written BETWEEN '".date('Y-m-d H:i:s',strtotime('-4 hours'))."' AND '".date('Y-m-d H:i:s',strtotime('-5 minutes'))."' AND (send_status LIKE '%pending%' OR send_status LIKE '%fail%') ORDER BY timestamp_written";
 
     $result = $conn->query($sql);
 
