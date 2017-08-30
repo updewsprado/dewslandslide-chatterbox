@@ -85,11 +85,11 @@
     }
 
     // -------------------------
-    echo "\n\nResending messages from ".date('Y-m-d H:i:s',strtotime('-4 hours'))." TO ".date('Y-m-d H:i:s',strtotime('-15 minutes'));
+    echo "\n\nResending messages from ".date('Y-m-d H:i:s',strtotime('-4 hours'))." TO ".date('Y-m-d H:i:s',strtotime('-5 minutes'));
     $sql = "SELECT * FROM smsoutbox WHERE timestamp_written BETWEEN '".date('Y-m-d H:i:s',strtotime('-4 hours'))."' AND '".date('Y-m-d H:i:s',strtotime('-5 minutes'))."' AND (send_status LIKE '%pending%' OR send_status LIKE '%fail%') ORDER BY timestamp_written";
 
     $result = $conn->query($sql);
-
+    $toDevs = 0;
     $ctr = 0;
     $msg_collection = [];
     $retry_collection = [];
@@ -114,13 +114,28 @@
                 unset($WebSocketClient);
 
                 $retry_count[1] = $retry_count[1]+1;
-                echo "SMS ID: ".$row['sms_id']." is being resend..\n";
+                echo "\nSMS ID: ".$row['sms_id']." is being resend..";
                 $update_retry_count = "UPDATE smsoutbox SET send_status='".$retry_count[0]."-".$retry_count[1]."' WHERE sms_id='".$row['sms_id']."'";
                 $update_result = $conn->query($update_retry_count);         
             } else {
                 echo "SMS ID: ".$row['sms_id']." has reached maximum number of retries. \n\n";
+                $toDevs++;
             }
+        }
 
+        if ($toDevs != 0) {
+            echo "Sending Emergency SMS to Dev.";
+                $toBeSent = (object) array(
+                    "type"=>"smssend",
+                    "user"=>"You",
+                    "numbers"=>['09554288976'],
+                    "msg"=>'Failed messages: '.$toDevs,
+                    "timestamp"=>date('Y-m-d H:i:s'),
+                    "ewi_tag"=>"false"
+                );
+                $WebSocketClient = new WebsocketClient('localhost', 5050);
+                $WebSocketClient->sendData(json_encode($toBeSent));
+                unset($WebSocketClient);
         }
         
     } else {
