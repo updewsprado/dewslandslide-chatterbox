@@ -475,6 +475,54 @@ class ChatMessageModel {
         return $fullData;
     }
 
+    public function getSiteMembers($offices,$sites) {
+        $ctr = 0;
+        $officeSubQuery = "";
+        $siteSubQuery = "";
+        $contacts = [];
+        $fullData = [];
+
+
+        for ($counter = 0; $counter < sizeof($offices); $counter++) {
+            if ($ctr == 0) {
+                $officeSubQuery = "office = '$offices[$counter]'";
+            } else {
+                $officeSubQuery = $officeSubQuery." OR office = '$offices[$counter]'";
+            }
+            $ctr++;
+        }
+
+        $ctr = 0;
+        for ($counter = 0; $counter < sizeof($sites); $counter++) {
+            if ($ctr == 0) {
+                $siteSubQuery = "sitename = '$sites[$counter]'";
+            } else {
+                $siteSubQuery = $siteSubQuery." OR sitename = '$sites[$counter]'";
+            }
+            $ctr++;
+        }
+
+        $fullData['type'] = "groupMessageQuickAcces";
+        $ctr = 0;
+        $sql = "SELECT CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,sitename FROM communitycontacts WHERE (".$officeSubQuery.") AND (".$siteSubQuery.") order by sitename asc";
+        $this->checkConnectionDB($sql);
+        $contacts_raw = $this->dbconn->query($sql);
+        if ($contacts_raw->num_rows > 0) {
+            while($row = $contacts_raw->fetch_assoc()) {
+                $contacts[$ctr]['site'] = $row['sitename'];
+                $contacts[$ctr]['fullname'] = $row['fullname'];
+                $ctr++;
+            }
+        } else {
+            echo "\n\nNo result.";
+            $fullData['data'] = [];
+            return $fullData;
+        }
+        
+        $fullData['data'] = $contacts;
+        return $fullData;
+    }
+
     //Return the quick inbox messages needed for the initial display on chatterbox
     public function getQuickInboxMessages($periodDays = 3) {
         // $start = microtime(true);
