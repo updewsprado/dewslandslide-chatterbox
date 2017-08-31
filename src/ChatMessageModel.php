@@ -504,13 +504,17 @@ class ChatMessageModel {
 
         $fullData['type'] = "groupMessageQuickAcces";
         $ctr = 0;
-        $sql = "SELECT CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,sitename FROM communitycontacts WHERE (".$officeSubQuery.") AND (".$siteSubQuery.") order by sitename asc";
+        $sql = "SELECT CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,sitename,sitio,province,barangay,municipality FROM communitycontacts INNER JOIN site ON site.name = communitycontacts.sitename WHERE (".$officeSubQuery.") AND (".$siteSubQuery.") order by sitename asc";
         $this->checkConnectionDB($sql);
         $contacts_raw = $this->dbconn->query($sql);
         if ($contacts_raw->num_rows > 0) {
             while($row = $contacts_raw->fetch_assoc()) {
                 $contacts[$ctr]['site'] = $row['sitename'];
                 $contacts[$ctr]['fullname'] = $row['fullname'];
+                $contacts[$ctr]['sitio'] = $row['sitio'];
+                $contacts[$ctr]['municipality'] = $row['municipality'];
+                $contacts[$ctr]['barangay'] = $row['barangay'];
+                $contacts[$ctr]['province'] = $row['province'];
                 $ctr++;
             }
         } else {
