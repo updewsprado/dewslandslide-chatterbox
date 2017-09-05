@@ -234,8 +234,7 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->chatModel->getMessageExchanges($number, $type,$timestamp);
                 $from->send(json_encode($exchanges));
-            }
-            elseif ($msgType == "smsloadrequestgroup") {
+            } elseif ($msgType == "smsloadrequestgroup") {
                 echo "Loading groups/tag messages...";
 
                 //Load the message exchanges between Chatterbox and group selected
