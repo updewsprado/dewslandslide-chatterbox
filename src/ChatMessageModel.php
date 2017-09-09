@@ -524,6 +524,7 @@ class ChatMessageModel {
         }
         
         $fullData['data'] = $contacts;
+        $fullData = $this->utf8_encode_recursive($fullData);
         return $fullData;
     }
 
