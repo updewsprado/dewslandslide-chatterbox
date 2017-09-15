@@ -64,7 +64,7 @@ class ChatterBox implements MessageComponentInterface {
                             if (!in_array($numbers[$x]["number"], $tempNumber)) {
                                 $recipients = [$numbers[$x]["number"]];
                                 $sentMsg = $decodedText->msg;
-                                $sentTS = $decodedText->timestamp;
+                                $sentTS = date("Y-m-d H:i:s", time());
                                 if (!isset($decodedText->retry)) {
                                     $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
                                 }
@@ -86,11 +86,16 @@ class ChatterBox implements MessageComponentInterface {
                                 array_push($tempNumber,$numbers[$x]["number"]);  
                             }
                         }
+                        $ewi_tag_id['data'] = $tempNumber;
+                        $ewi_tag_id['type'] = "ewi_tagging";
+                        $ewi_tag_id['timestamp'] = $sentTS;
+                        $from->send(json_encode($ewi_tag_id)); 
+
                     } else {
 
                         $recipients = $decodedText->numbers;
                         $sentMsg = $decodedText->msg;
-                        $sentTS = $decodedText->timestamp;
+                        $sentTS = date("Y-m-d H:i:s", time());
                         $ewitag = $decodedText->ewi_tag;
 
                         echo "sentTS = $sentTS \n";
@@ -121,6 +126,7 @@ class ChatterBox implements MessageComponentInterface {
                         }
                         $ewi_tag_id['data'] = $temp_tag_id;
                         $ewi_tag_id['type'] = "ewi_tagging";
+                        $ewi_tag_id['timestamp'] = $sentTS;
                         $from->send(json_encode($ewi_tag_id)); 
                     }    
                 }
@@ -180,7 +186,7 @@ class ChatterBox implements MessageComponentInterface {
                 //Get the offices and sitenames info and group message
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
-                $sentTS = $decodedText->timestamp;
+                $sentTS = date("Y-m-d H:i:s", time());
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
                 $ewitag = $decodedText->ewi_tag;
@@ -223,6 +229,7 @@ class ChatterBox implements MessageComponentInterface {
                 }
                 $ewi_tag_id['data'] = $temp_tag_id;
                 $ewi_tag_id['type'] = "ewi_tagging";
+                $ewi_tag_id['timestamp'] = $sentTS;
                 $from->send(json_encode($ewi_tag_id));
             } 
             elseif ($msgType == "smsloadrequest") {
