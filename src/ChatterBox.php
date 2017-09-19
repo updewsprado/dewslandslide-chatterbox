@@ -241,8 +241,7 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->chatModel->getMessageExchanges($number, $type,$timestamp);
                 $from->send(json_encode($exchanges));
-            }
-            elseif ($msgType == "smsloadrequestgroup") {
+            } elseif ($msgType == "smsloadrequestgroup") {
                 echo "Loading groups/tag messages...";
 
                 //Load the message exchanges between Chatterbox and group selected
@@ -269,6 +268,11 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Loading latest public alerts.";
                 $latestAlerts = $this->chatModel->getLatestAlerts();
                 $from->send(json_encode($latestAlerts));
+            }  else if ($msgType == "groumMembersForQuickAccess") {
+                $offices = $decodedText->offices;
+                $sites = $decodedText->sites;
+                $contacts = $this->chatModel->getSiteMembers($offices,$sites);
+                $from->send(json_encode($contacts));
             } elseif ($msgType == "loadofficeandsitesrequest") {
                 echo "Loading office and sitename information...";
 

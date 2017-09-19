@@ -475,6 +475,59 @@ class ChatMessageModel {
         return $fullData;
     }
 
+    public function getSiteMembers($offices,$sites) {
+        $ctr = 0;
+        $officeSubQuery = "";
+        $siteSubQuery = "";
+        $contacts = [];
+        $fullData = [];
+
+
+        for ($counter = 0; $counter < sizeof($offices); $counter++) {
+            if ($ctr == 0) {
+                $officeSubQuery = "office = '$offices[$counter]'";
+            } else {
+                $officeSubQuery = $officeSubQuery." OR office = '$offices[$counter]'";
+            }
+            $ctr++;
+        }
+
+        $ctr = 0;
+        for ($counter = 0; $counter < sizeof($sites); $counter++) {
+            if ($ctr == 0) {
+                $siteSubQuery = "sitename = '$sites[$counter]'";
+            } else {
+                $siteSubQuery = $siteSubQuery." OR sitename = '$sites[$counter]'";
+            }
+            $ctr++;
+        }
+
+        $fullData['type'] = "groupMessageQuickAcces";
+        $ctr = 0;
+        $sql = "SELECT CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname, ' - ',number) as fullname,sitename,sitio,province,barangay,municipality FROM communitycontacts INNER JOIN site ON site.name = communitycontacts.sitename WHERE (".$officeSubQuery.") AND (".$siteSubQuery.") order by sitename asc";
+        $this->checkConnectionDB($sql);
+        $contacts_raw = $this->dbconn->query($sql);
+        if ($contacts_raw->num_rows > 0) {
+            while($row = $contacts_raw->fetch_assoc()) {
+                $contacts[$ctr]['site'] = $row['sitename'];
+                $contacts[$ctr]['fullname'] = $row['fullname'];
+                $contacts[$ctr]['sitio'] = $row['sitio'];
+                $contacts[$ctr]['municipality'] = $row['municipality'];
+                $contacts[$ctr]['barangay'] = $row['barangay'];
+                $contacts[$ctr]['province'] = $row['province'];
+                $ctr++;
+            }
+        } else {
+            echo "\n\nNo result.";
+            $fullData['data'] = [];
+            return $fullData;
+        }
+        
+        $fullData['data'] = $contacts;
+        $fullData = $this->utf8_encode_recursive($fullData);
+        return $fullData;
+    }
+
     //Return the quick inbox messages needed for the initial display on chatterbox
     public function getQuickInboxMessages($periodDays = 3) {
         // $start = microtime(true);
