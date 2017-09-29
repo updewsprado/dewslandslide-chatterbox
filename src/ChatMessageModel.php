@@ -198,7 +198,6 @@ class ChatMessageModel {
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
                 VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
-        var_dump($sql);
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
 
@@ -2437,22 +2436,38 @@ class ChatMessageModel {
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
-
+        $temp_site = [];
+        $temp_name = "";
         $dbreturn = [];
         if ($result->num_rows > 0) {
             $ctr = 0;
             // output data of each row
             while ($row = $result->fetch_assoc()) {
+                
                 if ($ctr == 0) {
                     $dbreturn['fullname'] = $row['fullname'];
-                }
-                else {
-                    $dbreturn['fullname'] = $dbreturn['fullname'] . ', ' . $row['fullname'];
+                    if (sizeof($result->fetch_assoc()) > 1) {
+                        $site_select = explode(" ",$row['fullname']);
+                        array_push($temp_site,$site_select[0]);
+                    }
+                } else {
+                    $sub_counter = 0;
+                    $site_select = explode(" ",$row['fullname']);
+                    array_push($temp_site,$site_select[0]);
+                    if ($temp_name == "") {
+                        for ($counter = 1; $counter < sizeof($site_select); $counter++){
+                            if ($sub_counter == 0) {
+                                $temp_name = $site_select[$counter];
+                                $sub_counter++;
+                            } else {
+                                $temp_name = $temp_name." ".$site_select[$counter];
+                            }
+                        }
+                    }
                 }
 
                 $raw_name = explode(" ",$dbreturn['fullname']);
                 foreach ($sitesOnEvent['data'] as $siteEvent) {
-                    var_dump(strtoupper($siteEvent['name']));
                     if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
                         $dbreturn['onevent'] = 1;
                         break;
@@ -2463,9 +2478,20 @@ class ChatMessageModel {
                 $ctr++;
             }
 
+            if (sizeof($temp_site) != 0) {
+                $sites = "";
+                for ($counter = 0; $counter < sizeof($temp_site); $counter++) {
+                    if ($counter == 0) {
+                        $sites = $temp_site[$counter];
+                    } else {
+                        $sites = $sites.",".$temp_site[$counter];
+                    }
+                }
+                $dbreturn['fullname'] = "[".$sites."] ".$temp_name;
+            }
+            
             echo "data size: " . $this->getArraySize($dbreturn);
-        }
-        else {
+        } else {
             echo "0 results\n";
             $dbreturn['fullname'] = "unknown";
         }
