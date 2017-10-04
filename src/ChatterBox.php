@@ -451,23 +451,37 @@ class ChatterBox implements MessageComponentInterface {
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessage($number,$timestamp,$searchKey);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "searchMessageGroup"){
+            } else if ($msgType == "searchMessageGroup"){
                 echo "Searching groups/tag messages...";
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
                 $searchKey = $decodedText->searchKey;
                 $exchanges = $this->chatModel->searchMessageGroup($offices, $sitenames,$searchKey);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "smsLoadSearched"){
+            } else if ($msgType == "searchTimestampsent") { // search new code starts here
+                $fromDate = $decodedText->searchFromDate;
+                $toDate = $decodedText->searchToDate;
+                $searchLimit = $decodedText->searchLimit;
+                $exchanges = $this->chatModel->searchTimestampsent($fromDate,$toDate,$searchLimit);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchTimestampwritten") {
+                $fromDate = $decodedText->searchFromDate;
+                $toDate = $decodedText->searchToDate;
+                $searchLimit = $decodedText->searchLimit;
+                $exchanges = $this->chatModel->searchTimestampwritten($fromDate,$toDate,$searchLimit);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchUnknownNumber") {
+                $searchKey = $decodedText->searchKey;
+                $searchLimit = $decodedText->searchLimit;
+                $exchanges = $this->chatModel->searchUnknownNumber($searchKey,$searchLimit);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsLoadSearched"){
                 $number = $decodedText->number;
                 $timestamp = $decodedText->timestamp;
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getSearchedConversation($number,$type, $timestamp);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "smsLoadGroupSearched"){
+            } else if ($msgType == "smsLoadGroupSearched"){
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
                 $timestampYou = $decodedText->timestampYou;
@@ -476,40 +490,42 @@ class ChatterBox implements MessageComponentInterface {
                 $type = $decodedText->type;
                 $exchanges = $this->chatModel->getSearchedGroupConversation($offices,$sitenames,$type, $timestamp);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "searchMessageGlobal") {
+            } else if ($msgType == "smsLoadTimestampsentSearched") {
+                $exchanges = $this->chatModel->getSearchedConversationViaTimestampsent($decodedText);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "smsLoadTimestampwrittenSearched") {
+                $exchanges = $this->chatModel->getSearchedConversationViaTimestampwritten($decodedText);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchMessageGlobal") {
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey);
+                $searchLimit = $decodedText->searchLimit;
+                $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey,$searchLimit);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "searchGintagMessages"){
+            } else if ($msgType == "searchGintagMessages"){
                 $type = $decodedText->type;
                 $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchGintagMessage($type,$searchKey);
+                $searchLimit = $decodedText->searchLimit;
+                $exchanges = $this->chatModel->searchGintagMessage($type,$searchKey,$searchLimit);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "smsloadGlobalSearched"){
+            } else if ($msgType == "smsloadGlobalSearched"){
                 $user = $decodedText->user;
                 $user_number =$decodedText->user_number;
                 $timestamp = $decodedText->timestamp;
                 $msg = $decodedText->sms_msg;
                 $exchanges = $this->chatModel->getSearchedGlobalConversation($user,$user_number,$timestamp,$msg);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "updateEwiRecipients"){
+            } else if ($msgType == "updateEwiRecipients"){
                 $type = $decodedText->type;
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->updateEwiRecipients($type,$data);
                 $from->send(json_encode($exchanges));
-            } 
-            else if ($msgType == "smsloadrequesttag"){
+            } else if ($msgType == "smsloadrequesttag"){
                 $type = $decodedText->type;
                 $data = $decodedText->teams;
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
-            } 
-            else {
+            } else {
                 echo "Message will be ignored\n";
             }
         }
