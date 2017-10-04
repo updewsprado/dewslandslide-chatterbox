@@ -149,6 +149,7 @@ class ChatterBox implements MessageComponentInterface {
                     //Get tags (office, sitename, tags) from number
                     $name = $this->chatModel->getNameFromNumber($sender);
 
+                    var_dump($name);
                     $displayMsg['type'] = "smsrcv";
                     $displayMsg['timestamp'] = $rcvTS;
                     $displayMsg['user'] = $sender;
