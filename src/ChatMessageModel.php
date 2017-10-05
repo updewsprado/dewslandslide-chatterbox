@@ -2186,7 +2186,7 @@ class ChatMessageModel {
             echo "No results..";
         }
         $returnData['type'] = 'fetchedCmmtyContacts';
-        $returnData['data'] = $returnCmmtyContacts;
+        $returnData['data'] = $this->utf8_encode_recursive($returnCmmtyContacts);
         return $returnData;
     }
 
@@ -2437,10 +2437,6 @@ class ChatMessageModel {
         $returnData['list_of_orgs'] = $this->getAllOrganization();
         $returnObj['data'] = $returnData;
         $returnObj['type'] = "fetchedSelectedCmmtyContact";
-        var_dump($finEwi);
-        var_dump($finOrg);
-        var_dump($returnContact);
-        var_dump($finMobile);
         return $returnObj;
     }
 
