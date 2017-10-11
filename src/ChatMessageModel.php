@@ -2004,9 +2004,8 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
 
-        var_dump($sql);
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
@@ -3215,7 +3214,7 @@ class ChatMessageModel {
             for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
                 $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
             }
-            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.users_id = users.user_id RIGHT JOIN organization ON user_organization.fk_org_id = organization.org_id RIGHT JOIN sites ON user_organization.psgc = sites.psgc WHERE organization.org_name LIKE '%".$contact_details[0]."%' AND sites.site_code LIKE '%".$contact_details[1]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
+            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.user_id = users.user_id RIGHT JOIN organization ON user_organization.org_name = organization.org_name RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE organization.org_name LIKE '%".$contact_details[1]."%' AND sites.site_code LIKE '%".$contact_details[0]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
         }
 
         $numbers = $this->dbconn->query($get_numbers_query);
@@ -3246,6 +3245,8 @@ class ChatMessageModel {
 
             $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE ".$number_query." LIMIT $limit";
             $fetch_outbox = $this->dbconn->query($smsoutbox_query);
+            var_dump($smsoutbox_query);
+            
             if ($fetch_outbox->num_rows != 0) {
                 while($row = $fetch_outbox->fetch_assoc()) {
                     array_push($inbox_outbox_collection,$row);
