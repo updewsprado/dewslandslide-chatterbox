@@ -144,31 +144,37 @@ class ChatterBox implements MessageComponentInterface {
                         return;
                     }
 
-                    $this->chatModel->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
+                    echo "Blocked list checking..\n";
 
-                    //Get tags (office, sitename, tags) from number
-                    $name = $this->chatModel->getNameFromNumber($sender);
+                    $isBlocked = $this->isBlockedListed($sender);
+                    var_dump($isBlocked);
+                    if ($isBlocked == false) {
+                        $this->chatModel->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
 
-                    var_dump($name);
-                    $displayMsg['type'] = "smsrcv";
-                    $displayMsg['timestamp'] = $rcvTS;
-                    $displayMsg['user'] = $sender;
-                    $displayMsg['name'] = $name['fullname'];
-                    $displayMsg['msg'] = $rcvMsg;
-                    $displayMsg['onevent'] = $name['onevent'];
-                    $displayMsgJSON = json_encode($displayMsg);
+                        //Get tags (office, sitename, tags) from number
+                        $name = $this->chatModel->getNameFromNumber($sender);
+                        $displayMsg['type'] = "smsrcv";
+                        $displayMsg['timestamp'] = $rcvTS;
+                        $displayMsg['user'] = $sender;
+                        $displayMsg['name'] = $name['fullname'];
+                        $displayMsg['msg'] = $rcvMsg;
+                        $displayMsg['onevent'] = $name['onevent'];
+                        $displayMsgJSON = json_encode($displayMsg);
 
-                    //broadcast JSON message from GSM to all connected clients
-                    foreach ($this->clients as $client) {
-                        if ($from !== $client) {
-                            // The sender is not the receiver, send to each client connected
-                            $client->send($displayMsgJSON);
+                        //broadcast JSON message from GSM to all connected clients
+                        foreach ($this->clients as $client) {
+                            if ($from !== $client) {
+                                // The sender is not the receiver, send to each client connected
+                                $client->send($displayMsgJSON);
+                            }
                         }
-                    }
 
-                    //TODO: Call function to push new incoming message to the 
-                    //  quick inbox cache
-                    $this->chatModel->addQuickInboxMessageToCache($displayMsg);
+                        //TODO: Call function to push new incoming message to the 
+                        //  quick inbox cache
+                        $this->chatModel->addQuickInboxMessageToCache($displayMsg);
+                    } else {
+                        echo "Blocked number, ignoring message..\n";
+                    }
                 }
             } 
             elseif ($msgType == "smssendgroup") {
@@ -543,5 +549,19 @@ class ChatterBox implements MessageComponentInterface {
         echo "An error has occurred: {$e->getMessage()}\n";
 
         $conn->close();
+    }
+
+    public function isBlockedListed($sender) {
+        $blocked_list = ['9189008008','9189008007','9168888888','9258828008','9255217304','9189031278'];
+        $trim_number = substr($sender,'-10');
+        foreach ($blocked_list as $blocked) {
+            if ($blocked == $trim_number) {
+                $is_blocked = true;
+                return $is_blocked;
+            } else {
+                $is_blocked = false;
+            }
+        }
+        return $is_blocked;
     }
 }
