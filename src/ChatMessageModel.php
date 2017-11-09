@@ -455,7 +455,7 @@ class ChatMessageModel {
             // output data of each row
             while ($row = $alerts->fetch_assoc()) {
                 $raw_data["id"] = $row["id"];
-                $raw_data["name"] = $row["name"];
+                $raw_data["name"] = strtoupper($row["name"]);
                 $raw_data["sitio"] = $row["sitio"];
                 $raw_data["barangay"] = $row["barangay"];
                 $raw_data["province"] = $row["province"];
