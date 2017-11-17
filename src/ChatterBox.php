@@ -393,7 +393,7 @@ class ChatterBox implements MessageComponentInterface {
                 //Attempt to Update the smsoutbox entry
                 $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
                                                     $writtenTS, $sendStatus, $sentTS);
-
+                var_dump($msg);
                 if ($updateStatus >= 0) {
                     //Send the acknowledgment to all connected web socket clients
                     foreach ($this->clients as $client) {
