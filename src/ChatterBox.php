@@ -64,7 +64,13 @@ class ChatterBox implements MessageComponentInterface {
                             if (!in_array($numbers[$x]["number"], $tempNumber)) {
                                 $recipients = [$numbers[$x]["number"]];
                                 $sentMsg = $decodedText->msg;
-                                $sentTS = date("Y-m-d H:i:s", time());
+                
+                                if ($decodedText->timestamp_written == null || isset($decodedText->timestamp_written) == false) {
+                                    $sentTS = date("Y-m-d H:i:s", time());
+                                } else {
+                                    $sentTS = $decodedText->timestamp_written;
+                                }
+
                                 if (!isset($decodedText->retry)) {
                                     $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
                                 }
@@ -95,8 +101,13 @@ class ChatterBox implements MessageComponentInterface {
 
                         $recipients = $decodedText->numbers;
                         $sentMsg = $decodedText->msg;
-                        $sentTS = date("Y-m-d H:i:s", time());
                         $ewitag = $decodedText->ewi_tag;
+
+                        if ($decodedText->timestamp_written == null || isset($decodedText->timestamp_written) == false) {
+                            $sentTS = date("Y-m-d H:i:s", time());
+                        } else {
+                            $sentTS = $decodedText->timestamp_written;
+                        }
 
                         echo "sentTS = $sentTS \n";
 
@@ -193,10 +204,14 @@ class ChatterBox implements MessageComponentInterface {
                 //Get the offices and sitenames info and group message
                 $offices = $decodedText->offices;
                 $sitenames = $decodedText->sitenames;
-                $sentTS = date("Y-m-d H:i:s", time());
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
                 $ewitag = $decodedText->ewi_tag;
+                if ($decodedText->timestamp_written == null || isset($decodedText->timestamp_written) == false) {
+                    $sentTS = date("Y-m-d H:i:s", time());
+                } else {
+                    $sentTS = $decodedText->timestamp_written;
+                }
 
                 $displayMsg['type'] = "smssend";
                 $displayMsg['timestamp'] = $sentTS;
