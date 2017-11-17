@@ -362,8 +362,8 @@ class ChatterBox implements MessageComponentInterface {
                 elseif ($msgType == "failgsm") {
                     echo "Fail Acknowledgment: GSM FAILED sending your smsoutbox message...";
                     $sendStatus = "FAIL";
-                }
                 
+}                
                 //Acknowledgement Data includes: 
                 // timestamp written - to identify what time it was sent by Chatterbox
                 // receipient - which number was the information sent to
