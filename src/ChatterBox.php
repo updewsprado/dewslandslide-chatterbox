@@ -387,7 +387,9 @@ class ChatterBox implements MessageComponentInterface {
                 $sentTS = $decodedText->timestamp_sent;
 
                 echo "\n\n$writtenTS, $sentTS, $recipients, $sendStatus\n\n";
-                var_dump($msg);
+                $temp = json_decode($msg);
+                $temp->status = $sendStatus;
+                $msg = json_encode($temp);
                 //Attempt to Update the smsoutbox entry
                 $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
                                                     $writtenTS, $sendStatus, $sentTS);
