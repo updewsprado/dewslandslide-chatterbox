@@ -2883,7 +2883,11 @@ class ChatMessageModel {
                     }
                 }
 
-                $dbreturn['fullname'] = "[".$sites."] ".trim($temp_name," ");
+                if (sizeof($temp_site) == 1) {
+                    $dbreturn['fullname'] = $sites." ".trim($temp_name," ");
+                } else {
+                    $dbreturn['fullname'] = "[".$sites."] ".trim($temp_name," ");
+                }
             }
             
             echo "data size: " . $this->getArraySize($dbreturn);
