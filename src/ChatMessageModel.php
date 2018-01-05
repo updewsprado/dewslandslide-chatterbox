@@ -2833,7 +2833,6 @@ class ChatMessageModel {
                     FROM dewslcontacts) as contactNames
                 WHERE
                     numbers LIKE '%$normalized%'";
-
         // Make sure the connection is still alive, if not, try to reconnect 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -2844,39 +2843,27 @@ class ChatMessageModel {
             $ctr = 0;
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                
+
                 if ($ctr == 0) {
                     $dbreturn['fullname'] = $row['fullname'];
-                    if (sizeof($result->fetch_assoc()) > 1) {
-                        $site_select = explode(" ",$row['fullname']);
-                        array_push($temp_site,$site_select[0]);
-                    }
+                    $site_select = explode(" ",$row['fullname']);
+                    array_push($temp_site,$site_select[0]);
                 } else {
                     $sub_counter = 0;
                     $site_select = explode(" ",$row['fullname']);
                     array_push($temp_site,$site_select[0]);
-                    if ($temp_name == "") {
-                        for ($counter = 1; $counter < sizeof($site_select); $counter++){
-                            if ($sub_counter == 0) {
-                                $temp_name = $site_select[$counter];
-                                $sub_counter++;
-                            } else {
-                                $temp_name = $temp_name." ".$site_select[$counter];
-                            }
-                        }
-                    }
-                }
-
-                $raw_name = explode(" ",$dbreturn['fullname']);
-                foreach ($sitesOnEvent['data'] as $siteEvent) {
-                    if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
-                        $dbreturn['onevent'] = 1;
-                        break;
-                    } else {
-                        $dbreturn['onevent'] = 0;
-                    }
                 }
                 $ctr++;
+            }
+
+            $raw_name = explode(" ",$dbreturn['fullname']);
+            foreach ($sitesOnEvent['data'] as $siteEvent) {
+                if (strtoupper($raw_name[0]) == strtoupper($siteEvent['name'])) {
+                    $dbreturn['onevent'] = 1;
+                    break;
+                } else {
+                    $dbreturn['onevent'] = 0;
+                }
             }
 
             if (sizeof($temp_site) != 0) {
@@ -2888,7 +2875,15 @@ class ChatMessageModel {
                         $sites = $sites.",".$temp_site[$counter];
                     }
                 }
-                $dbreturn['fullname'] = "[".$sites."] ".$temp_name;
+
+                if ($temp_name == "") {
+                    $raw_name = explode(" ",$dbreturn['fullname']);
+                    for ($counter = 1; $counter < sizeof($raw_name); $counter++) {
+                        $temp_name = $temp_name." ".$raw_name[$counter];
+                    }
+                }
+
+                $dbreturn['fullname'] = "[".$sites."] ".trim($temp_name," ");
             }
             
             echo "data size: " . $this->getArraySize($dbreturn);
