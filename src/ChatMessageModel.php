@@ -48,6 +48,7 @@ class ChatMessageModel {
         if (!$success) {
             $this->createSenslopeDB();
         }
+        return $success;
     }
 
     //Create database if it does not exist yet
@@ -199,13 +200,16 @@ class ChatMessageModel {
                 VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
         // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sql);
+        // $this->checkConnectionDB($sql);
 
         if ($this->dbconn->query($sql) === TRUE) {
             echo "New record created successfully!\n";
+            $status = true;
         } else {
             echo "Error: " . $sql . "<br>" . $this->dbconn->error;
+            $status = false;
         }
+        return $status;
     }
 
     //Insert data for smsoutbox table
@@ -236,7 +240,7 @@ class ChatMessageModel {
                     VALUES ('$curTime', '$recipient', '$message', 'PENDING', '$mobileNetwork')";
 
             // Make sure the connection is still alive, if not, try to reconnect 
-            $this->checkConnectionDB($sql);
+            // $this->checkConnectionDB($sql);
             $result = $this->dbconn->query($sql);
             if ($result === TRUE) {
                 echo "New record created successfully!\n";
@@ -1431,7 +1435,7 @@ class ChatMessageModel {
         // Make sure the connection is still alive, if not, try to reconnect 
 
 
-        $this->checkConnectionDB($sql);
+        // $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -2543,10 +2547,6 @@ class ChatMessageModel {
         }
 
         return $msgData;
-    }
-
-    public function gintagsMarker(){
-
     }
 
     public function getEmpTagNumbers($data){
