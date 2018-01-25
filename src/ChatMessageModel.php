@@ -2365,7 +2365,7 @@ class ChatMessageModel {
         echo "sitenames: $subQuerySitenames \n";
 
         $sql = '';
-        
+
         $result = $this->getEwiRecepients($subQueryOffices,$subQuerySitenames);
 
         if ($result['hasNull'] == true) {
@@ -2465,8 +2465,6 @@ class ChatMessageModel {
             $sql = $sqlOutbox . "UNION " . $sqlInbox . " ORDER BY timestamp desc LIMIT $limit";
         }
 
-        // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
 
         $ctr = 0;
@@ -2719,6 +2717,10 @@ class ChatMessageModel {
     }
 
     public function getCommunityContact($sitename, $office) {
+        echo "Come here\n\n";
+        echo $sitename;
+        echo $office;
+        
         if ( ($office == "all") || ($office == null) ) {
             $sql = "SELECT
                         CONCAT(sitename, ' ', office, ' ', prefix, ' ', firstname, ' ', lastname) as fullname,
