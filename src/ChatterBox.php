@@ -207,7 +207,7 @@ class ChatterBox implements MessageComponentInterface {
                 $sentMsg = $decodedText->msg;
                 $ewiRecipient = $decodedText->ewi_filter;
                 $ewitag = $decodedText->ewi_tag;
-                if ($decodedText->timestamp_written == null || isset($decodedText->timestamp_written) == false) {
+                if (isset($decodedText->timestamp_written) == false) {
                     $sentTS = date("Y-m-d H:i:s", time());
                 } else {
                     $sentTS = $decodedText->timestamp_written;
