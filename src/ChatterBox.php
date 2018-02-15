@@ -13,8 +13,8 @@ class ChatterBox implements MessageComponentInterface {
     public function __construct() {
         //Load the Chat Message Model
         $this->chatModel = new ChatMessageModel;
-
         $this->clients = new \SplObjectStorage;
+        date_default_timezone_set("Asia/Singapore");
     }
 
     //TODO: Resilience against Net Connection Loss
