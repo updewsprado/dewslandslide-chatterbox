@@ -13,10 +13,10 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "localhost";
+        $host = "192.168.150.131";
         $usr = "root";
         $pwd = "senslope";
-        $dbname = "newdb";
+        $dbname = "senslopedb";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
@@ -3202,14 +3202,14 @@ class ChatMessageModel {
                 array_push($contact_details,$contact_details_raw[$counter]);
             }
         }
-
         $org_team_checker_query = "SELECT * FROM dewsl_teams WHERE team_name LIKE '%".$contact_details[0]."%'";
         $is_org = $this->dbconn->query($org_team_checker_query);
+
         if ($is_org->num_rows != 0) {
             for ($counter = 2; $counter < sizeof($contact_details); $counter++) {
                 $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
             }
-            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id RIGHT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id WHERE dewsl_teams.team_name LIKE '%".$contact_details[0]."%' AND users.salutation = '".$contact_details[1]."' ".$where_query.";";
+            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id RIGHT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id WHERE dewsl_teams.team_name LIKE '%".$contact_details[0]."%' ".$where_query.";";
         } else {
             for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
                 $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
@@ -3234,6 +3234,7 @@ class ChatMessageModel {
 
         try {
             $smsinbox_query = "SELECT * FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id RIGHT JOIN users ON user_mobile.user_id = users.user_id WHERE ".$number_query." LIMIT $limit;";
+
             $fetch_inbox = $this->dbconn->query($smsinbox_query);
             if ($fetch_inbox->num_rows != 0) {
                 while($row = $fetch_inbox->fetch_assoc()) {
@@ -3245,7 +3246,6 @@ class ChatMessageModel {
 
             $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE ".$number_query." LIMIT $limit";
             $fetch_outbox = $this->dbconn->query($smsoutbox_query);
-            var_dump($smsoutbox_query);
             
             if ($fetch_outbox->num_rows != 0) {
                 while($row = $fetch_outbox->fetch_assoc()) {
@@ -3256,6 +3256,9 @@ class ChatMessageModel {
             }
 
             $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
+            var_dump($inbox_outbox_collection);
+            exit;
+
             $ctr = 0;
             for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
                 if (isset($inbox_outbox_collection[$sms_counter]['outbox_id'])) {
@@ -3303,36 +3306,41 @@ class ChatMessageModel {
     }
 
     // UTILITIES
-    function sort_msgs($arr) {
-        $size = count($arr);
-        for ($i=0; $i<$size; $i++) {
-            for ($j=0; $j<$size-1-$i; $j++) {
-                if (isset($arr[$j]['outbox_id'])) {
-                    if (isset($arr[$j+1]['ts_written'])) {
-                        if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_written'])) {
-                            $this->swap($arr, $j, $j+1);
-                        }
-                    } else {
-                        if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_written'])) {
-                            $this->swap($arr, $j, $j+1);
-                        }
-                    }
-                } else {
-                    if (isset($arr[$j+1]['ts_received'])) {
-                        if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_received'])) {
-                            $this->swap($arr, $j, $j+1);
-                        }
-                    } else {
-                        if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_received'])) {
-                            $this->swap($arr, $j, $j+1);
-                        }
-                    }
-                }
 
-            }
-        }
-        return $arr;
+    function sort_msgs($arr) {
+        var_dump($arr);
     }
+
+    // function sort_msgs($arr) {
+    //     $size = count($arr);
+    //     for ($i=0; $i<$size; $i++) {
+    //         for ($j=0; $j<$size-1-$i; $j++) {
+    //             if (isset($arr[$j]['outbox_id'])) {
+    //                 if (isset($arr[$j+1]['ts_written'])) {
+    //                     if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_written'])) {
+    //                         $this->swap($arr, $j, $j+1);
+    //                     }
+    //                 } else {
+    //                     if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_written'])) {
+    //                         $this->swap($arr, $j, $j+1);
+    //                     }
+    //                 }
+    //             } else {
+    //                 if (isset($arr[$j+1]['ts_received'])) {
+    //                     if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_received'])) {
+    //                         $this->swap($arr, $j, $j+1);
+    //                     }
+    //                 } else {
+    //                     if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_received'])) {
+    //                         $this->swap($arr, $j, $j+1);
+    //                     }
+    //                 }
+    //             }
+
+    //         }
+    //     }
+    //     return $arr;
+    // }
      
     function swap(&$arr, $a, $b) {
         $tmp = $arr[$a];
