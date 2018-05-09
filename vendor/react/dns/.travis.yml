@@ -11,7 +11,7 @@ php:
 sudo: false
 
 install:
-  - composer install --no-interaction
+  - composer install --prefer-source --no-interaction
   
 script:
-  - vendor/bin/phpunit --coverage-text
+  - phpunit --coverage-text

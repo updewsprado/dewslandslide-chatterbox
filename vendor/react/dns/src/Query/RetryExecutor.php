@@ -17,28 +17,35 @@ class RetryExecutor implements ExecutorInterface
 
     public function query($nameserver, Query $query)
     {
-        return $this->tryQuery($nameserver, $query, $this->retries);
+        $deferred = new Deferred();
+
+        $this->tryQuery($nameserver, $query, $this->retries, $deferred);
+
+        return $deferred->promise();
     }
 
-    public function tryQuery($nameserver, Query $query, $retries)
+    public function tryQuery($nameserver, Query $query, $retries, $deferred)
     {
         $that = $this;
-        $errorback = function ($error) use ($nameserver, $query, $retries, $that) {
+        $errorback = function ($error) use ($nameserver, $query, $retries, $deferred, $that) {
             if (!$error instanceof TimeoutException) {
-                throw $error;
+                $deferred->reject($error);
+                return;
             }
             if (0 >= $retries) {
-                throw new \RuntimeException(
+                $error = new \RuntimeException(
                     sprintf("DNS query for %s failed: too many retries", $query->name),
                     0,
                     $error
                 );
+                $deferred->reject($error);
+                return;
             }
-            return $that->tryQuery($nameserver, $query, $retries-1);
+            $that->tryQuery($nameserver, $query, $retries-1, $deferred);
         };
 
-        return $this->executor
+        $this->executor
             ->query($nameserver, $query)
-            ->then(null, $errorback);
+            ->then(array($deferred, 'resolve'), $errorback);
     }
 }

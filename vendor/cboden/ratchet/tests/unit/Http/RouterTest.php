@@ -127,7 +127,6 @@ class RouterTest extends \PHPUnit_Framework_TestCase {
         );
 
         $conn    = $this->getMock('Ratchet\Mock\Connection');
-        /**@var $request \Guzzle\Http\Message\Request */
         $request = $this->getMock('Guzzle\Http\Message\Request', array('getPath'), array('GET', ''), '', false);
 
         $request->setHeaderFactory($this->getMock('Guzzle\Http\Message\Header\HeaderFactoryInterface'));
@@ -137,7 +136,5 @@ class RouterTest extends \PHPUnit_Framework_TestCase {
         $router->onOpen($conn, $request);
 
         $this->assertEquals(array('foo' => 'nope', 'baz' => 'qux', 'hello' => 'world'), $request->getQuery()->getAll());
-        $this->assertEquals('ws', $request->getScheme());
-        $this->assertEquals('doesnt.matter', $request->getHost());
     }
 }

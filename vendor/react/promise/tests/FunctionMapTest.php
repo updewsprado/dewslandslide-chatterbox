@@ -109,25 +109,6 @@ class FunctionMapTest extends TestCase
     }
 
     /** @test */
-    public function shouldPreserveTheOrderOfArrayWhenResolvingAsyncPromises()
-    {
-        $mock = $this->createCallableMock();
-        $mock
-            ->expects($this->once())
-            ->method('__invoke')
-            ->with($this->identicalTo([2, 4, 6]));
-
-        $deferred = new Deferred();
-
-        map(
-            [resolve(1), $deferred->promise(), resolve(3)],
-            $this->mapper()
-        )->then($mock);
-
-        $deferred->resolve(2);
-    }
-
-    /** @test */
     public function shouldRejectWhenInputContainsRejection()
     {
         $mock = $this->createCallableMock();
@@ -160,9 +141,7 @@ class FunctionMapTest extends TestCase
     /** @test */
     public function shouldCancelInputPromise()
     {
-        $mock = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock
             ->expects($this->once())
             ->method('cancel');
@@ -176,16 +155,12 @@ class FunctionMapTest extends TestCase
     /** @test */
     public function shouldCancelInputArrayPromises()
     {
-        $mock1 = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock1 = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock1
             ->expects($this->once())
             ->method('cancel');
 
-        $mock2 = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock2 = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock2
             ->expects($this->once())
             ->method('cancel');

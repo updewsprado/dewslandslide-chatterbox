@@ -7,9 +7,8 @@
         "php": ">=5.3.0",
         "react/dns": "0.4.*|0.3.*",
         "react/event-loop": "0.4.*|0.3.*",
-        "react/stream": "^0.4.5",
-        "react/promise": "^2.1 || ^1.2",
-        "react/promise-timer": "~1.0"
+        "react/stream": "0.4.*|0.3.*",
+        "react/promise": "~2.0|~1.1"
     },
     "autoload": {
         "psr-4": {
@@ -17,6 +16,6 @@
         }
     },
     "require-dev": {
-        "clue/block-react": "^1.1"
+        "clue/block-react": "~1.0"
     }
 }

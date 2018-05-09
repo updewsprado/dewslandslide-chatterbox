@@ -1,42 +1,5 @@
 # Changelog
 
-## 0.5.3 (2016-12-24)
-
-* Fix: Skip IPv6 tests if not supported by the system
-  (#76 by @clue)
-
-* Documentation for `ConnectorInterface`
-  (#77 by @clue)
-
-## 0.5.2 (2016-12-19)
-
-* Feature: Replace `SecureStream` with unlimited read buffer from react/stream v0.4.5
-  (#72 by @clue)
-
-* Feature: Add examples
-  (#75 by @clue)
-
-## 0.5.1 (2016-11-20)
-
-* Feature: Support Promise cancellation for all connectors
-  (#71 by @clue)
-
-  ```php
-  $promise = $connector->create($host, $port);
-
-  $promise->cancel();
-  ```
-
-* Feature: Add TimeoutConnector decorator
-  (#51 by @clue)
-
-  ```php
-  $timeout = new TimeoutConnector($connector, 3.0, $loop);
-  $timeout->create($host, $port)->then(function(Stream $stream) {
-      // connection resolved within 3.0s
-  });
-  ```
-
 ## 0.5.0 (2016-03-19)
 
 * Feature / BC break: Support Connector without DNS

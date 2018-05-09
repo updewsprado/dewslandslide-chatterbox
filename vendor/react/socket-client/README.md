@@ -28,57 +28,11 @@ to initialize the main loop.
 $loop = React\EventLoop\Factory::create();
 ```
 
-### ConnectorInterface
-
-The `ConnectorInterface` is responsible for providing an interface for
-establishing streaming connections, such as a normal TCP/IP connection.
-
-This is the main interface defined in this package and it is used throughout
-React's vast ecosystem.
-
-Most higher-level components (such as HTTP, database or other networking
-service clients) accept an instance implementing this interface to create their
-TCP/IP connection to the underlying networking service.
-This is usually done via dependency injection, so it's fairly simple to actually
-swap this implementation against any other implementation of this interface.
-
-The interface only offers a single method:
-
-#### create()
-
-The `create(string $host, int $port): PromiseInterface<Stream, Exception>` method
-can be used to establish a streaming connection.
-It returns a [Promise](https://github.com/reactphp/promise) which either
-fulfills with a [Stream](https://github.com/reactphp/stream) or
-rejects with an `Exception`:
-
-```php
-$connector->create('google.com', 443)->then(
-    function (Stream $stream) {
-        // connection successfully established
-    },
-    function (Exception $error) {
-        // failed to connect due to $error
-    }
-);
-```
-
-The returned Promise SHOULD be implemented in such a way that it can be
-cancelled when it is still pending. Cancelling a pending promise SHOULD
-reject its value with an `Exception`. It SHOULD clean up any underlying
-resources and references as applicable:
-
-```php
-$promise = $connector->create($host, $port);
-
-$promise->cancel();
-```
-
 ### Async TCP/IP connections
 
-The `React\SocketClient\TcpConnector` class implements the
-[`ConnectorInterface`](#connectorinterface) and allows you to create plaintext
-TCP/IP connections to any IP-port-combination:
+The `React\SocketClient\TcpConnector` provides a single promise-based
+`create($ip, $port)` method which resolves as soon as the connection
+succeeds or fails.
 
 ```php
 $tcpConnector = new React\SocketClient\TcpConnector($loop);
@@ -91,20 +45,6 @@ $tcpConnector->create('127.0.0.1', 80)->then(function (React\Stream\Stream $stre
 $loop->run();
 ```
 
-See also the [first example](examples).
-
-Pending connection attempts can be cancelled by cancelling its pending promise like so:
-
-```php
-$promise = $tcpConnector->create($host, $port);
-
-$promise->cancel();
-```
-
-Calling `cancel()` on a pending promise will close the underlying socket
-resource, thus cancelling the pending TCP/IP connection, and reject the
-resulting promise.
-
 You can optionally pass additional
 [socket context options](http://php.net/manual/en/context.socket.php)
 to the constructor like this:
@@ -115,18 +55,17 @@ $tcpConnector = new React\SocketClient\TcpConnector($loop, array(
 ));
 ```
 
-Note that this class only allows you to connect to IP-port-combinations.
-If you want to connect to hostname-port-combinations, see also the following chapter.
+Note that this class only allows you to connect to IP/port combinations.
+If you want to connect to hostname/port combinations, see also the following chapter.
 
 ### DNS resolution
 
-The `DnsConnector` class implements the
-[`ConnectorInterface`](#connectorinterface) and allows you to create plaintext
-TCP/IP connections to any hostname-port-combination.
+The `DnsConnector` class decorates a given `TcpConnector` instance by first
+looking up the given domain name and then establishing the underlying TCP/IP
+connection to the resolved IP address.
 
-It does so by decorating a given `TcpConnector` instance so that it first
-looks up the given domain name via DNS (if applicable) and then establishes the
-underlying TCP/IP connection to the resolved target IP address.
+It provides the same promise-based `create($host, $port)` method which resolves with
+a `Stream` instance that can be used just like above.
 
 Make sure to set up your DNS resolver and underlying TCP connector like this:
 
@@ -144,19 +83,6 @@ $dnsConnector->create('www.google.com', 80)->then(function (React\Stream\Stream 
 $loop->run();
 ```
 
-See also the [first example](examples).
-
-Pending connection attempts can be cancelled by cancelling its pending promise like so:
-
-```php
-$promise = $dnsConnector->create($host, $port);
-
-$promise->cancel();
-```
-
-Calling `cancel()` on a pending promise will cancel the underlying DNS lookup
-and/or the underlying TCP/IP connection and reject the resulting promise.
-
 The legacy `Connector` class can be used for backwards-compatiblity reasons.
 It works very much like the newer `DnsConnector` but instead has to be
 set up like this:
@@ -169,13 +95,11 @@ $connector->create('www.google.com', 80)->then($callback);
 
 ### Async SSL/TLS connections
 
-The `SecureConnector` class implements the
-[`ConnectorInterface`](#connectorinterface) and allows you to create secure
-TLS (formerly known as SSL) connections to any hostname-port-combination.
+The `SecureConnector` class decorates a given `Connector` instance by enabling
+SSL/TLS encryption as soon as the raw TCP/IP connection succeeds.
 
-It does so by decorating a given `DnsConnector` instance so that it first
-creates a plaintext TCP/IP connection and then enables TLS encryption on this
-stream.
+It provides the same promise- based `create($host, $port)` method which resolves with
+a `Stream` instance that can be used just like any non-encrypted stream:
 
 ```php
 $secureConnector = new React\SocketClient\SecureConnector($dnsConnector, $loop);
@@ -188,19 +112,6 @@ $secureConnector->create('www.google.com', 443)->then(function (React\Stream\Str
 $loop->run();
 ```
 
-See also the [second example](examples).
-
-Pending connection attempts can be cancelled by cancelling its pending promise like so:
-
-```php
-$promise = $secureConnector->create($host, $port);
-
-$promise->cancel();
-```
-
-Calling `cancel()` on a pending promise will cancel the underlying TCP/IP
-connection and/or the SSL/TLS negonation and reject the resulting promise.
-
 You can optionally pass additional
 [SSL context options](http://php.net/manual/en/context.ssl.php)
 to the constructor like this:
@@ -212,50 +123,10 @@ $secureConnector = new React\SocketClient\SecureConnector($dnsConnector, $loop, 
 ));
 ```
 
-> Advanced usage: Internally, the `SecureConnector` has to set the required
-*context options* on the underlying stream resource.
-It should therefor be used with a `TcpConnector` somewhere in the connector
-stack so that it can allocate an empty *context* resource for each stream
-resource.
-Failing to do so may result in some hard to trace race conditions, because all
-stream resources will use a single, shared *default context* resource otherwise.
-
-### Connection timeouts
-
-The `TimeoutConnector` class implements the
-[`ConnectorInterface`](#connectorinterface) and allows you to add timeout
-handling to any existing connector instance.
-
-It does so by decorating any given [`ConnectorInterface`](#connectorinterface)
-instance and starting a timer that will automatically reject and abort any
-underlying connection attempt if it takes too long.
-
-```php
-$timeoutConnector = new React\SocketClient\TimeoutConnector($connector, 3.0, $loop);
-
-$timeoutConnector->create('google.com', 80)->then(function (React\Stream\Stream $stream) {
-    // connection succeeded within 3.0 seconds
-});
-```
-
-See also any of the [examples](examples).
-
-Pending connection attempts can be cancelled by cancelling its pending promise like so:
-
-```php
-$promise = $timeoutConnector->create($host, $port);
-
-$promise->cancel();
-```
-
-Calling `cancel()` on a pending promise will cancel the underlying connection
-attempt, abort the timer and reject the resulting promise.
-
 ### Unix domain sockets
 
-The `UnixConnector` class implements the
-[`ConnectorInterface`](#connectorinterface) and allows you to connect to
-Unix domain socket (UDS) paths like this:
+Similarly, the `UnixConnector` class can be used to connect to Unix domain socket (UDS)
+paths like this:
 
 ```php
 $connector = new React\SocketClient\UnixConnector($loop);
@@ -267,10 +138,6 @@ $connector->create('/tmp/demo.sock')->then(function (React\Stream\Stream $stream
 $loop->run();
 ```
 
-Connecting to Unix domain sockets is an atomic operation, i.e. its promise will
-settle (either resolve or reject) immediately.
-As such, calling `cancel()` on the resulting promise has no effect.
-
 ## Install
 
 The recommended way to install this library is [through Composer](http://getcomposer.org).
@@ -279,10 +146,16 @@ The recommended way to install this library is [through Composer](http://getcomp
 This will install the latest supported version:
 
 ```bash
-$ composer require react/socket-client:^0.5.3
+$ composer require react/socket-client:^0.5
 ```
 
-More details about version upgrades can be found in the [CHANGELOG](CHANGELOG.md).
+If you care a lot about BC, you may also want to look into supporting legacy versions:
+
+```bash
+$ composer require "react/socket-client:^0.5||^0.4||^0.3"
+```
+
+More details and upgrade guides can be found in the [CHANGELOG](CHANGELOG.md).
 
 ## Tests
 

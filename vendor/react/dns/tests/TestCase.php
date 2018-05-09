@@ -20,7 +20,7 @@ abstract class TestCase extends \PHPUnit_Framework_TestCase
         $mock
             ->expects($this->once())
             ->method('__invoke')
-            ->with($value);
+            ->with($this->equalTo($value));
 
         return $mock;
     }
@@ -37,6 +37,6 @@ abstract class TestCase extends \PHPUnit_Framework_TestCase
 
     protected function createCallableMock()
     {
-        return $this->getMockBuilder('React\Tests\Dns\CallableStub')->getMock();
+        return $this->getMock('React\Tests\Dns\CallableStub');
     }
 }

@@ -57,15 +57,16 @@ class StreamEncryption
 
     public function toggle(Stream $stream, $toggle)
     {
+        if (__NAMESPACE__ . '\SecureStream' === get_class($stream)) {
+            $stream = $stream->decorating;
+        }
+
         // pause actual stream instance to continue operation on raw stream socket
         $stream->pause();
 
         // TODO: add write() event to make sure we're not sending any excessive data
 
-        $deferred = new Deferred(function ($_, $reject) use ($toggle) {
-            // cancelling this leaves this stream in an inconsistent state…
-            $reject(new \RuntimeException('Cancelled toggling encryption ' . $toggle ? 'on' : 'off'));
-        });
+        $deferred = new Deferred();
 
         // get actual stream socket from stream instance
         $socket = $stream->stream;
@@ -81,18 +82,15 @@ class StreamEncryption
         $wrap = $this->wrapSecure && $toggle;
         $loop = $this->loop;
 
-        return $deferred->promise()->then(function () use ($stream, $socket, $wrap, $loop) {
-            $loop->removeReadStream($socket);
-
+        return $deferred->promise()->then(function () use ($stream, $wrap, $loop) {
             if ($wrap) {
-                $stream->bufferSize = null;
+                return new SecureStream($stream, $loop);
             }
 
             $stream->resume();
 
             return $stream;
-        }, function($error) use ($stream, $socket, $loop) {
-            $loop->removeReadStream($socket);
+        }, function($error) use ($stream) {
             $stream->resume();
             throw $error;
         });
@@ -105,8 +103,12 @@ class StreamEncryption
         restore_error_handler();
 
         if (true === $result) {
+            $this->loop->removeReadStream($socket);
+
             $deferred->resolve();
         } else if (false === $result) {
+            $this->loop->removeReadStream($socket);
+
             $deferred->reject(new UnexpectedValueException(
                 sprintf("Unable to complete SSL/TLS handshake: %s", $this->errstr),
                 $this->errno

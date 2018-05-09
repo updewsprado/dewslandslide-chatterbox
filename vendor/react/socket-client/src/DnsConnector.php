@@ -2,10 +2,11 @@
 
 namespace React\SocketClient;
 
+use React\EventLoop\LoopInterface;
 use React\Dns\Resolver\Resolver;
 use React\Stream\Stream;
 use React\Promise;
-use React\Promise\CancellablePromiseInterface;
+use React\Promise\Deferred;
 
 class DnsConnector implements ConnectorInterface
 {
@@ -20,12 +21,12 @@ class DnsConnector implements ConnectorInterface
 
     public function create($host, $port)
     {
-        $that = $this;
+        $connector = $this->connector;
 
         return $this
             ->resolveHostname($host)
-            ->then(function ($ip) use ($that, $port) {
-                return $that->connect($ip, $port);
+            ->then(function ($address) use ($connector, $port) {
+                return $connector->create($address, $port);
             });
     }
 
@@ -35,49 +36,6 @@ class DnsConnector implements ConnectorInterface
             return Promise\resolve($host);
         }
 
-        $promise = $this->resolver->resolve($host);
-
-        return new Promise\Promise(
-            function ($resolve, $reject) use ($promise) {
-                // resolve/reject with result of DNS lookup
-                $promise->then($resolve, $reject);
-            },
-            function ($_, $reject) use ($promise) {
-                // cancellation should reject connection attempt
-                $reject(new \RuntimeException('Connection attempt cancelled during DNS lookup'));
-
-                // (try to) cancel pending DNS lookup
-                if ($promise instanceof CancellablePromiseInterface) {
-                    $promise->cancel();
-                }
-            }
-        );
-    }
-
-    /** @internal */
-    public function connect($ip, $port)
-    {
-        $promise = $this->connector->create($ip, $port);
-
-        return new Promise\Promise(
-            function ($resolve, $reject) use ($promise) {
-                // resolve/reject with result of TCP/IP connection
-                $promise->then($resolve, $reject);
-            },
-            function ($_, $reject) use ($promise) {
-                // cancellation should reject connection attempt
-                $reject(new \RuntimeException('Connection attempt cancelled during TCP/IP connection'));
-
-                // forefully close TCP/IP connection if it completes despite cancellation
-                $promise->then(function (Stream $stream) {
-                    $stream->close();
-                });
-
-                // (try to) cancel pending TCP/IP connection
-                if ($promise instanceof CancellablePromiseInterface) {
-                    $promise->cancel();
-                }
-            }
-        );
+        return $this->resolver->resolve($host);
     }
 }

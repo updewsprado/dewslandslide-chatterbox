@@ -29,9 +29,12 @@ class ConnectionTest extends TestCase
 
         $servConn = new Connection($server->master, $loop);
 
-        $mock = $this->expectCallableOnceWith(
-            $method->invokeArgs($servConn, array(stream_socket_get_name($master->getValue($server), false)))
-        );
+        $mock = $this->createCallableMock();
+        $mock
+            ->expects($this->once())
+            ->method('__invoke')
+            ->with($method->invokeArgs($servConn, array(stream_socket_get_name($master->getValue($server), false))))
+        ;
 
         $server->on('connection', function ($conn) use ($mock) {
             $mock($conn->getRemoteAddress());

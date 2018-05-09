@@ -19,8 +19,9 @@
             "React\\Promise\\": "tests/fixtures"
         }
     },
-    "keywords": [
-        "promise",
-        "promises"
-    ]
+    "extra": {
+        "branch-alias": {
+            "dev-master": "2.0-dev"
+        }
+    }
 }

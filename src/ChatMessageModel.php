@@ -13,10 +13,10 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.131";
+        $host = "localhost";
         $usr = "root";
         $pwd = "senslope";
-        $dbname = "senslopedb";
+        $dbname = "newdb";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);

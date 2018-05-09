@@ -17,17 +17,6 @@ class Executor implements ExecutorInterface
     private $dumper;
     private $timeout;
 
-    /**
-     *
-     * Note that albeit supported, the $timeout parameter is deprecated!
-     * You should pass a `null` value here instead. If you need timeout handling,
-     * use the `TimeoutConnector` instead.
-     *
-     * @param LoopInterface $loop
-     * @param Parser $parser
-     * @param BinaryDumper $dumper
-     * @param null|float $timeout DEPRECATED: timeout for DNS query or NULL=no timeout
-     */
     public function __construct(LoopInterface $loop, Parser $parser, BinaryDumper $dumper, $timeout = 5)
     {
         $this->loop = $loop;
@@ -38,7 +27,7 @@ class Executor implements ExecutorInterface
 
     public function query($nameserver, Query $query)
     {
-        $request = Message::createRequestForQuery($query);
+        $request = $this->prepareRequest($query);
 
         $queryData = $this->dumper->toBinary($request);
         $transport = strlen($queryData) > 512 ? 'tcp' : 'udp';
@@ -46,12 +35,15 @@ class Executor implements ExecutorInterface
         return $this->doQuery($nameserver, $transport, $queryData, $query->name);
     }
 
-    /**
-     * @deprecated unused, exists for BC only
-     */
     public function prepareRequest(Query $query)
     {
-        return Message::createRequestForQuery($query);
+        $request = new Message();
+        $request->header->set('id', $this->generateId());
+        $request->header->set('rd', 1);
+        $request->questions[] = (array) $query;
+        $request->prepare();
+
+        return $request;
     }
 
     public function doQuery($nameserver, $transport, $queryData, $name)
@@ -60,62 +52,27 @@ class Executor implements ExecutorInterface
         $parser = $this->parser;
         $loop = $this->loop;
 
-        $deferred = new Deferred(function ($resolve, $reject) use (&$timer, &$conn, $name) {
-            $reject(new CancellationException(sprintf('DNS query for %s has been cancelled', $name)));
-
-            if ($timer !== null) {
-                $timer->cancel();
-            }
-            $conn->close();
-        });
+        $response = new Message();
+        $deferred = new Deferred();
 
         $retryWithTcp = function () use ($that, $nameserver, $queryData, $name) {
             return $that->doQuery($nameserver, 'tcp', $queryData, $name);
         };
 
-        $timer = null;
-        if ($this->timeout !== null) {
-            $timer = $this->loop->addTimer($this->timeout, function () use (&$conn, $name, $deferred) {
-                $conn->close();
-                $deferred->reject(new TimeoutException(sprintf("DNS query for %s timed out", $name)));
-            });
-        }
+        $timer = $this->loop->addTimer($this->timeout, function () use (&$conn, $name, $deferred) {
+            $conn->close();
+            $deferred->reject(new TimeoutException(sprintf("DNS query for %s timed out", $name)));
+        });
 
-        try {
-            try {
-                $conn = $this->createConnection($nameserver, $transport);
-            } catch (\Exception $e) {
-                if ($transport === 'udp') {
-                    // UDP failed => retry with TCP
-                    $transport = 'tcp';
-                    $conn = $this->createConnection($nameserver, $transport);
-                } else {
-                    // TCP failed (UDP must already have been checked before)
-                    throw $e;
-                }
-            }
-        } catch (\Exception $e) {
-            // both UDP and TCP failed => reject
-            if ($timer !== null) {
-                $timer->cancel();
-            }
-            $deferred->reject(new \RuntimeException('Unable to connect to DNS server: ' . $e->getMessage(), 0, $e));
+        $conn = $this->createConnection($nameserver, $transport);
+        $conn->on('data', function ($data) use ($retryWithTcp, $conn, $parser, $response, $transport, $deferred, $timer) {
+            $responseReady = $parser->parseChunk($data, $response);
 
-            return $deferred->promise();
-        }
-
-        $conn->on('data', function ($data) use ($retryWithTcp, $conn, $parser, $transport, $deferred, $timer) {
-            if ($timer !== null) {
-                $timer->cancel();
-            }
-
-            try {
-                $response = $parser->parseMessage($data);
-            } catch (\Exception $e) {
-                $conn->end();
-                $deferred->reject($e);
+            if (!$responseReady) {
                 return;
             }
+
+            $timer->cancel();
 
             if ($response->header->isTruncated()) {
                 if ('tcp' === $transport) {
@@ -136,9 +93,6 @@ class Executor implements ExecutorInterface
         return $deferred->promise();
     }
 
-    /**
-     * @deprecated unused, exists for BC only
-     */
     protected function generateId()
     {
         return mt_rand(0, 0xffff);
@@ -146,9 +100,9 @@ class Executor implements ExecutorInterface
 
     protected function createConnection($nameserver, $transport)
     {
-        $fd = @stream_socket_client("$transport://$nameserver", $errno, $errstr, 0, STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT);
+        $fd = stream_socket_client("$transport://$nameserver", $errno, $errstr, 0, STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT);
+        stream_set_blocking($fd, 0);
         $conn = new Connection($fd, $this->loop);
-        $conn->bufferSize = null; // Temporary fix for Windows 10 users
 
         return $conn;
     }

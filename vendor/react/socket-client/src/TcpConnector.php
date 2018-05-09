@@ -55,20 +55,17 @@ class TcpConnector implements ConnectorInterface
 
     private function waitForStreamOnce($stream)
     {
+        $deferred = new Deferred();
+
         $loop = $this->loop;
 
-        return new Promise\Promise(function ($resolve) use ($loop, $stream) {
-            $loop->addWriteStream($stream, function ($stream) use ($loop, $resolve) {
-                $loop->removeWriteStream($stream);
-
-                $resolve($stream);
-            });
-        }, function () use ($loop, $stream) {
+        $this->loop->addWriteStream($stream, function ($stream) use ($loop, $deferred) {
             $loop->removeWriteStream($stream);
-            fclose($stream);
 
-            throw new \RuntimeException('Cancelled while waiting for TCP/IP connection to be established');
+            $deferred->resolve($stream);
         });
+
+        return $deferred->promise();
     }
 
     /** @internal */

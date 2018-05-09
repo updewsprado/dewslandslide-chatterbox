@@ -9,15 +9,14 @@ class CompositeStream extends EventEmitter implements DuplexStreamInterface
     protected $readable;
     protected $writable;
     protected $pipeSource;
-    protected $closed = false;
 
     public function __construct(ReadableStreamInterface $readable, WritableStreamInterface $writable)
     {
         $this->readable = $readable;
         $this->writable = $writable;
 
-        Util::forwardEvents($this->readable, $this, array('data', 'end', 'error'));
-        Util::forwardEvents($this->writable, $this, array('drain', 'error', 'pipe'));
+        Util::forwardEvents($this->readable, $this, array('data', 'end', 'error', 'close'));
+        Util::forwardEvents($this->writable, $this, array('drain', 'error', 'close', 'pipe'));
 
         $this->readable->on('close', array($this, 'close'));
         $this->writable->on('close', array($this, 'close'));
@@ -77,16 +76,9 @@ class CompositeStream extends EventEmitter implements DuplexStreamInterface
 
     public function close()
     {
-        if ($this->closed) {
-            return;
-        }
-
-        $this->closed = true;
         $this->pipeSource = null;
 
         $this->readable->close();
         $this->writable->close();
-
-        $this->emit('close');
     }
 }

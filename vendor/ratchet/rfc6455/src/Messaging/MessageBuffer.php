@@ -55,23 +55,17 @@ class MessageBuffer {
         $this->onControl = $onControl ?: function() {};
     }
 
-    public function onData($data) {
-        while (strlen($data) > 0) {
-            $data = $this->processData($data);
-        }
-    }
-
     /**
      * @param string $data
      * @return null
      */
-    private function processData($data) {
+    public function onData($data) {
         $this->messageBuffer ?: $this->messageBuffer = $this->newMessage();
         $this->frameBuffer   ?: $this->frameBuffer   = $this->newFrame();
 
         $this->frameBuffer->addBuffer($data);
         if (!$this->frameBuffer->isCoalesced()) {
-            return '';
+            return;
         }
 
         $onMessage = $this->onMessage;
@@ -88,7 +82,7 @@ class MessageBuffer {
             $onControl($this->frameBuffer);
 
             if (Frame::OP_CLOSE === $opcode) {
-                return '';
+                return;
             }
         } else {
             $this->messageBuffer->addFrame($this->frameBuffer);
@@ -107,7 +101,9 @@ class MessageBuffer {
             $this->messageBuffer = null;
         }
 
-        return $overflow;
+        if (strlen($overflow) > 0) {
+            $this->onData($overflow); // PHP doesn't do tail recursion  :(
+        }
     }
 
     /**

@@ -9,8 +9,6 @@ use Clue\React\Block;
 
 class TcpConnectorTest extends TestCase
 {
-    const TIMEOUT = 0.1;
-
     /** @test */
     public function connectionToEmptyPortShouldFail()
     {
@@ -37,7 +35,7 @@ class TcpConnectorTest extends TestCase
 
         $connector = new TcpConnector($loop);
 
-        $stream = Block\await($connector->create('127.0.0.1', 9999), $loop, self::TIMEOUT);
+        $stream = Block\await($connector->create('127.0.0.1', 9999), $loop);
 
         $this->assertInstanceOf('React\Stream\Stream', $stream);
 
@@ -65,16 +63,11 @@ class TcpConnectorTest extends TestCase
         $server = new Server($loop);
         $server->on('connection', $this->expectCallableOnce());
         $server->on('connection', array($server, 'shutdown'));
-
-        try {
-            $server->listen(9999, '::1');
-        } catch (\Exception $e) {
-            $this->markTestSkipped('Unable to start IPv6 server socket (IPv6 not supported on this system?)');
-        }
+        $server->listen(9999, '::1');
 
         $connector = new TcpConnector($loop);
 
-        $stream = Block\await($connector->create('::1', 9999), $loop, self::TIMEOUT);
+        $stream = Block\await($connector->create('::1', 9999), $loop);
 
         $this->assertInstanceOf('React\Stream\Stream', $stream);
 
@@ -103,21 +96,5 @@ class TcpConnectorTest extends TestCase
             $this->expectCallableNever(),
             $this->expectCallableOnce()
         );
-    }
-
-    /** @test */
-    public function cancellingConnectionShouldRejectPromise()
-    {
-        $loop = new StreamSelectLoop();
-        $connector = new TcpConnector($loop);
-
-        $server = new Server($loop);
-        $server->listen(0);
-
-        $promise = $connector->create('127.0.0.1', $server->getPort());
-        $promise->cancel();
-
-        $this->setExpectedException('RuntimeException', 'Cancelled');
-        Block\await($promise, $loop);
     }
 }

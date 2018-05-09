@@ -32,26 +32,4 @@ class FunctionalTest extends TestCase
 
         $this->loop->run();
     }
-
-    public function testResolveCancelledRejectsImmediately()
-    {
-        $promise = $this->resolver->resolve('google.com');
-        $promise->then($this->expectCallableNever(), $this->expectCallableOnce());
-        $promise->cancel();
-
-        $time = microtime(true);
-        $this->loop->run();
-        $time = microtime(true) - $time;
-
-        $this->assertLessThan(0.1, $time);
-    }
-
-    public function testInvalidResolverDoesNotResolveGoogle()
-    {
-        $factory = new Factory();
-        $this->resolver = $factory->create('255.255.255.255', $this->loop);
-
-        $promise = $this->resolver->resolve('google.com');
-        $promise->then($this->expectCallableNever(), $this->expectCallableOnce());
-    }
 }

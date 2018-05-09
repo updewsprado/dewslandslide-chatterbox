@@ -17,7 +17,7 @@ class Connector {
     protected $_secureConnector;
     protected $_negotiator;
 
-    public function __construct(LoopInterface $loop, Resolver $resolver = null, array $secureContext = []) {
+    public function __construct(LoopInterface $loop, Resolver $resolver = null) {
         if (null === $resolver) {
             $factory  = new DnsFactory();
             $resolver = $factory->create('8.8.8.8', $loop);
@@ -25,7 +25,7 @@ class Connector {
 
         $this->_loop            = $loop;
         $this->_connector       = new SocketConnector($loop, $resolver);
-        $this->_secureConnector = new SecureConnector($this->_connector, $loop, $secureContext);
+        $this->_secureConnector = new SecureConnector($this->_connector, $loop);
         $this->_negotiator      = new ClientNegotiator;
     }
 
@@ -119,7 +119,7 @@ class Connector {
             $uri = $uri->withPort('wss' === $scheme ? 443 : 80);
         }
 
-        $headers += ['User-Agent' => 'Ratchet-Pawl/0.2.3'];
+        $headers += ['User-Agent' => 'Ratchet-Pawl/0.2.2'];
 
         $request = array_reduce(array_keys($headers), function($request, $header) use ($headers) {
             return $request->withHeader($header, $headers[$header]);

@@ -150,9 +150,7 @@ class FunctionAnyTest extends TestCase
     /** @test */
     public function shouldCancelInputPromise()
     {
-        $mock = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock
             ->expects($this->once())
             ->method('cancel');
@@ -163,16 +161,12 @@ class FunctionAnyTest extends TestCase
     /** @test */
     public function shouldCancelInputArrayPromises()
     {
-        $mock1 = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock1 = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock1
             ->expects($this->once())
             ->method('cancel');
 
-        $mock2 = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock2 = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock2
             ->expects($this->once())
             ->method('cancel');
@@ -181,7 +175,7 @@ class FunctionAnyTest extends TestCase
     }
 
     /** @test */
-    public function shouldNotCancelOtherPendingInputArrayPromisesIfOnePromiseFulfills()
+    public function shouldCancelOtherPendingInputArrayPromisesIfOnePromiseFulfills()
     {
         $mock = $this->createCallableMock();
         $mock
@@ -192,11 +186,9 @@ class FunctionAnyTest extends TestCase
         $deferred = New Deferred($mock);
         $deferred->resolve();
 
-        $mock2 = $this
-            ->getMockBuilder('React\Promise\CancellablePromiseInterface')
-            ->getMock();
+        $mock2 = $this->getMock('React\Promise\CancellablePromiseInterface');
         $mock2
-            ->expects($this->never())
+            ->expects($this->once())
             ->method('cancel');
 
         some([$deferred->promise(), $mock2], 1)->cancel();

@@ -40,7 +40,7 @@ class ServerNegotiator implements NegotiatorInterface {
      */
     public function handshake(RequestInterface $request) {
         if (true !== $this->verifier->verifyMethod($request->getMethod())) {
-            return new Response(405, ['Allow' => 'GET']);
+            return new Response(405);
         }
 
         if (true !== $this->verifier->verifyHTTPVersion($request->getProtocolVersion())) {

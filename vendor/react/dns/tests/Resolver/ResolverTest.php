@@ -7,9 +7,8 @@ use React\Dns\Query\Query;
 use React\Dns\Model\Message;
 use React\Dns\Model\Record;
 use React\Promise;
-use React\Tests\Dns\TestCase;
 
-class ResolverTest extends TestCase
+class ResolverTest extends \PHPUnit_Framework_TestCase
 {
     /** @test */
     public function resolveShouldQueryARecords()
@@ -30,27 +29,6 @@ class ResolverTest extends TestCase
 
         $resolver = new Resolver('8.8.8.8:53', $executor);
         $resolver->resolve('igor.io')->then($this->expectCallableOnceWith('178.79.169.131'));
-    }
-
-    /** @test */
-    public function resolveShouldQueryARecordsAndIgnoreCase()
-    {
-        $executor = $this->createExecutorMock();
-        $executor
-            ->expects($this->once())
-            ->method('query')
-            ->with($this->anything(), $this->isInstanceOf('React\Dns\Query\Query'))
-            ->will($this->returnCallback(function ($nameserver, $query) {
-                $response = new Message();
-                $response->header->set('qr', 1);
-                $response->questions[] = new Record('Blog.wyrihaximus.net', $query->type, $query->class);
-                $response->answers[] = new Record('Blog.wyrihaximus.net', $query->type, $query->class, 3600, '178.79.169.131');
-
-                return Promise\resolve($response);
-            }));
-
-        $resolver = new Resolver('8.8.8.8:53', $executor);
-        $resolver->resolve('blog.wyrihaximus.net')->then($this->expectCallableOnceWith('178.79.169.131'));
     }
 
     /** @test */
@@ -122,8 +100,44 @@ class ResolverTest extends TestCase
         $resolver->resolve('igor.io')->then($this->expectCallableNever(), $errback);
     }
 
+    protected function expectCallableOnceWith($with)
+    {
+        $mock = $this->createCallableMock();
+        $mock
+            ->expects($this->once())
+            ->method('__invoke')
+            ->with($with);
+
+        return $mock;
+    }
+
+    protected function expectCallableOnce()
+    {
+        $mock = $this->createCallableMock();
+        $mock
+            ->expects($this->once())
+            ->method('__invoke');
+
+        return $mock;
+    }
+
+    protected function expectCallableNever()
+    {
+        $mock = $this->createCallableMock();
+        $mock
+            ->expects($this->never())
+            ->method('__invoke');
+
+        return $mock;
+    }
+
+    protected function createCallableMock()
+    {
+        return $this->getMock('React\Tests\Dns\CallableStub');
+    }
+
     private function createExecutorMock()
     {
-        return $this->getMockBuilder('React\Dns\Query\ExecutorInterface')->getMock();
+        return $this->getMock('React\Dns\Query\ExecutorInterface');
     }
 }

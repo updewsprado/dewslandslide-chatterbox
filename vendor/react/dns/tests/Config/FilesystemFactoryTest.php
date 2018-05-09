@@ -26,7 +26,7 @@ nameserver 8.8.8.8
 
         $capturedConfig = null;
 
-        $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
+        $loop = $this->getMock('React\EventLoop\LoopInterface');
         $factory = new FilesystemFactory($loop);
         $factory->parseEtcResolvConf($contents)->then(function ($config) use (&$capturedConfig) {
             $capturedConfig = $config;
@@ -39,14 +39,12 @@ nameserver 8.8.8.8
     /** @test */
     public function createShouldLoadStuffFromFilesystem()
     {
-        $this->markTestIncomplete('Filesystem API is incomplete');
-
         $expected = array('8.8.8.8');
 
         $triggerListener = null;
         $capturedConfig = null;
 
-        $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
+        $loop = $this->getMock('React\EventLoop\LoopInterface');
         $loop
             ->expects($this->once())
             ->method('addReadStream')

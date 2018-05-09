@@ -95,12 +95,9 @@ class ThroughStreamTest extends TestCase
     }
 
     /** @test */
-    public function closeShouldCloseOnce()
+    public function closeShouldClose()
     {
         $through = new ThroughStream();
-
-        $through->on('close', $this->expectCallableOnce());
-
         $through->close();
 
         $this->assertFalse($through->isReadable());
@@ -108,12 +105,9 @@ class ThroughStreamTest extends TestCase
     }
 
     /** @test */
-    public function doubleCloseShouldCloseOnce()
+    public function doubleCloseShouldWork()
     {
         $through = new ThroughStream();
-
-        $through->on('close', $this->expectCallableOnce());
-
         $through->close();
         $through->close();
 
