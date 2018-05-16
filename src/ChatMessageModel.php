@@ -324,46 +324,48 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function getQuickInboxMessages($periodDays = 3) {
-        $contactsList = $this->getFullnamesAndNumbers();
+    public function getQuickInboxMessages($periodDays = 365) {
+        $contact_lists = $this->getFullnamesAndNumbers();
+        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num 
+            FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
+            WHERE smsinbox_users.ts_received > (now() - interval 1000 day)
+            ORDER BY ts_received DESC";
 
-        // $sqlGetAllNumbersFromPeriod = "
-        //     SELECT * FROM smsinbox
-        //     WHERE timestamp > (now() - interval $periodDays day)
-        //     ORDER BY timestamp DESC";
-        // $this->checkConnectionDB($sqlGetAllNumbersFromPeriod);
-        // $resultNumbersFromPeriod = $this->dbconn->query($sqlGetAllNumbersFromPeriod);
+        $this->checkConnectionDB($get_all_sms_from_period);
+        $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
 
-        // $fullData['type'] = 'smsloadquickinbox';
-        // $distinctNumbers = "";
-        // $allNumbers = [];
-        // $allMessages = [];
-        // $quickInboxMsgs = [];
-        // $ctr = 0;
-        // if ($resultNumbersFromPeriod->num_rows > 0) {
-        //     while ($row = $resultNumbersFromPeriod->fetch_assoc()) {
-        //         $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
+        $fullData['type'] = 'smsloadquickinbox';
+        $distinctNumbers = "";
+        $allNumbers = [];
+        $allMessages = [];
+        $quickInboxMsgs = [];
+        $ctr = 0;
 
-        //         array_push($allNumbers, $normalizedNum);
-        //         $allMessages[$ctr]['user'] = $normalizedNum;
-        //         $allMessages[$ctr]['msg'] = $row['sms_msg'];
-        //         $allMessages[$ctr]['timestamp'] = $row['timestamp'];
-        //         $ctr++;
-        //     }
-        //     $distinctNumbers = array_unique($allNumbers);
+        if ($sms_result_from_period->num_rows > 0) {
+            while ($row = $sms_result_from_period->fetch_assoc()) {
+                var_dump($row);
+                // $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
 
-        //     foreach ($distinctNumbers as $singleContact) {
-        //         $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
-        //         $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
-        //         array_push($quickInboxMsgs, $msgDetails);
-        //     }
+                // array_push($allNumbers, $normalizedNum);
+                // $allMessages[$ctr]['user'] = $normalizedNum;
+                // $allMessages[$ctr]['msg'] = $row['sms_msg'];
+                // $allMessages[$ctr]['timestamp'] = $row['timestamp'];
+                // $ctr++;
+            }
 
-        //     $fullData['data'] = $quickInboxMsgs;
-        // }
-        // else {
-        //     echo "0 results\n";
-        //     $fullData['data'] = null;
-        // }
+            // $distinctNumbers = array_unique($allNumbers);
+
+            // foreach ($distinctNumbers as $singleContact) {
+            //     $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
+            //     $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
+            //     array_push($quickInboxMsgs, $msgDetails);
+            // }
+
+            // $fullData['data'] = $quickInboxMsgs;
+        } else {
+            echo "0 results\n";
+            $fullData['data'] = null;
+        }
 
         // echo "JSON DATA: " . json_encode($fullData);
         // $this->qiInit = false;
@@ -372,10 +374,10 @@ class ChatMessageModel {
     }
 
     public function getFullnamesAndNumbers() {
-        $sqlGetFullnamesAndNumbers = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_organization ON user_organization.user_id = users.user_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN sites ON user_organization.fk_site_id = sites.site_id) as fullcontact UNION SELECT * FROM (SELECT UPPER(CONCAT(dewsl_teams.team_code,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id LEFT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id) as fullcontact;";
+        $get_full_names_query = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_organization ON user_organization.user_id = users.user_id LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN sites ON user_organization.fk_site_id = sites.site_id) as fullcontact UNION SELECT * FROM (SELECT UPPER(CONCAT(dewsl_teams.team_code,' ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,user_mobile.sim_num as number FROM users INNER JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id LEFT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id) as fullcontact;";
         // Make sure the connection is still alive, if not, try to reconnect 
-        $this->checkConnectionDB($sqlGetFullnamesAndNumbers);
-        $result = $this->dbconn->query($sqlGetFullnamesAndNumbers);
+        $this->checkConnectionDB($get_full_names_query);
+        $result = $this->dbconn->query($get_full_names_query);
         $ctr = 0;
         $dbreturn = "";
         if ($result->num_rows > 0) {
