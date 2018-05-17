@@ -186,8 +186,10 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } elseif ($msgType == "smsloadquickinboxrequest") {
                 echo "Loading latest message from 20 registered and unknown numbers for the past 7 days...";
-               $quickInboxMessages = $this->chatModel->getCachedQuickInboxMessages();
+                $quickInboxMessages = $this->chatModel->getQuickInboxMain();
                 $from->send(json_encode($quickInboxMessages));
+            } else if ($msgType == "smsloadquickinboxunregisteredrequest") {
+
             } else if ($msgType == "latestAlerts") {
                 echo "Loading latest public alerts.";
                 $latestAlerts = $this->chatModel->getLatestAlerts();
