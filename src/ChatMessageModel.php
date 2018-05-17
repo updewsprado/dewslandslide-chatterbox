@@ -326,42 +326,37 @@ class ChatMessageModel {
 
     public function getQuickInboxMessages($periodDays = 365) {
         $contact_lists = $this->getFullnamesAndNumbers();
-        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num 
+        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' ', users.firstname, ' ',users.lastname, ' - ', user_mobile.sim_num) as full_name
             FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
-            WHERE smsinbox_users.ts_received > (now() - interval 1000 day)
+            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_received > (now() - interval 1000 day)
             ORDER BY ts_received DESC";
 
         $this->checkConnectionDB($get_all_sms_from_period);
         $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
 
-        $fullData['type'] = 'smsloadquickinbox';
-        $distinctNumbers = "";
-        $allNumbers = [];
-        $allMessages = [];
-        $quickInboxMsgs = [];
+        $full_data['type'] = 'smsloadquickinbox';
+        $distinct_numbers = "";
+        $all_numbers = [];
+        $all_messages = [];
+        $quick_inbox_messages = [];
         $ctr = 0;
 
         if ($sms_result_from_period->num_rows > 0) {
             while ($row = $sms_result_from_period->fetch_assoc()) {
-                var_dump($row);
-                // $normalizedNum = $this->normalizeContactNumber($row['sim_num']);
-
-                // array_push($allNumbers, $normalizedNum);
-                // $allMessages[$ctr]['user'] = $normalizedNum;
-                // $allMessages[$ctr]['msg'] = $row['sms_msg'];
-                // $allMessages[$ctr]['timestamp'] = $row['timestamp'];
-                // $ctr++;
+                $normalized_number = substr($row["sim_num"], -10);
+                array_push($all_numbers, $normalized_number);
+                $all_messages[$ctr]['sms_id'] = $row['sms_id'];
+                $all_messages[$ctr]['full_name'] = $row['full_name'];
+                $all_messages[$ctr]['user_number'] = $normalized_number;
+                $all_messages[$ctr]['msg'] = $row['sms_msg'];
+                $all_messages[$ctr]['ts_received'] = $row['ts_received'];
+                $ctr++;
             }
 
-            // $distinctNumbers = array_unique($allNumbers);
+            foreach ($all_messages as $sms_row) {
+                # code...
+            }
 
-            // foreach ($distinctNumbers as $singleContact) {
-            //     $msgDetails = $this->getRowFromMultidimensionalArray($allMessages, "user", $singleContact);
-            //     $msgDetails['name'] = $this->convertNameToUTF8($this->findFullnameFromNumber($contactsList, $msgDetails['user']));
-            //     array_push($quickInboxMsgs, $msgDetails);
-            // }
-
-            // $fullData['data'] = $quickInboxMsgs;
         } else {
             echo "0 results\n";
             $fullData['data'] = null;
@@ -1418,18 +1413,6 @@ class ChatMessageModel {
     $msgData['type'] = "searchGintags";
     return $msgData;
     }
-    }
-
-    public function normalizeContactNumber($contactNumber) {
-        $countNum = strlen($contactNumber);
-        if ($countNum == 11) {
-            $contactNumber = substr($contactNumber, 1);
-        }
-        elseif ($countNum == 12) {
-            $contactNumber = substr($contactNumber, 2);
-        }
-
-        return $contactNumber;
     }
 
     public function getContactNumbersFromGroupTags($offices = null, $sitenames = null,$ewi_filter = null) {
