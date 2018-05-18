@@ -2186,9 +2186,6 @@ class ChatMessageModel {
                 $returnDwslContacts[$ctr]['firstname'] = $row['firstname'];
                 $returnDwslContacts[$ctr]['lastname'] = $row['lastname'];
                 $returnDwslContacts[$ctr]['middlename'] = $row['middlename'];
-                $returnDwslContacts[$ctr]['nickname'] = $row['nickname'];
-                $returnDwslContacts[$ctr]['birthday'] = $row['birthday'];
-                $returnDwslContacts[$ctr]['gender'] = $row['sex'];
                 $returnDwslContacts[$ctr]['active_status'] = $row['status'];
                 $returnTeams[$ctr]['team'] = $row['team_name'];
                 $ctr++;
