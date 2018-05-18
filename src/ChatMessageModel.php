@@ -348,7 +348,7 @@ class ChatMessageModel {
                 $normalized_number = substr($row["sim_num"], -10);
                 // array_push($all_numbers, $normalized_number);
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
-                $all_messages[$ctr]['full_name'] = $row['full_name'];
+                $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
                 $all_messages[$ctr]['msg'] = $row['sms_msg'];
                 $all_messages[$ctr]['ts_received'] = $row['ts_received'];
@@ -2150,7 +2150,7 @@ class ChatMessageModel {
         $returnCmmtyContacts = [];
         $returnData = [];
         $ctr = 0;
-        $query = "SELECT * FROM users";
+        $query = "SELECT DISTINCT users.user_id,users.firstname,users.lastname,users.middlename,users.salutation,users.status FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id;";
         $result = $this->dbconn->query($query);
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
@@ -2159,9 +2159,6 @@ class ChatMessageModel {
                 $returnCmmtyContacts[$ctr]['firstname'] = $row['firstname'];
                 $returnCmmtyContacts[$ctr]['lastname'] = $row['lastname'];
                 $returnCmmtyContacts[$ctr]['middlename'] = $row['middlename'];
-                $returnCmmtyContacts[$ctr]['nickname'] = $row['nickname'];
-                $returnCmmtyContacts[$ctr]['birthday'] = $row['birthday'];
-                $returnCmmtyContacts[$ctr]['gender'] = $row['sex'];
                 $returnCmmtyContacts[$ctr]['active_status'] = $row['status'];
                 $ctr++;
             }
