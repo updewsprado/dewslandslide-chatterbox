@@ -324,15 +324,13 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function getQuickInboxMessages($periodDays = 365) {
+    public function getQuickInboxMessages($periodDays = 150) {
         $contact_lists = $this->getFullnamesAndNumbers();
         $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname) as full_name
             FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
-            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_received > (now() - interval 1000 day) GROUP BY smsinbox_users.mobile_id
-            ORDER BY ts_received DESC";
-
-            echo $get_all_sms_from_period;
-
+            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_received > (now() - interval $periodDays day)
+            GROUP BY user_mobile.sim_num ORDER BY ts_received DESC";
+            
         $this->checkConnectionDB($get_all_sms_from_period);
         $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
 
@@ -346,7 +344,6 @@ class ChatMessageModel {
         if ($sms_result_from_period->num_rows > 0) {
             while ($row = $sms_result_from_period->fetch_assoc()) {
                 $normalized_number = substr($row["sim_num"], -10);
-                // array_push($all_numbers, $normalized_number);
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
                 $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
@@ -361,7 +358,7 @@ class ChatMessageModel {
             $full_data['data'] = null;
         }
 
-        echo "JSON DATA: " . json_encode($full_data);
+        // echo "JSON DATA: " . json_encode($full_data);
         $this->qiInit = false;
 
         return $full_data;
