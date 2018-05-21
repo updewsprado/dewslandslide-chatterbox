@@ -562,6 +562,7 @@ class ChatMessageModel {
                 $allMessages[$ctr]['user'] = $normalizedNum;
                 $allMessages[$ctr]['msg'] = $row['sms_msg'];
                 $allMessages[$ctr]['timestamp'] = $row['timestamp'];
+                $allMessages[$ctr]['network'] = $this->identifyMobileNetwork($row['sim_num']);
                 $ctr++;
             }
 
@@ -1463,6 +1464,7 @@ class ChatMessageModel {
                     if ($dbreturn[$ctr]['user'] == "You") {
                         $dbreturn[$ctr]['table_used'] = "smsoutbox";
                     } else {
+                        $dbreturn[$ctr]['network'] = $this->identifyMobileNetwork($row['user']);
                         $dbreturn[$ctr]['table_used'] = "smsinbox";
                     }
                 }
@@ -1504,7 +1506,6 @@ class ChatMessageModel {
                     }
                 }
             }
-
 
             $fullData['data'] = $dbreturn;
         }
@@ -2482,6 +2483,7 @@ class ChatMessageModel {
                 if ($row['user'] == "You") {
                     $dbreturn[$ctr]['table_used'] = "smsoutbox";
                 } else {
+                    $dbreturn[$ctr]['network'] = $this->identifyMobileNetwork($row['user']);
                     $dbreturn[$ctr]['table_used'] = "smsinbox";
                 }
                 $dbreturn[$ctr]['user'] = $row['user'];
