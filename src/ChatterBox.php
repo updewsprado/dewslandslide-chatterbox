@@ -418,6 +418,17 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->chatModel->getSmsPerContact($fullname,$timestamp);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "loadSmsConversation") { // NEW CODE STARTS HERE
+                $raw = explode(" ",$decodedText->data->full_name);
+                $request = [
+                    "office" => $raw[1],
+                    "site" => $raw[0],
+                    "first_name" => $raw[3],
+                    "last_name" => $raw[4],
+                    "number" => $decodedText->data->number
+                ];
+                $exchanges = $this->chatModel->getMessageConversations($request);
+                $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";
             }

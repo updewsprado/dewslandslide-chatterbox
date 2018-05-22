@@ -329,7 +329,7 @@ class ChatMessageModel {
         $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname) as full_name
             FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
             INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_received > (now() - interval $periodDays day)
-            GROUP BY user_mobile.sim_num ORDER BY ts_received DESC";
+            GROUP BY user_mobile.sim_num ORDER BY ts_received";
             
         $this->checkConnectionDB($get_all_sms_from_period);
         $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
@@ -360,8 +360,7 @@ class ChatMessageModel {
 
         // echo "JSON DATA: " . json_encode($full_data);
         $this->qiInit = false;
-
-        return $full_data;
+        return $this->utf8_encode_recursive($full_data);
     }
 
     public function getFullnamesAndNumbers() {
@@ -2163,8 +2162,8 @@ class ChatMessageModel {
             echo "No results..";
         }
         $returnData['type'] = 'fetchedCmmtyContacts';
-        $returnData['data'] = $this->utf8_encode_recursive($returnCmmtyContacts);
-        return $returnData;
+        $returnData['data'] = $returnCmmtyContacts;
+        return $this->utf8_encode_recursive($returnData);
     }
 
     public function getAllDwslContacts() {
@@ -2212,7 +2211,7 @@ class ChatMessageModel {
 
         $returnData['type'] = 'fetchedDwslContacts';
         $returnData['data'] = $finContact;
-        return $returnData;
+        return $this->utf8_encode_recursive($returnData);
     }
 
     public function getDwslContact($id) {
@@ -3231,8 +3230,6 @@ class ChatMessageModel {
             }
 
             $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
-            var_dump($inbox_outbox_collection);
-            exit;
 
             $ctr = 0;
             for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
@@ -3280,46 +3277,63 @@ class ChatMessageModel {
         return $return_data;
     }
 
-    // UTILITIES
+    // NEW CODE STARTS HERE
 
-    function sort_msgs($arr) {
-        var_dump($arr);
+    function getMessageConversations($details) {
+        $inbox_outbox_collection = [];
+        $temp_timestamp = [];
+        $sorted_sms = [];
+
+        $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
+                        smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
+                        null as send_status , ts_received as timestamp from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_received desc limit 20;";
+
+        $fetch_inbox = $this->dbconn->query($inbox_query);
+        if ($fetch_inbox->num_rows != 0) {
+            while($row = $fetch_inbox->fetch_assoc()) {
+                array_push($inbox_outbox_collection,$row);
+                array_push($temp_timestamp,$row['ts_received']);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+
+        $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        web_status, gsm_id , send_status , ts_written as timestamp FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_written desc limit 20";
+        $fetch_outbox = $this->dbconn->query($outbox_query);
+        if ($fetch_outbox->num_rows != 0) {
+            while($row = $fetch_outbox->fetch_assoc()) {
+                array_push($inbox_outbox_collection,$row);
+                array_push($temp_timestamp,$row['ts_written']);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+
+        $sort_temp = $this->sort($inbox_outbox_collection);
+        
+        $full_data = [];
+        $full_data['type'] = "loadSmsConversation";
+        $full_data['data'] = $sort_temp;
+        return $full_data;
     }
 
-    // function sort_msgs($arr) {
-    //     $size = count($arr);
-    //     for ($i=0; $i<$size; $i++) {
-    //         for ($j=0; $j<$size-1-$i; $j++) {
-    //             if (isset($arr[$j]['outbox_id'])) {
-    //                 if (isset($arr[$j+1]['ts_written'])) {
-    //                     if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_written'])) {
-    //                         $this->swap($arr, $j, $j+1);
-    //                     }
-    //                 } else {
-    //                     if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_written'])) {
-    //                         $this->swap($arr, $j, $j+1);
-    //                     }
-    //                 }
-    //             } else {
-    //                 if (isset($arr[$j+1]['ts_received'])) {
-    //                     if (strtotime($arr[$j+1]['ts_received']) < strtotime($arr[$j]['ts_received'])) {
-    //                         $this->swap($arr, $j, $j+1);
-    //                     }
-    //                 } else {
-    //                     if (strtotime($arr[$j+1]['ts_written']) < strtotime($arr[$j]['ts_received'])) {
-    //                         $this->swap($arr, $j, $j+1);
-    //                     }
-    //                 }
-    //             }
 
-    //         }
-    //     }
-    //     return $arr;
-    // }
-     
-    function swap(&$arr, $a, $b) {
-        $tmp = $arr[$a];
-        $arr[$a] = $arr[$b];
-        $arr[$b] = $tmp;
+    function sort($arr) {
+        do {
+                $swapped = false;
+                for( $i = 0, $c = count( $arr ) - 1; $i < $c; $i++ ) {
+                    if( $arr[$i]['timestamp'] > $arr[$i + 1]['timestamp'] )
+                    {
+                        list( $arr[$i + 1], $arr[$i] ) =
+                                array( $arr[$i], $arr[$i + 1] );
+                        $swapped = true;
+                    }
+                }
+            } while( $swapped );
+        return $arr;
     }
 }
