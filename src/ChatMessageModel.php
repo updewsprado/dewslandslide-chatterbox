@@ -1984,7 +1984,7 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -3284,6 +3284,12 @@ class ChatMessageModel {
         $temp_timestamp = [];
         $sorted_sms = [];
 
+        if ($details['number'] == "N/A") {
+            $mobile_number = $this->getMobileDetails($details);
+            var_dump($mobile_number);
+            $details['number'] = substr($mobile_number[0]['sim_num'], -10);
+        }
+
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
@@ -3318,6 +3324,22 @@ class ChatMessageModel {
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $sort_temp;
         return $full_data;
+    }
+
+    function getMobileDetails($details) {
+        var_dump($details);
+        $mobile_number_container = [];
+        $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE users.firstname LIKE '%".$details['first_name']."%' AND users.lastname LIKE '%".$details['last_name']."%';";
+        echo $mobile_number_query;
+        $mobile_number = $this->dbconn->query($mobile_number_query);
+        if ($mobile_number->num_rows != 0) {
+            while ($row = $mobile_number->fetch_assoc()) {
+                array_push($mobile_number_container, $row);
+            }
+        } else {
+            echo "No numbers fetched!";
+        }
+        return $mobile_number_container;
     }
 
 
