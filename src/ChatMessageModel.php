@@ -3319,15 +3319,13 @@ class ChatMessageModel {
     }
 
     function getMessageConversationsPerSites($offices, $sites) {
-        var_dump($offices);
-        var_dump($sites);
+        $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
+        var_dump($contact_lists);
     }
 
     function getMobileDetails($details) {
-        var_dump($details);
         $mobile_number_container = [];
         $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE users.firstname LIKE '%".$details['first_name']."%' AND users.lastname LIKE '%".$details['last_name']."%';";
-        echo $mobile_number_query;
         $mobile_number = $this->dbconn->query($mobile_number_query);
         if ($mobile_number->num_rows != 0) {
             while ($row = $mobile_number->fetch_assoc()) {
@@ -3339,6 +3337,29 @@ class ChatMessageModel {
         return $mobile_number_container;
     }
 
+    function getMobileDetailsViaOfficeAndSitename($offices,$sites) {
+        $where = "";
+        $counter = 0;
+        $site_office_query = "";
+        $mobile_data_container = [];
+        foreach ($offices as $office) {
+            foreach ($sites as $site) {
+                if ($counter == 0) {
+                    $site_office_query = "(org_name = '".$office."' AND fk_site_id = '".$site."')";
+                } else {
+                    $site_office_query = $site_office_query." OR (org_name = '".$office."' AND fk_site_id = '".$site."')";
+                }
+                $counter++;
+            }
+        }
+
+        $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id WHERE ".$site_office_query.";";
+        $mobile_number = $this->dbconn->query($mobile_data_query);
+        while ($row = $mobile_number->fetch_assoc()) {
+            array_push($mobile_data_container, $row);
+        }
+        return $mobile_data_container;
+    }
 
     function sort($arr) {
         do {
