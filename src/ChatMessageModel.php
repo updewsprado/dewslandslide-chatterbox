@@ -3287,7 +3287,7 @@ class ChatMessageModel {
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_received as timestamp from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_received desc limit ".$limit.";";
+                        null as send_status , ts_received as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_received desc limit ".$limit.";";
 
         $fetch_inbox = $this->dbconn->query($inbox_query);
         if ($fetch_inbox->num_rows != 0) {
@@ -3300,7 +3300,7 @@ class ChatMessageModel {
 
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
-                        web_status, gsm_id , send_status , ts_written as timestamp FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
                         (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_written desc limit ".$limit."";
         $fetch_outbox = $this->dbconn->query($outbox_query);
         if ($fetch_outbox->num_rows != 0) {
@@ -3314,6 +3314,7 @@ class ChatMessageModel {
         $sort_temp = $this->sort($inbox_outbox_collection);
         
         $full_data = [];
+        $full_data['full_name'] = $details['full_name'];
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $sort_temp;
         return $full_data;

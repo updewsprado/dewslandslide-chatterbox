@@ -425,6 +425,7 @@ class ChatterBox implements MessageComponentInterface {
                     "site" => $raw[0],
                     "first_name" => $raw[3],
                     "last_name" => $raw[4],
+                    "full_name" => $decodedText->data->full_name,
                     "number" => $decodedText->data->number
                 ];
                 $exchanges = $this->chatModel->getMessageConversations($request);
