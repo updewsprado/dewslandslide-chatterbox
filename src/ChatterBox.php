@@ -400,7 +400,7 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges['data'] = $res;
                 $exchanges['type'] = "qgrAllOrgs";
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "loadSmsForSites") {
+            } else if ($msgType == "loadSmsPerGroup") {
                 $organizations = $decodedText->organizations;
                 $sitenames = $decodedText->sitenames;
                 $exchanges = $this->chatModel->getSmsForGroups($organizations,$sitenames);
@@ -410,7 +410,7 @@ class ChatterBox implements MessageComponentInterface {
                 $namequery = $decodedText->namequery;
                 $namesuggestions = $this->chatModel->getContactSuggestions($namequery);
                 $from->send(json_encode($namesuggestions));
-            } elseif ($msgType == "loadSmsPerContact") {
+            } elseif ($msgType == "loadSmsPerSite") {
                 echo "Loading messages...";
                 $fullname = $decodedText->fullname;
                 $timestamp = $decodedText->timestamp;
@@ -429,6 +429,11 @@ class ChatterBox implements MessageComponentInterface {
                     "number" => $decodedText->data->number
                 ];
                 $exchanges = $this->chatModel->getMessageConversations($request);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "loadSmsForSites") {
+                $offices = $decodedText->organizations;
+                $sitenames = $decodedText->sitenames;
+                $exchanges = $this->chatModel->getMessageConversationsPerSites($offices,$sitenames);
                 $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";
