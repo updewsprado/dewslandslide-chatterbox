@@ -3319,8 +3319,46 @@ class ChatMessageModel {
     }
 
     function getMessageConversationsPerSites($offices, $sites) {
+        $counter = 0;
+        $inbox_filter_query = "";
+        $outbox_filter_query = "";
+        $inbox_outbox_collection = [];
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
-        var_dump($contact_lists);
+        foreach ($contact_lists as $mobile_data) {
+            if ($counter == 0) {
+                $outbox_filter_query = "smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id'];
+                $inbox_filter_query = "smsinbox_users.mobile_id = ".$mobile_data['mobile_id'];
+                $counter++;
+            } else {
+                $outbox_filter_query = $outbox_filter_query." OR smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id']." ";
+                $inbox_filter_query = $inbox_filter_query." OR smsinbox_users.mobile_id = ".$mobile_data['mobile_id']." ";
+            }
+        }
+
+        $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, smsinbox_users.mobile_id, 
+                        smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
+                        null as send_status , ts_received as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                        INNER JOIN users ON users.user_id = user_mobile.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$inbox_filter_query."";
+
+        $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact order by timestamp desc limit 70;";
+
+        $fetch_convo = $this->dbconn->query($full_query);
+        if ($fetch_convo->num_rows != 0) {
+            while($row = $fetch_convo->fetch_assoc()) {
+                array_push($inbox_outbox_collection,$row);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+
+        $full_data = [];
+        $full_data['type'] = "loadSmsConversation";
+        $full_data['data'] = $inbox_outbox_collection;
+        return $full_data;
     }
 
     function getMobileDetails($details) {
