@@ -3399,18 +3399,29 @@ class ChatMessageModel {
         return $mobile_data_container;
     }
 
-    function sort($arr) {
-        do {
-                $swapped = false;
-                for( $i = 0, $c = count( $arr ) - 1; $i < $c; $i++ ) {
-                    if( $arr[$i]['timestamp'] > $arr[$i + 1]['timestamp'] )
-                    {
-                        list( $arr[$i + 1], $arr[$i] ) =
-                                array( $arr[$i], $arr[$i + 1] );
-                        $swapped = true;
-                    }
+    function sendSms($recipients, $message) {
+        $sms_status_container = [];
+        foreach ($recipients as $recipient) {
+            $insert_smsoutbox_query = "INSERT INTO smsoutbox_users VALUES (0,'".date("Y-m-d H:i:s", time())."','central','".$message."')";
+            $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
+            if ($smsoutbox == true) {
+                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,1)";
+                $smsoutbox_status = $this->dbconn->query($insert_smsoutbox_status);
+                if ($smsoutbox_status == true) {
+                    $stats = [
+                        "status" => $smsoutbox_status,
+                        "mobile_id" => $recipient
+                    ];
+                    array_push($sms_status_container, $stats);
+                } else {
+                    return -1;
                 }
-            } while( $swapped );
-        return $arr;
+            } else {
+                return -1;
+            }
+        }
+        $result['type'] = "sendSms";
+        $result['data'] = $sms_status_container;
+        return $result;
     }
 }
