@@ -1984,7 +1984,7 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -3279,48 +3279,125 @@ class ChatMessageModel {
 
     // NEW CODE STARTS HERE
 
-    function getMessageConversations($details) {
+    function getMessageConversations($details, $limit = 20) {
         $inbox_outbox_collection = [];
         $temp_timestamp = [];
         $sorted_sms = [];
 
+        if ($details['number'] == "N/A") {
+            $mobile_number = $this->getMobileDetails($details);
+            var_dump($mobile_number);
+            $details['number'] = substr($mobile_number[0]['sim_num'], -10);
+        }
+
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_received as timestamp from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_received desc limit 20;";
-
-        $fetch_inbox = $this->dbconn->query($inbox_query);
-        if ($fetch_inbox->num_rows != 0) {
-            while($row = $fetch_inbox->fetch_assoc()) {
-                array_push($inbox_outbox_collection,$row);
-                array_push($temp_timestamp,$row['ts_received']);
-            }
-        } else {
-            echo "No message fetched!";
-        }
-
+                        null as send_status , ts_received as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
-                        web_status, gsm_id , send_status , ts_written as timestamp FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') order by ts_written desc limit 20";
-        $fetch_outbox = $this->dbconn->query($outbox_query);
-        if ($fetch_outbox->num_rows != 0) {
-            while($row = $fetch_outbox->fetch_assoc()) {
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
+
+
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact order by timestamp desc limit 20;";
+
+        $fetch_convo = $this->dbconn->query($full_query);
+        if ($fetch_convo->num_rows != 0) {
+            while($row = $fetch_convo->fetch_assoc()) {
                 array_push($inbox_outbox_collection,$row);
-                array_push($temp_timestamp,$row['ts_written']);
             }
         } else {
             echo "No message fetched!";
         }
-
-        $sort_temp = $this->sort($inbox_outbox_collection);
         
         $full_data = [];
+        $full_data['full_name'] = $details['full_name'];
         $full_data['type'] = "loadSmsConversation";
-        $full_data['data'] = $sort_temp;
+        $full_data['data'] = $inbox_outbox_collection;
         return $full_data;
     }
 
+    function getMessageConversationsPerSites($offices, $sites) {
+        $counter = 0;
+        $inbox_filter_query = "";
+        $outbox_filter_query = "";
+        $inbox_outbox_collection = [];
+        $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
+        foreach ($contact_lists as $mobile_data) {
+            if ($counter == 0) {
+                $outbox_filter_query = "smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id'];
+                $inbox_filter_query = "smsinbox_users.mobile_id = ".$mobile_data['mobile_id'];
+                $counter++;
+            } else {
+                $outbox_filter_query = $outbox_filter_query." OR smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id']." ";
+                $inbox_filter_query = $inbox_filter_query." OR smsinbox_users.mobile_id = ".$mobile_data['mobile_id']." ";
+            }
+        }
+
+        $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, smsinbox_users.mobile_id, 
+                        smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
+                        null as send_status , ts_received as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                        INNER JOIN users ON users.user_id = user_mobile.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$inbox_filter_query."";
+
+        $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact order by timestamp desc limit 70;";
+
+        $fetch_convo = $this->dbconn->query($full_query);
+        if ($fetch_convo->num_rows != 0) {
+            while($row = $fetch_convo->fetch_assoc()) {
+                array_push($inbox_outbox_collection,$row);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+
+        $full_data = [];
+        $full_data['type'] = "loadSmsConversation";
+        $full_data['data'] = $inbox_outbox_collection;
+        return $full_data;
+    }
+
+    function getMobileDetails($details) {
+        $mobile_number_container = [];
+        $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE users.firstname LIKE '%".$details['first_name']."%' AND users.lastname LIKE '%".$details['last_name']."%';";
+        $mobile_number = $this->dbconn->query($mobile_number_query);
+        if ($mobile_number->num_rows != 0) {
+            while ($row = $mobile_number->fetch_assoc()) {
+                array_push($mobile_number_container, $row);
+            }
+        } else {
+            echo "No numbers fetched!";
+        }
+        return $mobile_number_container;
+    }
+
+    function getMobileDetailsViaOfficeAndSitename($offices,$sites) {
+        $where = "";
+        $counter = 0;
+        $site_office_query = "";
+        $mobile_data_container = [];
+        foreach ($offices as $office) {
+            foreach ($sites as $site) {
+                if ($counter == 0) {
+                    $site_office_query = "(org_name = '".$office."' AND fk_site_id = '".$site."')";
+                } else {
+                    $site_office_query = $site_office_query." OR (org_name = '".$office."' AND fk_site_id = '".$site."')";
+                }
+                $counter++;
+            }
+        }
+
+        $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id WHERE ".$site_office_query.";";
+        $mobile_number = $this->dbconn->query($mobile_data_query);
+        while ($row = $mobile_number->fetch_assoc()) {
+            array_push($mobile_data_container, $row);
+        }
+        return $mobile_data_container;
+    }
 
     function sort($arr) {
         do {
