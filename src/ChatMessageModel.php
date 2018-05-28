@@ -2494,39 +2494,39 @@ class ChatMessageModel {
                 }
             }
 
-            if (sizeof($data->landline) == 0) {
-                try {
-                    $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->id."'";
-                    $result = $this->dbconn->query($landline_exist);
-                } catch (Exception $e) {
-                    $flag = false;
-                }
-            } else {
-                for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
-                    if ($data->landline[$landline_counter]->landline_id != "" && $data->landline[$landline_counter]->landline_number != "") {
-                        try {
-                            $landline_exist = "UPDATE user_landlines SET landline_num = '".$data->landline[$landline_counter]->landline_number."', remarks = '".$data->landline[$landline_counter]->landline_remarks."' WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
-                            $result = $this->dbconn->query($landline_exist);
-                        } catch (Exception $e) {
-                            $flag = false;
-                        }
-                    } else if ($data->landline[$landline_counter]->landline_number == "") {
-                        try {
-                            $landline_exist = "DELETE FROM user_landlines WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
-                            $result = $this->dbconn->query($landline_exist);
-                        } catch (Exception $e) {
-                            $flag = false;
-                        }
-                    } else {
-                        try {
-                            $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
-                            $result = $this->dbconn->query($new_landline); 
-                        } catch (Exception $e) {
-                            $flag = false;
-                        }
-                    }
-                }
-            }
+            // if (sizeof($data->landline) == 0) {
+            //     try {
+            //         $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->id."'";
+            //         $result = $this->dbconn->query($landline_exist);
+            //     } catch (Exception $e) {
+            //         $flag = false;
+            //     }
+            // } else {
+            //     for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+            //         if ($data->landline[$landline_counter]->landline_id != "" && $data->landline[$landline_counter]->landline_number != "") {
+            //             try {
+            //                 $landline_exist = "UPDATE user_landlines SET landline_num = '".$data->landline[$landline_counter]->landline_number."', remarks = '".$data->landline[$landline_counter]->landline_remarks."' WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+            //                 $result = $this->dbconn->query($landline_exist);
+            //             } catch (Exception $e) {
+            //                 $flag = false;
+            //             }
+            //         } else if ($data->landline[$landline_counter]->landline_number == "") {
+            //             try {
+            //                 $landline_exist = "DELETE FROM user_landlines WHERE landline_id='".$data->landline[$landline_counter]->landline_id."'";
+            //                 $result = $this->dbconn->query($landline_exist);
+            //             } catch (Exception $e) {
+            //                 $flag = false;
+            //             }
+            //         } else {
+            //             try {
+            //                 $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+            //                 $result = $this->dbconn->query($new_landline); 
+            //             } catch (Exception $e) {
+            //                 $flag = false;
+            //             }
+            //         }
+            //     }
+            // }
 
             if ($flag == false) {
                 $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
@@ -2854,14 +2854,14 @@ class ChatMessageModel {
             }
         }
 
-        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
-            try {
-                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
-                $result = $this->dbconn->query($new_landline); 
-            } catch (Exception $e) {
-                $flag = false;
-            }
-        }
+        // for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+        //     try {
+        //         $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+        //         $result = $this->dbconn->query($new_landline); 
+        //     } catch (Exception $e) {
+        //         $flag = false;
+        //     }
+        // }
 
         if ($flag == false) {
             $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
@@ -2900,14 +2900,14 @@ class ChatMessageModel {
             }
         }
 
-        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
-            try {
-                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
-                $result = $this->dbconn->query($new_landline); 
-            } catch (Exception $e) {
-                $flag = false;
-            }
-        }
+        // for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+        //     try {
+        //         $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+        //         $result = $this->dbconn->query($new_landline); 
+        //     } catch (Exception $e) {
+        //         $flag = false;
+        //     }
+        // }
 
         $site_query = "";
         for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
@@ -2977,14 +2977,14 @@ class ChatMessageModel {
         } catch (Exception $e) {
             $flag = false;
         }
-
+        
         if ($flag == false) {
             $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
         } else {
             $return_data['return_msg'] = "Successfully added new contact.";
         }
         $return_data['status'] = $flag;
-
+        
         $return_data['type'] = "newAddedCommContact";
         return $return_data;
     }
