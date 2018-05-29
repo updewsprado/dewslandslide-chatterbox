@@ -3300,7 +3300,7 @@ class ChatMessageModel {
                         (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
 
 
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact order by timestamp desc limit 20;";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
 
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
@@ -3344,8 +3344,7 @@ class ChatMessageModel {
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact order by timestamp desc limit 70;";
-
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
