@@ -13,10 +13,10 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "localhost";
+        $host = "192.168.150.90";
         $usr = "root";
         $pwd = "senslope";
-        $dbname = "newdb";
+        $dbname = "senslopedb";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
@@ -3324,6 +3324,7 @@ class ChatMessageModel {
         $outbox_filter_query = "";
         $inbox_outbox_collection = [];
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
+        var_dump($contact_lists);
         foreach ($contact_lists as $mobile_data) {
             if ($counter == 0) {
                 $outbox_filter_query = "smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id'];
@@ -3336,15 +3337,16 @@ class ChatMessageModel {
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, smsinbox_users.mobile_id, 
-                        smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.ts_sms, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_received as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                        null as send_status , ts_sms as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
                         INNER JOIN users ON users.user_id = user_mobile.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$inbox_filter_query."";
 
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
-                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        null as ts_sms, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3357,6 +3359,7 @@ class ChatMessageModel {
         $full_data = [];
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $inbox_outbox_collection;
+        $full_data['recipients'] = $contact_lists;
         return $full_data;
     }
 
@@ -3400,11 +3403,13 @@ class ChatMessageModel {
 
     function sendSms($recipients, $message) {
         $sms_status_container = [];
+        $current_ts = date("Y-m-d H:i:s", time());
         foreach ($recipients as $recipient) {
-            $insert_smsoutbox_query = "INSERT INTO smsoutbox_users VALUES (0,'".date("Y-m-d H:i:s", time())."','central','".$message."')";
+            $insert_smsoutbox_query = "INSERT INTO smsoutbox_users VALUES (0,'".$current_ts."','central','".$message."')";
             $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
+            $convo_id = $this->dbconn->insert_id;
             if ($smsoutbox == true) {
-                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,1)";
+                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,4)";
                 $smsoutbox_status = $this->dbconn->query($insert_smsoutbox_status);
                 if ($smsoutbox_status == true) {
                     $stats = [
@@ -3419,8 +3424,24 @@ class ChatMessageModel {
                 return -1;
             }
         }
-        $result['type'] = "sendSms";
-        $result['data'] = $sms_status_container;
+
+        $result = [
+            "type" => "sendSms",
+            "isYou" => 1,
+            "mobile_id" => $sms_status_container[0]['mobile_id'],
+            "read_status" => null,
+            "send_status" => 0,
+            "timestamp" => $current_ts,
+            "ts_sent" => null,
+            "ts_written" => $current_ts,
+            "ts_received" => null,
+            "user" => "You",
+            "web_status" => null,
+            "gsm_id" => 1,
+            "convo_id" => $convo_id,
+            "sms_msg" => $message,
+            "data" => $sms_status_container
+        ];
         return $result;
     }
 }
