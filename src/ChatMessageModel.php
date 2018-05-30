@@ -14,8 +14,8 @@ class ChatMessageModel {
 
     public function initDBforCB() {
         $host = "192.168.150.90";
-        $usr = "root";
-        $pwd = "senslope";
+        $usr = "dyna_staff";
+        $pwd = "accelerometer";
         $dbname = "senslopedb";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -324,13 +324,12 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function getQuickInboxMessages($periodDays = 150) {
-        $contact_lists = $this->getFullnamesAndNumbers();
-        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_received, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname) as full_name
+    public function getQuickInboxMessages($periodDays = 7) {
+        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name
             FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
-            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_received > (now() - interval $periodDays day)
-            GROUP BY user_mobile.sim_num ORDER BY ts_received";
-            
+            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_sms > (now() - interval $periodDays day)
+            GROUP BY user_mobile.sim_num ORDER BY ts_sms";
+
         $this->checkConnectionDB($get_all_sms_from_period);
         $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
 
@@ -347,8 +346,9 @@ class ChatMessageModel {
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
                 $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
+                $all_messages[$ctr]['mobile_id'] = $row['mobile_id'];
                 $all_messages[$ctr]['msg'] = $row['sms_msg'];
-                $all_messages[$ctr]['ts_received'] = $row['ts_received'];
+                $all_messages[$ctr]['ts_received'] = $row['ts_sms'];
                 $ctr++;
             }
 
@@ -1984,7 +1984,7 @@ class ChatMessageModel {
     }
 
     public function getContactSuggestions($queryName) {
-        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.firstname,' ',users.lastname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
+        $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.lastname,', ',users.firstname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.lastname,', ',users.firstname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
 
         $this->checkConnectionDB($sql);
         $result = $this->dbconn->query($sql);
@@ -3290,11 +3290,11 @@ class ChatMessageModel {
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
-                        smsinbox_users.ts_sms, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
                         null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
-                        null as ts_sms, ts_written, ts_sent, sms_msg , null as read_status,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
                         (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
 
@@ -3324,7 +3324,6 @@ class ChatMessageModel {
         $outbox_filter_query = "";
         $inbox_outbox_collection = [];
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
-        var_dump($contact_lists);
         foreach ($contact_lists as $mobile_data) {
             if ($counter == 0) {
                 $outbox_filter_query = "smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id'];
@@ -3337,13 +3336,13 @@ class ChatMessageModel {
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, smsinbox_users.mobile_id, 
-                        smsinbox_users.ts_sms, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.firstname, ' ', users.lastname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                        null as send_status , ts_sms as timestamp, UPPER(CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname)) as user from smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
                         INNER JOIN users ON users.user_id = user_mobile.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$inbox_filter_query."";
 
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
-                        null as ts_sms, ts_written, ts_sent, sms_msg , null as read_status,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
 
