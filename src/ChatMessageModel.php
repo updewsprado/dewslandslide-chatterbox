@@ -3286,16 +3286,15 @@ class ChatMessageModel {
 
         if ($details['number'] == "N/A") {
             $mobile_number = $this->getMobileDetails($details);
-            var_dump($mobile_number);
             $details['number'] = substr($mobile_number[0]['sim_num'], -10);
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
-                        smsinbox_users.ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.ts_sms, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_received as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
+                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
-                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        null as ts_sms, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
                         (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
 
@@ -3313,6 +3312,7 @@ class ChatMessageModel {
         
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
+        $full_data['recipients'] = $mobile_number;
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $inbox_outbox_collection;
         return $full_data;
