@@ -144,8 +144,8 @@ Tiyakin ang kaligtasan sa pagpunta sa site.
 
 Salamat. - PHIVOLCS-DYNASLOPE";
     
-    var_dump($events);
     foreach ($events as $event) {
+        echo "Sending reminder to ".$event."\n";
         $toBeSent = (object) array(
             "type" => "smssendgroup",
             "user" => "You",
@@ -159,5 +159,6 @@ Salamat. - PHIVOLCS-DYNASLOPE";
         $WebSocketClient = new WebsocketClient('localhost', 5050);
         $WebSocketClient->sendData(json_encode($toBeSent));
         unset($WebSocketClient);
+        echo "Reminder sent!\n\n";
     }
 ?>
