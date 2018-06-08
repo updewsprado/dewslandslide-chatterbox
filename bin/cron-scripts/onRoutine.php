@@ -83,8 +83,42 @@
         echo "Connection established.\n\n";
     }
 
+    // get Ground measurements for this day
+    $current_date = date('Y-m-d H:m:i');
+    $previous_date_raw = date_create(date('Y-m-d H:i'));
+    $reconstruct_date = date_sub($previous_date_raw,date_interval_create_from_date_string("4 hours"));
+    $previous_date = date_format($reconstruct_date,"Y-m-d H:i:s");
+    $gndmeas_sent_sites = [];
+    $sql = "SELECT * FROM senslopedb.gintags 
+            INNER JOIN smsinbox ON smsinbox.sms_id = table_element_id 
+            INNER JOIN gintags_reference ON gintags.tag_id_fk = gintags_reference.tag_id
+            where (gintags_reference.tag_name = '#CantSendGndMeas' OR gintags_reference.tag_name = '#GroundMeas') AND smsinbox.timestamp < '".$current_date."' AND smsinbox.timestamp > '".$previous_date."' limit 100;";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        foreach ($result as $tagged) {
+            $sql = "SELECT sitename FROM communitycontacts WHERE number like '%".substr($tagged['sim_num'],-10)."%'";
+            $get_sites = $conn->query($sql);
+            if ($get_sites->num_rows > 0) {
+                foreach ($get_sites as $site) {
+                    if (sizeOf($gndmeas_sent_sites) == 1) {
+                        array_push($gndmeas_sent_sites, $site['sitename']);
+                    } else {
+                        if (!in_array($site['sitename'],$gndmeas_sent_sites)) {
+                            array_push($gndmeas_sent_sites,$site);
+                        }
+                    }
+                }
+            } else {
+                echo "No contacts fetched. \n\n";
+            }
+        }
+    } else {
+        echo "No Ground measurement received.\n\n";
+    }
+
     // get ongoing events------
-    $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+    $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id 
+            INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
     $result = $conn->query($sql);
     $site_routine_collection['sitename'] = [];
     $site_routine_collection['status'] = [];
@@ -96,6 +130,7 @@
     } else {
         echo "0 results";
     }
+
     //-------------------------
 
     // get all sites
@@ -105,8 +140,10 @@
     $site_collection['season'] = [];
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            array_push($site_collection['sitename'],$row['name']);
-            array_push($site_collection['season'],$row['season']);
+            if (!in_array(strtoupper($row['name']),$gndmeas_sent_sites)) {
+                array_push($site_collection['sitename'],$row['name']);
+                array_push($site_collection['season'],$row['season']);  
+            } 
         }
     } else {
         echo "0 results";
@@ -135,7 +172,12 @@
     $today = date("l");
     switch ($today) {
         case 'Wednesday':
-            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating DRY SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - PHIVOLCS-DYNASLOPE";
+            $msg = "Magandang umaga po.
+ 
+                    Inaasahan namin ang pagpapadala ng LEWC ng ground data bago mag-11:30 AM para sa dry season routine monitoring.
+                    Tiyakin ang kaligtasan sa pagpunta sa site.
+
+                    Salamat. - PHIVOLCS-DYNASLOPE";
             for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
                 if (in_array($month,$dry[(int) ($on_routine['season'][$routine_counter]-1)])) {
                     echo $on_routine['sitename'][$routine_counter]." - ".$on_routine['season'][$routine_counter]." :";
@@ -143,7 +185,7 @@
                     $toBeSent = (object) array(
                         "type"=>"smssendgroup",
                         "user"=>"You",
-                        "offices"=>["LLMC"],
+                        "offices"=>["LEWC"],
                         "sitenames"=>[$on_routine['sitename'][$routine_counter]],
                         "msg"=>$msg,
                         "timestamp"=>date('Y-m-d H:i:s'),
@@ -158,7 +200,12 @@
             break;
         case 'Friday':
         case 'Tuesday':
-            $msg = "Magandang umaga. Inaasahan na magpadala ng ground data ang LEWC bago mag-11:30AM para sa ating WET SEASON routine monitoring. Para sa mga nakapagpadala na ng sukat, salamat po. Tiyakin ang kaligtasan kung pupunta sa site. Magsabi po lamang kung hindi makakapagsukat. Mag-reply po kayo kung natanggap ang mensaheng ito. Salamat at ingat kayo. - PHIVOLCS-DYNASLOPE";
+            $msg = "Magandang umaga po.
+
+                    Inaasahan namin ang pagpapadala ng LEWC ng ground data bago mag-11:30 AM para sa wet season routine monitoring.
+                    Tiyakin ang kaligtasan sa pagpunta sa site.
+
+                    Salamat. - PHIVOLCS-DYNASLOPE";
             for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
                 if (in_array($month,$wet[(int) ($on_routine['season'][$routine_counter]-1)])){
                     echo $on_routine['sitename'][$routine_counter]." - ".$on_routine['season'][$routine_counter]." :";
@@ -166,7 +213,7 @@
                     $toBeSent = (object) array(
                         "type"=>"smssendgroup",
                         "user"=>"You",
-                        "offices"=>["LLMC"],
+                        "offices"=>["LEWC"],
                         "sitenames"=>[$on_routine['sitename'][$routine_counter]],
                         "msg"=>$msg,
                         "timestamp"=>date('Y-m-d H:i:s'),
