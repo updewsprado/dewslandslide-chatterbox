@@ -72,11 +72,12 @@
 
 		public function checkIncommingSMS($conn) {
 			$inbox_container = [];
-			$inbox_query = "SELECT * FROM user_inbox_collection;";
+			$inbox_query = "SELECT * FROM user_inbox_collection WHERE read_status = 0;";
 			$inbox_collection = $conn->query($inbox_query);
 			if ($inbox_collection->num_rows > 0) {
 				while ($row = $inbox_collection->fetch_assoc()) {
 					array_push($inbox_container,$row['inbox_id']);
+					$this->updateInboxStatus($conn,$row['inbox_id']);
 				}
 			}
 			return $inbox_container;
@@ -90,8 +91,12 @@
 			return json_encode($structure);
 		}
 
-		public function clearNewInboxStorage() {
-
+		public function updateInboxStatus($conn, $inbox_id) {
+			$update_status_query = "UPDATE user_inbox_collection SET read_status = 1 WHERE inbox_id = '".$inbox_id."'";
+			$update_status = $conn->query($update_status_query);
+			if ($update_status != true) {
+				echo "Failed to update read status.\n";
+			}
 		}
 
 	}
