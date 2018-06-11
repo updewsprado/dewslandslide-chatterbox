@@ -26,20 +26,19 @@
 	    }
 
 	    private function _connect($host, $port) {
-	        $key1 = $this->_generateRandomString(32);
-	        $key2 = $this->_generateRandomString(32);
+	        $key1 = $this->_generateRandomString(25);
+	        $key2 = $this->_generateRandomString(25);
 	        $key3 = $this->_generateRandomString(8, false, true);
-
 	        $header = "GET /echo HTTP/1.1\r\n";
 	        $header.= "Upgrade: WebSocket\r\n";
 	        $header.= "Connection: Upgrade\r\n";
 	        $header.= "Host: " . $host . ":" . $port . "\r\n";
 	        $header.= "Origin: http://localhost\r\n";
-	        $header.= "Sec-WebSocket-Key1: " . $key1 . "\r\n";
+	        $header.= "Sec-WebSocket-Key: " . $key1 . "\r\n";
 	        $header.= "Sec-WebSocket-Key2: " . $key2 . "\r\n";
+	        $header.= "Sec-WebSocket-Version: 13"."\r\n".
 	        $header.= "\r\n";
 	        $header.= $key3;
-
 
 	        $this->_Socket = fsockopen($host, $port, $errno, $errstr, 2);
 	        fwrite($this->_Socket, $header) or die('Error: ' . $errno . ':' . $errstr);
@@ -70,9 +69,9 @@
 	        return $randomString;
 	    }
 
-		public function checkOutgoingSMS($conn, $previous_count) {
+		public function checkIncommingSMS($conn) {
 			$inbox_container = [];
-			$inbox_query = "SELECT MAX(SELECT * FROM user_outbox_collection) as count;";
+			$inbox_query = "SELECT * FROM user_inbox_collection where read_status = 0";
 			$inbox_collection = $conn->query($inbox_query);
 			if ($inbox_collection->num_rows > 0) {
 				while ($row = $inbox_collection->fetch_assoc()) {

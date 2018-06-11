@@ -17,8 +17,8 @@ class ChatterBox implements MessageComponentInterface {
 
     public function onOpen(ConnectionInterface $conn) {
         $this->clients->attach($conn);
-
         echo "New connection! ({$conn->resourceId})\n";
+
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
@@ -437,6 +437,19 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "sendSmsToRecipients") {
                 $exchanges = $this->chatModel->sendSms($decodedText->recipients,$decodedText->message);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "newSmsInbox") {
+                echo "New Incomming SMS Received. Sending data to all WSS clients.\n";
+                foreach ($decodedText->data as $inbox_id) {
+                    $exchanges = $this->chatModel->fetchSmsInboxData($inbox_id);
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            $client->send(json_encode($exchanges));
+                        }
+                    } 
+                }
+            } else if ($msgType == "smsoutboxStatusUpdate") {
+                echo "Update Outgoing SMS. Sending data to all WSS clients.\n";
+                $exchanges = $this->chatModel->fetchSmsOutboxData($decodedText->outbox_id);
             } else {
                 echo "Message will be ignored\n";
             }

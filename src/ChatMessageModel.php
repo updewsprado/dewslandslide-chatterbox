@@ -3443,4 +3443,44 @@ class ChatMessageModel {
         ];
         return $result;
     }
+
+    function fetchSmsInboxData($inbox_id) {
+        $inbox_data = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, 
+                        smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name 
+                        FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                        INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.inbox_id = '".$inbox_id."';";
+        $execute_query = $this->dbconn->query($inbox_data);
+
+        $full_data['type'] = 'newSmsInbox';
+        $distinct_numbers = "";
+        $all_numbers = [];
+        $all_messages = [];
+        $quick_inbox_messages = [];
+        $ctr = 0;
+
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                $normalized_number = substr($row["sim_num"], -10);
+                $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
+                $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
+                $all_messages[$ctr]['user_number'] = $normalized_number;
+                $all_messages[$ctr]['mobile_id'] = $row['mobile_id'];
+                $all_messages[$ctr]['msg'] = $row['sms_msg'];
+                $all_messages[$ctr]['ts_received'] = $row['ts_sms'];
+                $ctr++;
+            }
+
+            $full_data['data'] = $all_messages;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        return $full_data;
+    }
+
+    function fetchSmsOutboxData($outbox_id) {
+        $outbox_data = "";
+        $execute_query = $this->dbconn->query($outbox_data);
+    }
+
 }

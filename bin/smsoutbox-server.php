@@ -70,29 +70,29 @@
 	        return $randomString;
 	    }
 
-		public function checkIncommingSMS($conn) {
-			$inbox_container = [];
-			$inbox_query = "SELECT * FROM user_inbox_collection WHERE read_status = 0;";
-			$inbox_collection = $conn->query($inbox_query);
-			if ($inbox_collection->num_rows > 0) {
-				while ($row = $inbox_collection->fetch_assoc()) {
-					array_push($inbox_container,$row['inbox_id']);
-					$this->updateInboxStatus($conn,$row['inbox_id']);
+		public function checkStatusUpdate($conn) {
+			$outbox_container = [];
+			$outbox_query = "SELECT * FROM user_outbox_collection WHERE ws_status = 0;";
+			$outbox_collection = $conn->query($outbox_query);
+			if ($outbox_collection->num_rows > 0) {
+				while ($row = $outbox_collection->fetch_assoc()) {
+					array_push($outbox_container,$row['outbox_id']);
+					$this->updateInboxStatus($conn,$row['outbox_id']);
 				}
 			}
-			return $inbox_container;
+			return $outbox_container;
 		}
 
-		public function formatWSSRequest($inbox_data) {
+		public function formatWSSRequest($outbox_data) {
 			$structure = [
-				"type" => "newSmsInbox",
-				"data" => $inbox_data
+				"type" => "smsoutboxStatusUpdate",
+				"data" => $outbox_data
 			];
 			return json_encode($structure);
 		}
 
 		public function updateInboxStatus($conn, $inbox_id) {
-			$update_status_query = "UPDATE user_inbox_collection SET read_status = 1 WHERE inbox_id = '".$inbox_id."'";
+			$update_status_query = "UPDATE user_outbox_collection SET ws_status = 1 WHERE outbox_id = '".$inbox_id."'";
 			$update_status = $conn->query($update_status_query);
 			if ($update_status != true) {
 				echo "Failed to update read status.\n";
@@ -113,11 +113,11 @@
     }
 
     while (true) {
-    	echo "Listening for new SMS.. \n";
-    	$inbox = $server->checkIncommingSMS($conn);
-    	if (sizeOf($inbox) != 0) {
-    		echo "New SMS received.\n";
-    		$format_request = $server->formatWSSRequest($inbox);
+    	echo "Listening for new SMS outbox update.. \n";
+    	$oubox = $server->checkStatusUpdate($conn);
+    	if (sizeOf($oubox) != 0) {
+    		echo "New update received.\n";
+    		$format_request = $server->formatWSSRequest($oubox);
 	        $server->sendData($format_request);
 	        echo "Data sent to WSS.\n";
     	}
