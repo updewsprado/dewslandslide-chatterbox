@@ -70,9 +70,9 @@
 	        return $randomString;
 	    }
 
-		public function checkOutgoingSMS($conn, $previous_count) {
+		public function checkIncommingSMS($conn) {
 			$inbox_container = [];
-			$inbox_query = "SELECT MAX(SELECT * FROM user_outbox_collection) as count;";
+			$inbox_query = "SELECT * FROM user_inbox_collection WHERE read_status = 0;";
 			$inbox_collection = $conn->query($inbox_query);
 			if ($inbox_collection->num_rows > 0) {
 				while ($row = $inbox_collection->fetch_assoc()) {
