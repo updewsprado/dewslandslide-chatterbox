@@ -2356,7 +2356,7 @@ class ChatMessageModel {
                     $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
                 } else {
-                    $returnMobile[$ctr]['number_id'] = $row['number_id'];
+                    // $returnMobile[$ctr]['number_id'] = $row['number_id'];
                     $returnMobile[$ctr]['number'] = $row['sim_num'];
                     $returnMobile[$ctr]['priority'] = $row['priority'];
                     $returnMobile[$ctr]['number_status'] = $row['mobile_status'];
@@ -2366,7 +2366,7 @@ class ChatMessageModel {
                     $returnEwiStatus[$ctr]['ewi_mobile_id'] = $row['ewi_mobile_id'];
                     $returnEwiStatus[$ctr]['ewi_status'] = $row['ewi_status'];
                     $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
-                    $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
+                    // $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
                     $returnOrg[$ctr]['org_id'] = $row['org_id'];
                     $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
                     $returnOrg[$ctr]['org_scope'] = $row['scope'];
@@ -2851,17 +2851,18 @@ class ChatMessageModel {
                 $result = $this->dbconn->query($new_num);
             } catch (Exception $e) {
                 $flag = false;
+                echo "false";
             }
         }
 
-        // for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
-        //     try {
-        //         $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
-        //         $result = $this->dbconn->query($new_landline); 
-        //     } catch (Exception $e) {
-        //         $flag = false;
-        //     }
-        // }
+        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+            try {
+                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                $result = $this->dbconn->query($new_landline); 
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
 
         if ($flag == false) {
             $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
