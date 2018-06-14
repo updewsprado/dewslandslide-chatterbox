@@ -1,6 +1,6 @@
 <?php
 	$credentials = include('../utils/config.php');
-	class InboxServer {
+	class OutboxServer {
 		private $_Socket = null;
 
 	    public function __construct($host, $port) {
@@ -101,7 +101,7 @@
 
 	}
 
-	$server = new InboxServer($credentials['wsscredentials']['host'],$credentials['wsscredentials']['port']);
+	$server = new OutboxServer($credentials['wsscredentials']['host'],$credentials['wsscredentials']['port']);
     $conn = new mysqli($credentials['dbcredentials']['dbhost'], $credentials['dbcredentials']['dbuser'], 
     					$credentials['dbcredentials']['dbpass'], $credentials['dbcredentials']['dbname']);
 
