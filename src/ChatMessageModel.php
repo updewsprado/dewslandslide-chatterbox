@@ -2325,7 +2325,9 @@ class ChatMessageModel {
 
         // refactor this code
         $query = "SELECT users.user_id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_organization.org_id,user_organization.org_name,user_organization.scope,organization.org_id as organization_id,user_mobile.mobile_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.remarks,sites.site_id,sites.site_code,sites.psgc_source,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN user_ewi_status ON user_ewi_status.users_id = users.user_id LEFT JOIN organization ON user_organization.org_name = organization.org_name LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN user_landlines ON user_landlines.user_id = users.user_id LEFT JOIN user_emails ON user_emails.user_id = users.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE users.user_id = '$id' order by lastname desc;";
+
         $result = $this->dbconn->query($query);
+
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 if (empty($returnContact)) {
@@ -2382,6 +2384,7 @@ class ChatMessageModel {
         $finMobile = [];
         $finLandline = [];
         $finOrg = [];
+        $finSite = [];
         $finEwi = [];
 
         for ($x = 0; $x < $ctr; $x++) {
@@ -2410,6 +2413,8 @@ class ChatMessageModel {
         $returnData['list_of_orgs'] = $this->getAllOrganization();
         $returnObj['data'] = $returnData;
         $returnObj['type'] = "fetchedSelectedCmmtyContact";
+
+        // var_dump($returnObj);
         return $returnObj;
     }
 
@@ -2847,7 +2852,7 @@ class ChatMessageModel {
 
         for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
             try {
-                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','0')";
                 $result = $this->dbconn->query($new_num);
             } catch (Exception $e) {
                 $flag = false;
@@ -2901,14 +2906,14 @@ class ChatMessageModel {
             }
         }
 
-        // for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
-        //     try {
-        //         $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
-        //         $result = $this->dbconn->query($new_landline); 
-        //     } catch (Exception $e) {
-        //         $flag = false;
-        //     }
-        // }
+        for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
+            try {
+                $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                $result = $this->dbconn->query($new_landline); 
+            } catch (Exception $e) {
+                $flag = false;
+            }
+        }
 
         $site_query = "";
         for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
