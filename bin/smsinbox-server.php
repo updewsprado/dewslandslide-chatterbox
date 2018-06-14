@@ -120,7 +120,6 @@
 	        $server->sendData($format_request);
 	        echo "Data sent to WSS.\n";
     	}
-    	// unset($server);
     	sleep(1);
     }
 ?>
