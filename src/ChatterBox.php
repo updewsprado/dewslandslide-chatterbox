@@ -459,10 +459,35 @@ class ChatterBox implements MessageComponentInterface {
                 }
             } else if ($msgType == "autoGintagMessage") {
                 echo "Message flagged for auto gintagging.\n";
-
+                $request = [
+                    "office" => $decodedText->office,
+                    "site" => $decodedText->site,
+                    "gintag" => $decodedText->gintag,
+                    "sms_id" => $decodedText->sms_id,
+                    "message" => $decodedText->message,
+                    "tagger" => $decodedText->account_id
+                ]
+                $exchanges = $this->chatModel->autoTagMessage($request);
+                $foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        $client->send(json_encode($exchanges));
+                    }
+                }
             } else if ($msgType == "gintagMessage") {
                 echo "Message flagged for gintagging.\n";
-                
+                $request = [
+                    "user_id" => $decodedText->user_id,
+                    "sms_id" => $decodedText->convo_id,
+                    "full_name" => $decodedText->full_name,
+                    "ts" => $decodedText->timestamp,
+                    "tagger" => $decodedText->account_id
+                ]
+                $exchanges = $this->chatModel->tagMessage($request);
+                $foreach ($this->clients as $client) {
+                    if ($from !== $client) {
+                        $client->send(json_encode($exchanges));
+                    }
+                }
             } else if ($msgType == "getImportantTags") {
                 echo "Fecthing Important GINTags.\n";
                 $exchanges = $this->chatModel->fetchImportantGintags();

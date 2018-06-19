@@ -3525,4 +3525,12 @@ class ChatMessageModel {
         $full_data['type'] = "fetchedImportantTags";
         return $full_data;
     }
+
+    function tagMessage($data) {
+
+    }
+
+    function autoTagMessage($data) {
+
+    }
 }
