@@ -3516,7 +3516,7 @@ class ChatMessageModel {
             echo "0 results\n";
             $full_data['data'] = null;
         }
-        $full_data['type'] = "getImportantTags";
+        $full_data['type'] = "fetchedImportantTags";
         return $full_data;
     }
 }
