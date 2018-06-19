@@ -449,7 +449,24 @@ class ChatterBox implements MessageComponentInterface {
                 }
             } else if ($msgType == "smsoutboxStatusUpdate") {
                 echo "Update Outgoing SMS. Sending data to all WSS clients.\n";
-                $exchanges = $this->chatModel->fetchSmsOutboxData($decodedText->outbox_id);
+                foreach ($decodedText->data as $outbox_id) {
+                    $exchanges = $this->chatModel->updateSmsOutboxStatus($outbox_id);
+                    foreach ($this->clients as $client) {
+                        if ($from !== $client) {
+                            $client->send(json_encode($exchanges));
+                        }
+                    } 
+                }
+            } else if ($msgType == "autoGintagMessage") {
+                echo "Message flagged for auto gintagging.\n";
+
+            } else if ($msgType == "gintagMessage") {
+                echo "Message flagged for gintagging.\n";
+                
+            } else if ($msgType == "getImportantTags") {
+                echo "Fecthing Important GINTags.\n";
+                $exchanges = $this->chatModel->fetchImportantGintags();
+                $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";
             }

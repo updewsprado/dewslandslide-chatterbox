@@ -228,30 +228,30 @@ class ChatMessageModel {
     public function getQuickInboxMain($isForceLoad=false) {
 
         $start = microtime(true);
+         $qiResults = $this->getQuickInboxMessages();
+        // $os = PHP_OS;
+        // $qiResults;
 
-        $os = PHP_OS;
-        $qiResults;
+        // if (strpos($os,'WIN') !== false) {
+        //     $qiResults = $this->getQuickInboxMessages();
+        // } elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
 
-        if (strpos($os,'WIN') !== false) {
-            $qiResults = $this->getQuickInboxMessages();
-        } elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
+        //     $mem = new \Memcached();
+        //     $mem->addServer("127.0.0.1", 11211);
+        //     $qiCached = $mem->get("cachedQI");
+        //     if ( ($this->qiInit == true) || $isForceLoad ) {
+        //         echo "Initialize the Quick Inbox Messages \n";
 
-            $mem = new \Memcached();
-            $mem->addServer("127.0.0.1", 11211);
-            $qiCached = $mem->get("cachedQI");
-            if ( ($this->qiInit == true) || $isForceLoad ) {
-                echo "Initialize the Quick Inbox Messages \n";
-
-                $qiResults = $this->getQuickInboxMessages();
-                $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-            } 
-            else {
-                $qiResults = $mem->get("cachedQI");
-            }
-        }
-        else {
-            $qiResults = $this->getQuickInboxMessages();
-        }
+        //         $qiResults = $this->getQuickInboxMessages();
+        //         $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
+        //     } 
+        //     else {
+        //         $qiResults = $mem->get("cachedQI");
+        //     }
+        // }
+        // else {
+           
+        // }
 
         $execution_time = microtime(true) - $start;
         echo "\n\nExecution Time: $execution_time\n\n";
@@ -2356,7 +2356,7 @@ class ChatMessageModel {
                     $returnOrg[$ctr]['org_psgc_source'] = $row['psgc_source'];
                     $ctr++;
                 } else {
-                    $returnMobile[$ctr]['number_id'] = $row['number_id'];
+                    $returnMobile[$ctr]['number_id'] = $row['mobile_id'];
                     $returnMobile[$ctr]['number'] = $row['sim_num'];
                     $returnMobile[$ctr]['priority'] = $row['priority'];
                     $returnMobile[$ctr]['number_status'] = $row['mobile_status'];
@@ -2366,8 +2366,8 @@ class ChatMessageModel {
                     $returnEwiStatus[$ctr]['ewi_mobile_id'] = $row['ewi_mobile_id'];
                     $returnEwiStatus[$ctr]['ewi_status'] = $row['ewi_status'];
                     $returnEwiStatus[$ctr]['ewi_remarks'] = $row['ewi_remarks'];
-                    $returnOrg[$ctr]['org_users_id'] = $row['org_users_id'];
-                    $returnOrg[$ctr]['org_id'] = $row['org_id'];
+                    $returnOrg[$ctr]['org_users_id'] = $row['org_id'];
+                    $returnOrg[$ctr]['org_id'] = $row['organization_id'];
                     $returnOrg[$ctr]['org_name'] = strtoupper($row['org_name']);
                     $returnOrg[$ctr]['org_scope'] = $row['scope'];
                     $returnOrg[$ctr]['site_code'] = strtoupper($row['site_code']);
@@ -2545,12 +2545,12 @@ class ChatMessageModel {
 
     public function updateCmmtyContact($data) {
         $flag = true;
-        $query_contact_info = "UPDATE users SET firstname='$data->firstname',lastname='$data->lastname',middlename='$data->middlename',nickname='$data->nickname',salutation='$data->salutation',birthday='$data->birthdate',sex='$data->gender',status=$data->contact_active_status WHERE user_id = $data->id;";
+        $query_contact_info = "UPDATE users SET firstname='$data->firstname',lastname='$data->lastname',middlename='$data->middlename',nickname='$data->nickname',salutation='$data->salutation',birthday='$data->birthdate',sex='$data->gender',status=$data->contact_active_status WHERE user_id = $data->user_id;";
         $result = $this->dbconn->query($query_contact_info);
         if ($result == true) {
             if (sizeof($data->numbers) == 0) {
                 try {
-                    $num_exist = "DELETE FROM user_mobile WHERE user_id='".$data->id."'";
+                    $num_exist = "DELETE FROM user_mobile WHERE user_id='".$data->user_id."'";
                     $result = $this->dbconn->query($num_exist);
                 } catch (Exception $e) {
                     $flag = false;
@@ -2588,7 +2588,7 @@ class ChatMessageModel {
 
             if (sizeof($data->landline) == 0) {
                 try {
-                    $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->id."'";
+                    $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->user_id."'";
                     $result = $this->dbconn->query($landline_exist);
                 } catch (Exception $e) {
                     $flag = false;
@@ -2651,11 +2651,11 @@ class ChatMessageModel {
                 }
             } else {
                 try {
-                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->id."'";
+                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->user_id."'";
                     $result = $this->dbconn->query($check_if_existing);
                     if ($result->num_rows == 0) {
                         try {
-                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->id."')";
+                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->user_id."')";
                             $result = $this->dbconn->query($insert_ewi_status);
                         } catch (Exception $e) {
                             $flag = false;
@@ -2663,7 +2663,7 @@ class ChatMessageModel {
                         }
                     } else {
                         try {
-                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->id."'";
+                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->user_id."'";
                             $result = $this->dbconn->query($update_existing);
                         } catch (Exception $e) {
                             $flag = false;
@@ -2725,8 +2725,7 @@ class ChatMessageModel {
             }
 
             try {
-                $delete_orgs = "DELETE FROM user_organization WHERE user_id = '".$data->id."'";
-                var_dump($delete_orgs);
+                $delete_orgs = "DELETE FROM user_organization WHERE user_id = '".$data->user_id."'";
                 $result = $this->dbconn->query($delete_orgs);
             } catch (Exception $e) {
                 $flag = false;
@@ -2736,7 +2735,7 @@ class ChatMessageModel {
             for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
                 for ($sub_counter = 0; $sub_counter < sizeof($data->organizations); $sub_counter++) {
                     try {
-                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$psgc[$counter]."','".$data->organizations[$sub_counter]."','".$scope[$sub_counter]."')";
+                        $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->user_id."','".$psgc[$counter]."','".$data->organizations[$sub_counter]."','".$scope[$sub_counter]."')";
                         $result_org = $this->dbconn->query($insert_org);
                     } catch (Exception $e) {
                         $flag = false;
@@ -3446,7 +3445,7 @@ class ChatMessageModel {
 
     function fetchSmsInboxData($inbox_id) {
         $inbox_data = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, 
-                        smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name 
+                        smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name, users.user_id 
                         FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
                         INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.inbox_id = '".$inbox_id."';";
         $execute_query = $this->dbconn->query($inbox_data);
@@ -3461,11 +3460,13 @@ class ChatMessageModel {
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
                 $normalized_number = substr($row["sim_num"], -10);
+                $all_messages[$ctr]['user_id'] = $row['user_id'];
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
                 $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
                 $all_messages[$ctr]['mobile_id'] = $row['mobile_id'];
                 $all_messages[$ctr]['msg'] = $row['sms_msg'];
+                $all_messages[$ctr]['gsm_id'] = $row['gsm_id'];
                 $all_messages[$ctr]['ts_received'] = $row['ts_sms'];
                 $ctr++;
             }
@@ -3478,9 +3479,44 @@ class ChatMessageModel {
         return $full_data;
     }
 
-    function fetchSmsOutboxData($outbox_id) {
-        $outbox_data = "";
+    function updateSmsOutboxStatus($outbox_id) {
+        $full_data['type'] = 'smsoutboxStatusUpdate';
+        $status_update = [];
+        $outbox_data = "SELECT * FROM smsoutbox_user_status WHERE outbox_id = '".$outbox_id."'";
         $execute_query = $this->dbconn->query($outbox_data);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                $status_update = [
+                    "stat_id" => $row['stat_id'],
+                    "outbox_id" => $row['outbox_id'],
+                    "mobile_id" => $row['mobile_id'],
+                    "ts_sent" => $row['ts_sent'],
+                    "send_status" => $row['send_status'],
+                    "gsm_id" => $row['gsm_id']
+                ];
+            }
+            $full_data['data'] = $status_update;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        return $full_data;
     }
 
+    function fetchImportantGintags() {
+        $gintags_query = "SELECT gintags_reference.tag_name FROM gintags_reference INNER JOIN gintags_manager ON gintags_reference.tag_id = gintags_manager.tag_id_fk;";
+        $tags = [];
+        $execute_query = $this->dbconn->query($gintags_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($tags, $row['tag_name']);
+            }
+            $full_data['data'] = $tags;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        $full_data['type'] = "getImportantTags";
+        return $full_data;
+    }
 }
