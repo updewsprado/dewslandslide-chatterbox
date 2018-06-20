@@ -3533,4 +3533,42 @@ class ChatMessageModel {
     function autoTagMessage($data) {
 
     }
+
+    function fetchSitesForRoutine() {
+        $sites_query = "SELECT site_code,season from sites;";
+        $sites = [];
+        $execute_query = $this->dbconn->query($sites_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                $raw = [
+                    "site" => $row['site_code'],
+                    "season" => $row['season']
+                ];
+                array_push($sites, $raw);
+            }
+            $full_data['data'] = $sites;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        $full_data['type'] = "fetchSitesForRoutine";
+        return $full_data; 
+    }
+
+    function fetchRoutineTemplate() {
+        $routine_query = "SELECT * from ewi_backbone_template WHERE alert_status = 'Routine';";
+        $template = [];
+        $execute_query = $this->dbconn->query($routine_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($template, $row);
+            }
+            $full_data['data'] = $template;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        $full_data['type'] = "fetchRoutineTemplate";
+        return $full_data;        
+    }
 }

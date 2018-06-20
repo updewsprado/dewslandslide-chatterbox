@@ -466,9 +466,9 @@ class ChatterBox implements MessageComponentInterface {
                     "sms_id" => $decodedText->sms_id,
                     "message" => $decodedText->message,
                     "tagger" => $decodedText->account_id
-                ]
+                ];
                 $exchanges = $this->chatModel->autoTagMessage($request);
-                $foreach ($this->clients as $client) {
+                foreach ($this->clients as $client) {
                     if ($from !== $client) {
                         $client->send(json_encode($exchanges));
                     }
@@ -477,13 +477,13 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Message flagged for gintagging.\n";
                 $request = [
                     "user_id" => $decodedText->user_id,
-                    "sms_id" => $decodedText->convo_id,
+                    "sms_id" => $decodedText->sms_id,
                     "full_name" => $decodedText->full_name,
                     "ts" => $decodedText->timestamp,
                     "tagger" => $decodedText->account_id
-                ]
+                ];
                 $exchanges = $this->chatModel->tagMessage($request);
-                $foreach ($this->clients as $client) {
+                foreach ($this->clients as $client) {
                     if ($from !== $client) {
                         $client->send(json_encode($exchanges));
                     }
@@ -491,6 +491,14 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "getImportantTags") {
                 echo "Fecthing Important GINTags.\n";
                 $exchanges = $this->chatModel->fetchImportantGintags();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getRoutineSites") {
+                echo "Fetching Sites for Routine";
+                $exchanges = $this->chatModel->fetchSitesForRoutine();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getRoutineTemplate") {
+                echo "Fetching Routine Template.\n";
+                $exchanges = $this->chatModel->fetchRoutineTemplate();
                 $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";
