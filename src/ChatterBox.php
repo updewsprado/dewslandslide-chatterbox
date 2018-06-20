@@ -496,8 +496,11 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Fetching Sites for Routine";
                 $exchanges = $this->chatModel->fetchSitesForRoutine();
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "getRoutineTemplate") {
+            } else if ($msgType == "getRoutineReminder") {
                 echo "Fetching Routine Template.\n";
+                $exchanges = $this->chatModel->fetchRoutineReminder();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getRoutineTemplate") {
                 $exchanges = $this->chatModel->fetchRoutineTemplate();
                 $from->send(json_encode($exchanges));
             } else {

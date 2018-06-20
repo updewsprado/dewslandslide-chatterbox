@@ -3555,6 +3555,23 @@ class ChatMessageModel {
         return $full_data; 
     }
 
+    function fetchRoutineReminder() {
+        $routine_query = "SELECT * from ewi_backbone_template WHERE alert_status = 'Routine-Reminder';";
+        $template = [];
+        $execute_query = $this->dbconn->query($routine_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($template, $row);
+            }
+            $full_data['data'] = $template;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }
+        $full_data['type'] = "fetchRoutineReminder";
+        return $full_data;        
+    }
+
     function fetchRoutineTemplate() {
         $routine_query = "SELECT * from ewi_backbone_template WHERE alert_status = 'Routine';";
         $template = [];
@@ -3569,6 +3586,6 @@ class ChatMessageModel {
             $full_data['data'] = null;
         }
         $full_data['type'] = "fetchRoutineTemplate";
-        return $full_data;        
+        return $full_data;          
     }
 }
