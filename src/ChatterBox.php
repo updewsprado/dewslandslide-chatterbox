@@ -491,7 +491,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getSmsTags") {
                 echo "Fetching tags for the specified sms_id.\n";
-                $exchanges = $this->chatModel->fetchSmsTags($decodedText->data->sms_id);
+                $exchanges = $this->chatModel->fetchSmsTags($decodedText->data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getRoutineSites") {
                 echo "Fetching Sites for Routine";
