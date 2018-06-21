@@ -3526,11 +3526,51 @@ class ChatMessageModel {
         return $full_data;
     }
 
-    function tagMessage($data) {
+    function fetchSmsTags($sms_id) {
+        $get_tags_query = "SELECT * FROM gintags INNER JOIN gintags_reference ON tag_id_fk = gintags_reference.tag_id WHERE table_element_id = '".$sms_id."';";
+        $execute_query = $this->dbconn->query($get_tags_query);
+        if ($execute_query->num_rows > 0) {
+            $full_data['data'] = $execute_query->fetch_assoc();
+        } else {
+            $full_data['data'] = [];
+        }
+        $full_data['type'] = "fetchedSmsTags";
+        return $full_data;
+    }
 
+    function tagMessage($data) {
+        $status = false;
+        $tag_exist_query = "SELECT * FROM gintags_reference WHERE tag_name = '".$data['tag']."'";
+        $execute_query = $this->dbconn->query($tag_exist_query);
+        if ($execute_query->num_rows == 0) {
+            $tag_message_query = "INSERT INTO gintags_reference VALUES (0,'".$data['tag']."','NULL')";
+            $execute_query = $this->dbconn->query($tag_message_query);
+            if ($execute_query == true) {
+                $status = true;
+                $last_inserted_id = $this->dbconn->insert_id;
+            }
+        } else {
+            $status = true;
+            $last_inserted_id = $execute_query->fetch_assoc()[0]['tag_id'];
+        }
+
+        if ($status == true) {
+            $database_reference = ($data['account_id'] == 'You') ? "smsoutbox_users" : "smsinbox_users";
+            $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$last_inserted_id."','".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
+            $execute_query = $this->dbconn->query($tag_insertion_query);
+        }
+        if ($data['tag_important'] == true) {
+            $this->tagToNarratives($data);
+        } else {
+            return $execute_query;
+        }
     }
 
     function autoTagMessage($data) {
+
+    }
+
+    function tagToNarratives($data) {
 
     }
 

@@ -460,37 +460,38 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "autoGintagMessage") {
                 echo "Message flagged for auto gintagging.\n";
                 $request = [
-                    "office" => $decodedText->office,
-                    "site" => $decodedText->site,
-                    "gintag" => $decodedText->gintag,
-                    "sms_id" => $decodedText->sms_id,
-                    "message" => $decodedText->message,
-                    "tagger" => $decodedText->account_id
+                    "office" => $decodedText->data->office,
+                    "site" => $decodedText->data->site,
+                    "gintag" => $decodedText->data->gintag,
+                    "sms_id" => $decodedText->data->sms_id,
+                    "message" => $decodedText->data->message,
+                    "account_id" => $decodedText->data->account_id,
+                    "tag_important" => $decodedText->data->tag_important
                 ];
                 $exchanges = $this->chatModel->autoTagMessage($request);
-                foreach ($this->clients as $client) {
-                    if ($from !== $client) {
-                        $client->send(json_encode($exchanges));
-                    }
-                }
-            } else if ($msgType == "gintagMessage") {
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "gintaggedMessage") {
                 echo "Message flagged for gintagging.\n";
-                $request = [
-                    "user_id" => $decodedText->user_id,
-                    "sms_id" => $decodedText->sms_id,
-                    "full_name" => $decodedText->full_name,
-                    "ts" => $decodedText->timestamp,
-                    "tagger" => $decodedText->account_id
-                ];
-                $exchanges = $this->chatModel->tagMessage($request);
-                foreach ($this->clients as $client) {
-                    if ($from !== $client) {
-                        $client->send(json_encode($exchanges));
-                    }
+                foreach ($decodedText->data->tag as $tag) {
+                    $request = [
+                        "user_id" => $decodedText->data->user_id,
+                        "sms_id" => $decodedText->data->sms_id,
+                        "tag" => $tag,
+                        "full_name" => $decodedText->data->full_name,
+                        "ts" => $decodedText->data->ts,
+                        "account_id" => $decodedText->data->account_id,
+                        "tag_important" => $decodedText->data->tag_important
+                    ];
+                    $exchanges = $this->chatModel->tagMessage($request);
+                    $from->send(json_encode($exchanges));
                 }
             } else if ($msgType == "getImportantTags") {
                 echo "Fecthing Important GINTags.\n";
                 $exchanges = $this->chatModel->fetchImportantGintags();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getSmsTags") {
+                echo "Fetching tags for the specified sms_id.\n";
+                $exchanges = $this->chatModel->fetchSmsTags($decodedText->data->sms_id);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getRoutineSites") {
                 echo "Fetching Sites for Routine";
