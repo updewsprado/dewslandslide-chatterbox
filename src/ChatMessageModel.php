@@ -3539,43 +3539,53 @@ class ChatMessageModel {
         } else {
             $full_data['data'] = [];
         }
-        $full_data['type'] = "fetchedSmsTags";
+        $full_data['type'] = "fetchedSmsTag ";
         return $full_data;
     }
 
     function tagMessage($data) {
         $status = false;
-        $tag_exist_query = "SELECT * FROM gintags_reference WHERE tag_name = '".$data['tag']."'";
-        $execute_query = $this->dbconn->query($tag_exist_query);
-        if ($execute_query->num_rows == 0) {
-            $tag_message_query = "INSERT INTO gintags_reference VALUES (0,'".$data['tag']."','NULL')";
-            $execute_query = $this->dbconn->query($tag_message_query);
-            if ($execute_query == true) {
+        if ($data['tag_important'] != true) {
+            
+            $tag_exist_query = "SELECT * FROM gintags_reference WHERE tag_name = '".$data['tag']."'";
+            $execute_query = $this->dbconn->query($tag_exist_query);
+            if ($execute_query->num_rows == 0) {
+                $tag_message_query = "INSERT INTO gintags_reference VALUES (0,'".$data['tag']."','NULL')";
+                $execute_query = $this->dbconn->query($tag_message_query);
+                if ($execute_query == true) {
+                    $status = true;
+                    $last_inserted_id = $this->dbconn->insert_id;
+                }
+            } else {
                 $status = true;
-                $last_inserted_id = $this->dbconn->insert_id;
+                $last_inserted_id = $execute_query->fetch_assoc()[0]['tag_id'];
             }
-        } else {
-            $status = true;
-            $last_inserted_id = $execute_query->fetch_assoc()[0]['tag_id'];
-        }
 
-        if ($status == true) {
-            $database_reference = ($data['account_id'] == 'You') ? "smsoutbox_users" : "smsinbox_users";
-            $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$last_inserted_id."','".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
-            $execute_query = $this->dbconn->query($tag_insertion_query);
-        }
-        if ($data['tag_important'] == true) {
-            $this->tagToNarratives($data);
-        } else {
+            if ($status == true) {
+                $database_reference = ($data['account_id'] == 'You') ? "smsoutbox_users" : "smsinbox_users";
+                $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$last_inserted_id."','".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
+                $execute_query = $this->dbconn->query($tag_insertion_query);
+            }
             return $execute_query;
+        } else { 
+            $this->tagToNarratives($data);
         }
-    }
-
-    function autoTagMessage($data) {
-
     }
 
     function tagToNarratives($data) {
+        $tag_query = "INSERT INTO gintags VALUES (0,(SELECT tag_id FROM gintags_reference WHERE tag_name = '".$data['tag']."'),'".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
+        $execute_query = $this->dbconn->query($tag_query);
+        if ($execute_query == true) {
+            $narrative_template_query = "";
+            $execute_query = $this->dbconn->query($narrative_template_query);
+            
+        } else {
+
+        }
+    }
+
+
+    function autoTagMessage($data) {
 
     }
 
