@@ -36,155 +36,7 @@ class ChatterBox implements MessageComponentInterface {
 
             $msgType = $decodedText->type;
 
-            if (($msgType == "smssend") || ($msgType == "smsrcv")) {
-                $ewi_tag_id = [];
-                $temp_tag_id = [];
-
-                echo "Message sent by ChatterBox Users to GSM and the community.\n";     
-
-                if ($msgType == "smssend") {
-                    if (isset($decodedText->tag)) {
-                        $tempNumber = [];
-
-                        $recipientsTag = $decodedText->tag;
-                        $numbers = $this->chatModel->getEmpTagNumbers($recipientsTag);
-
-                        for ($x = 0;$x < sizeof($numbers);$x++) {
-                            if (!in_array($numbers[$x]["number"], $tempNumber)) {
-                                $recipients = [$numbers[$x]["number"]];
-                                $sentMsg = $decodedText->msg;
-                                $sentTS = $decodedText->timestamp;
-                                $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS);
-                                $displayMsg['type'] = "smssend";
-                                $displayMsg['timestamp'] = $sentTS;
-                                $displayMsg['user'] = "You";
-                                $displayMsg['numbers'] = $recipients;
-                                $displayMsg['msg'] = $sentMsg;
-                                $displayMsg['gsm_id'] = "UNKNOWN";
-                                $displayMsgJSON = json_encode($displayMsg);
-                                foreach ($this->clients as $client) {
-                                    if ($from !== $client) {
-                                        $client->send($displayMsgJSON);
-                                    }
-                                } 
-                                array_push($tempNumber,$numbers[$x]["number"]);  
-                            }
-                        }
-
-                    } else {
-                        $recipients = $decodedText->numbers;
-                        $sentMsg = $decodedText->msg;
-                        $sentTS = $decodedText->timestamp;
-                        $ewitag = $decodedText->ewi_tag;
-
-                        echo "sentTS = $sentTS \n";
-
-                        $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS,$ewitag);
-                        if (!empty($result_ewi_entry)){
-                            array_push($temp_tag_id,$result_ewi_entry);
-                        }
-                        $displayMsg['type'] = "smssend";
-                        $displayMsg['timestamp'] = $sentTS;
-                        $displayMsg['user'] = "You";
-                        $displayMsg['numbers'] = $recipients;
-                        $displayMsg['msg'] = $sentMsg;
-                        $displayMsg['gsm_id'] = "UNKNOWN";
-                        $displayMsgJSON = json_encode($displayMsg);
-                        foreach ($this->clients as $client) {
-                            if ($from !== $client) {
-                                $client->send($displayMsgJSON);
-                            }
-                        }
-                    $ewi_tag_id['data'] = $temp_tag_id;
-                    $ewi_tag_id['type'] = "ewi_tagging";
-                    $from->send(json_encode($ewi_tag_id)); 
-                    }    
-                }
-                elseif ($msgType == "smsrcv") {
-                    echo "Message received from GSM.\n";
-                    $rcvTS = $decodedText->timestamp;
-                    $sender = $decodedText->sender;
-                    $rcvMsg = $decodedText->msg;
-
-                    if ($this->chatModel->isSenderValid($sender) == false) {
-                        echo "Error: sender '$sender' is invalid.\n";
-                        return;
-                    }
-
-                    $this->chatModel->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
-                    $name = $this->chatModel->getNameFromNumber($sender);
-
-                    $displayMsg['type'] = "smsrcv";
-                    $displayMsg['timestamp'] = $rcvTS;
-                    $displayMsg['user'] = $sender;
-                    $displayMsg['name'] = $name['fullname'];
-                    $displayMsg['msg'] = $rcvMsg;
-                    $displayMsgJSON = json_encode($displayMsg);
-                    foreach ($this->clients as $client) {
-                        if ($from !== $client) {
-                            $client->send($displayMsgJSON);
-                        }
-                    }
-                    $this->chatModel->addQuickInboxMessageToCache($displayMsg);
-                }
-            } elseif ($msgType == "smssendgroup") {
-                $ewi_tag_id = [];
-                $temp_tag_id = [];
-                echo "send groups/tag messages...\n";
-                foreach ($this->clients as $client) {
-                    if ($from !== $client) {
-                        $client->send($msg);
-                    }
-                }
-                $offices = $decodedText->offices;
-                $sitenames = $decodedText->sitenames;
-                $sentTS = $decodedText->timestamp;
-                $sentMsg = $decodedText->msg;
-                $ewiRecipient = $decodedText->ewi_filter;
-                $ewitag = $decodedText->ewi_tag;
-
-                $displayMsg['type'] = "smssend";
-                $displayMsg['timestamp'] = $sentTS;
-                $displayMsg['user'] = "You";
-                $displayMsg['numbers'] = null;
-                $displayMsg['name'] = null;
-                $displayMsg['msg'] = $sentMsg;
-                $contacts = $this->chatModel->getContactNumbersFromGroupTags($offices, $sitenames,$ewiRecipient);
-
-                $numContacts = count($contacts['data']);
-                $allMsgs = [];
-
-                foreach ($contacts['data'] as $singleContact) {
-                    $displayMsg['numbers'] = array($singleContact['number']);
-                    $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
-                    $displayMsgJSON = json_encode($displayMsg);
-
-                    $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($displayMsg['numbers'], $sentMsg, $sentTS,$ewitag);
-                    if (!empty($result_ewi_entry)){
-                        array_push($temp_tag_id,$result_ewi_entry);
-                    }
-                }
-                foreach ($this->clients as $client) {
-                    if ($from !== $client) {
-                        foreach ($contacts['data'] as $singleContact) {
-                            $displayMsg['numbers'] = array($singleContact['number']);
-                            $displayMsg['name'] = $singleContact['sitename'] . " " . $singleContact['office'];
-                            $displayMsg['gsm_id'] = "UNKNOWN";
-                            $displayMsgJSON = json_encode($displayMsg);
-                            $client->send($displayMsgJSON);
-                        }
-                    }
-                }
-                $ewi_tag_id['data'] = $temp_tag_id;
-                $ewi_tag_id['type'] = "ewi_tagging";
-                $from->send(json_encode($ewi_tag_id));
-            } elseif ($msgType == "smsloadrequestgroup") {
-                echo "Loading groups messages...";
-                $offices = $decodedText->offices;
-                $sitenames = $decodedText->sitenames;
-                $exchanges = $this->chatModel->getMessageExchangesFromGroupTags($offices, $sitenames);
-                $from->send(json_encode($exchanges));
-            } elseif ($msgType == "smsloadquickinboxrequest") {
+            if ($msgType == "smsloadquickinboxrequest") {
                 echo "Loading latest message from 20 registered and unknown numbers for the past 7 days...";
                 $quickInboxMessages = $this->chatModel->getQuickInboxMain();
                 $from->send(json_encode($quickInboxMessages));
@@ -194,154 +46,6 @@ class ChatterBox implements MessageComponentInterface {
                 echo "Loading latest public alerts.";
                 $latestAlerts = $this->chatModel->getLatestAlerts();
                 $from->send(json_encode($latestAlerts));
-            } elseif ($msgType == "loadofficeandsitesrequest") {
-                echo "Loading office and sitename information...";
-                $officeAndSites = $this->chatModel->getAllOfficesAndSites();
-                $from->send(json_encode($officeAndSites));
-            } elseif ($msgType == "loadcontactsrequest") {
-                echo "Loading contact information...";
-                $contacts = $this->chatModel->getAllContactsList();
-                $from->send(json_encode($contacts));
-            } elseif ($msgType == "loadcommunitycontactrequest") {
-                echo "Loading a community contact information...";
-                $sitename = $decodedText->sitename;
-                $office = $decodedText->office;
-
-                $commcontact = $this->chatModel->getCommunityContact($sitename, $office);
-                $from->send(json_encode($commcontact));
-            } elseif ($msgType == "loadcontactfromnamerequest") {
-                echo "Loading a contact information from name...";
-                $contactname = $decodedText->contactname;
-
-                $contact = $this->chatModel->getContactsFromName($contactname);
-                $from->send(json_encode($contact));
-            } elseif ($msgType == "ackrpi") {
-                echo "Received Acknowledgment: RPi has received your smsoutbox message...";
-                $writtenTS = $decodedText->timestamp_written;
-                $recipients = $decodedText->recipients;
-                $sendStatus = $decodedText->send_status;
-
-                echo "\n\n$writtenTS, $recipients, $sendStatus\n\n";
-                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
-                                                        $writtenTS, $sendStatus);
-
-                if ($updateStatus >= 0) {
-                    foreach ($this->clients as $client) {
-                        if ($from !== $client) {
-                            $client->send($msg);
-                        }
-                    }
-                }
-            } elseif (($msgType == "ackgsm") || ($msgType == "failgsm")) {
-                if ($msgType == "ackgsm") {
-                    echo "Received Acknowledgment: GSM has sent your smsoutbox message...";
-                    $sendStatus = "SENT";
-                }
-                elseif ($msgType == "failgsm") {
-                    echo "Fail Acknowledgment: GSM FAILED sending your smsoutbox message...";
-                    $sendStatus = "FAIL";
-                }
-                $writtenTS = $decodedText->timestamp_written;
-                $recipients = $decodedText->recipients;
-                $sentTS = $decodedText->timestamp_sent;
-
-                echo "\n\n$writtenTS, $sentTS, $recipients, $sendStatus\n\n";
-                $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
-                                                    $writtenTS, $sendStatus, $sentTS);
-
-                if ($updateStatus >= 0) {
-                    foreach ($this->clients as $client) {
-                        if ($from !== $client) {
-                            $client->send($msg);
-                        }
-                    }
-                }
-            } else if ($msgType == "oldMessage"){
-                echo "Loading messages for individual chat";
-                $number = $decodedText->number;
-                $timestampYou = $decodedText->timestampYou;
-                $timestampIndi = $decodedText->timestampIndi;
-                $timestamp = $timestampYou.",".$timestampIndi;
-                $type = $decodedText->type;
-                $exchanges = $this->chatModel->getMessageExchanges($number,$type,$timestamp,10);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "oldMessageGroupEmployee") {
-                $number = $decodedText->tags;
-                $timestampYou = $decodedText->timestampYou;
-                $timestampGroup = $decodedText->timestampGroup;
-                $timestamp = $timestampYou.",".$timestampGroup;
-                $type = $decodedText->type;
-                $tags = $decodedText->tags;
-
-                $exchanges = $this->chatModel->getMessageExchanges($number,$type,$timestamp,10,$tags);
-
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "oldMessageGroup"){
-                echo "Loading messages groups/tag";
-                $offices = $decodedText->offices;
-                $sitenames = $decodedText->sitenames;
-                $type = $decodedText->type;
-                $yourTimeStamp = $decodedText->lastMessageTimeStampYou;
-                $groupTimeStamp = $decodedText->lastMessageTimeStampGroup;
-                $lastTimeStamps = $yourTimeStamp.",".$groupTimeStamp;
-                $exchanges = $this->chatModel->getMessageExchangesFromGroupTags($offices,$sitenames,$type,$lastTimeStamps,10);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageIndividual") {
-                echo "Searching messages for individual chat";
-                $number = $decodedText->number;
-                $timestamp = $decodedText->timestamp;
-                $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchMessage($number,$timestamp,$searchKey);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageGroup"){
-                echo "Searching groups/tag messages...";
-                $offices = $decodedText->offices;
-                $sitenames = $decodedText->sitenames;
-                $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchMessageGroup($offices, $sitenames,$searchKey);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsLoadSearched"){
-                $number = $decodedText->number;
-                $timestamp = $decodedText->timestamp;
-                $type = $decodedText->type;
-                $exchanges = $this->chatModel->getSearchedConversation($number,$type, $timestamp);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsLoadGroupSearched"){
-                $offices = $decodedText->offices;
-                $sitenames = $decodedText->sitenames;
-                $timestampYou = $decodedText->timestampYou;
-                $timestampGroup = $decodedText->timestampGroup;
-                $timestamp = $timestampYou.",".$timestampGroup;
-                $type = $decodedText->type;
-                $exchanges = $this->chatModel->getSearchedGroupConversation($offices,$sitenames,$type, $timestamp);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchMessageGlobal") {
-                $type = $decodedText->type;
-                $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchMessageGlobal($type,$searchKey);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "searchGintagMessages"){
-                $type = $decodedText->type;
-                $searchKey = $decodedText->searchKey;
-                $exchanges = $this->chatModel->searchGintagMessage($type,$searchKey);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsloadGlobalSearched"){
-                $user = $decodedText->user;
-                $user_number =$decodedText->user_number;
-                $timestamp = $decodedText->timestamp;
-                $msg = $decodedText->sms_msg;
-                $exchanges = $this->chatModel->getSearchedGlobalConversation($user,$user_number,$timestamp,$msg);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "updateEwiRecipients"){
-                $type = $decodedText->type;
-                $data = $decodedText->data;
-                $exchanges = $this->chatModel->updateEwiRecipients($type,$data);
-                $from->send(json_encode($exchanges));
-            } else if ($msgType == "smsloadrequesttag"){
-                $type = $decodedText->type;
-                $data = $decodedText->teams;
-                $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
-                $from->send(json_encode($exchanges));
             } else if ($msgType == "loadAllCommunityContacts"){
                 $exchanges = $this->chatModel->getAllCmmtyContacts();
                 $from->send(json_encode($exchanges)); // New Code Starts here
@@ -418,7 +122,7 @@ class ChatterBox implements MessageComponentInterface {
 
                 $exchanges = $this->chatModel->getSmsPerContact($fullname,$timestamp);
                 $from->send(json_encode($exchanges));
-            } else if ($msgType == "loadSmsConversation") { // NEW CODE STARTS HERE
+            } else if ($msgType == "loadSmsConversation") {
                 $request = [
                     "office" => $decodedText->data->office,
                     "site" => $decodedText->data->site,
@@ -503,6 +207,15 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getRoutineTemplate") {
                 $exchanges = $this->chatModel->fetchRoutineTemplate();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getAlertStatus") {
+                $exchanges = $this->chatModel->fetchAlertStatus();
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "getEWITemplateSettings") {
+                $exchanges = $this->chatModel->fetchEWISettings($decodedText->data);
+                $from->send(json_encode($exchanges));
+            } else if ($msgType == "fetchTemplateViaLoadTemplateCbx") {
+                $exchanges = $this->chatModel->fetchEventTemplate($decodedText->data);
                 $from->send(json_encode($exchanges));
             } else {
                 echo "Message will be ignored\n";

@@ -26,8 +26,8 @@
 	    }
 
 	    private function _connect($host, $port) {
-	        $key1 = $this->_generateRandomString(25);
-	        $key2 = $this->_generateRandomString(25);
+	        $key1 = $this->_generateRandomString(32);
+	        $key2 = $this->_generateRandomString(32);
 	        $key3 = $this->_generateRandomString(8, false, true);
 	        $header = "GET /echo HTTP/1.1\r\n";
 	        $header.= "Upgrade: WebSocket\r\n";

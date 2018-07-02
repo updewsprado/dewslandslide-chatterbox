@@ -3643,4 +3643,124 @@ class ChatMessageModel {
         $full_data['type'] = "fetchRoutineTemplate";
         return $full_data;          
     }
+
+    function fetchAlertStatus() {
+        $alert_query = "SELECT distinct alert_status FROM ewi_template;";
+        $alert_collection = [];
+        $site_collection = [];
+        $execute_query = $this->dbconn->query($alert_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($alert_collection, $row);
+            }
+        } else {
+            echo "0 results\n";
+            $alert_collection = null;
+        }
+
+        $site_query = "SELECT distinct site_code FROM sites;";
+        $execute_query = $this->dbconn->query($site_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($site_collection, $row);
+            }
+        } else {
+            echo "0 results\n";
+            $site_collection = null;
+        }
+
+        $full_data ['data'] = [
+            "site_code" => $site_collection,
+            "alert_status" => $alert_collection
+        ];
+
+        $full_data['type'] = "fetchAlertStatus";
+        return $full_data;   
+    }
+
+    function fetchEWISettings($alert_status) {
+        $settings_collection = [];
+        $settings_query = "SELECT distinct alert_symbol_level FROM ewi_template where alert_status like '%".$alert_status."%';";
+        $execute_query = $this->dbconn->query($settings_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($settings_collection, $row);
+            }
+            $full_data['data'] = $settings_collection;
+        } else {
+            echo "0 results\n";
+            $alert_collection = null;
+        }
+        $full_data['type'] = "fetchEWISettings";
+        return $full_data;
+    }
+
+    function fetchEventTemplate($template_data) {
+        $site_query = "SELECT * FROM sites WHERE site_code = '".$template_data->site_name."';";
+        $site_container = [];
+        $ewi_backbone_container = [];
+        $ewi_key_input_container = [];
+        $execute_query = $this->dbconn->query($site_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($site_container, $row);
+            }
+        } else {
+            echo "0 results\n";
+        }
+
+        $ewi_backbone_query = "SELECT * FROM ewi_backbone_template WHERE alert_status = '".$template_data->alert_status."';";
+        $execute_query = $this->dbconn->query($ewi_backbone_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($ewi_backbone_container, $row);
+            }
+        } else {
+            echo "0 results\n";
+        }
+
+        $key_input_query = "SELECT * FROM senslopedb.ewi_template WHERE alert_symbol_level = '".$template_data->internal_alert."' AND alert_status = '".$template_data->alert_status."';";
+        $execute_query = $this->dbconn->query($key_input_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($ewi_key_input_container, $row);
+            }
+        } else {
+            echo "0 results\n";
+        }
+        $raw_template = [
+            "site" => $site_container,
+            "backbone" => $ewi_backbone_container,
+            "key_input" => $ewi_key_input_container,
+            "data_timestamp" => $template_data->data_timestamp,
+            "alert_level" => $template_data->alert_level
+        ];
+
+        $template = $this->reconstructEWITemplate($raw_template);
+        $full_data['type'] = "fetchedEWITemplateViaCbx";
+        $full_data['data'] = $template;
+    }
+
+    function reconstructEWITemplate($raw_data) {
+        $counter = 0;
+        $final_template = $raw_data['backbone'][0]['template'];
+        if ($raw_data['site'][0]['purok'] == "") {
+            $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        }
+
+        if ($raw_data['site'][0]['sitio'] == "") {
+             $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        } else {
+             $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        }
+
+        $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
+        $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+
+        var_dump($final_template);
+
+        var_dump($raw_data['site']);
+        var_dump($raw_data['key_input']);
+        exit;
+    }
 }
