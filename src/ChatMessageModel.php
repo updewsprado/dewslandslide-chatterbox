@@ -3700,6 +3700,7 @@ class ChatMessageModel {
         $site_container = [];
         $ewi_backbone_container = [];
         $ewi_key_input_container = [];
+        $ewi_recommended_container = [];
         $execute_query = $this->dbconn->query($site_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
@@ -3728,10 +3729,23 @@ class ChatMessageModel {
         } else {
             echo "0 results\n";
         }
+
+        $recom_query = "SELECT * FROM senslopedb.ewi_template WHERE alert_symbol_level = '".$template_data->alert_level."' AND alert_status = '".$template_data->alert_status."';";
+        $execute_query = $this->dbconn->query($recom_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($ewi_recommended_container, $row);
+            }
+        } else {
+            echo "0 results\n";
+        }
+
+
         $raw_template = [
             "site" => $site_container,
             "backbone" => $ewi_backbone_container,
-            "key_input" => $ewi_key_input_container,
+            "tech_info" => $ewi_key_input_container,
+            "recommended_response" => $ewi_recommended_container,
             "data_timestamp" => $template_data->data_timestamp,
             "alert_level" => $template_data->alert_level
         ];
@@ -3766,13 +3780,11 @@ class ChatMessageModel {
 
     function fetchSearchKeyViaGlobalMessages($search_key, $search_limit) {
         $search_key_container = [];
-        $search_key_query = "SELECT smsinbox_users.sms_msg, CONCAT(users.firstname,' ',users.lastname) AS user, smsinbox_users.ts_sms AS ts, smsinbox_users.inbox_id AS sms_id, 'smsinbox' AS table_source  
+        $search_key_query = "SELECT smsinbox_users.sms_msg, CONCAT(users.firstname,' ',users.lastname) AS user, smsinbox_users.ts_sms AS ts, smsinbox_users.inbox_id AS sms_id, 'smsinbox' AS table_source , smsinbox_users.mobile_id as mobile_id
         FROM senslopedb.smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id INNER JOIN users ON user_mobile.user_id = users.user_id WHERE sms_msg LIKE '".$search_key."' 
         UNION 
-        SELECT smsoutbox_users.sms_msg, 'You' AS user, smsoutbox_user_status.ts_sent AS ts, smsoutbox_user_status.outbox_id AS sms_id, 'smsoutbox' AS table_source 
+        SELECT smsoutbox_users.sms_msg, 'You' AS user, smsoutbox_user_status.ts_sent AS ts, smsoutbox_user_status.outbox_id AS sms_id, 'smsoutbox' AS table_source , smsoutbox_user_status.mobile_id
         from smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE sms_msg LIKE '".$search_key."' order by ts desc limit ".$search_limit.";";
-
-        echo $search_key_query;
 
         $execute_query = $this->dbconn->query($search_key_query);
         if ($execute_query->num_rows > 0) {
@@ -3785,5 +3797,9 @@ class ChatMessageModel {
         $full_data['type'] = "fetchedSearchKeyViaGlobalMessage";
         $full_data['data'] = $search_key_container;
         return $full_data;
+    }
+
+    function fetchSearchedMessageViaGlobal($data) {
+        var_dump($data);
     }
 }
