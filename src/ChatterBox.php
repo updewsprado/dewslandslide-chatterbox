@@ -224,6 +224,16 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "loadSearchedMessageKey") {
                 $exchanges = $this->chatModel->fetchSearchedMessageViaGlobal($decodedText->data);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "searchGintagMessages") {
+
+            } else if ($msgType == "searchGintagMessages") {
+                
+            } else if ($msgType == "searchViaTsSent") {
+                
+            } else if ($msgType == "searchViaTsWritten") {
+                
+            } else if ($msgType == "searchViaUnknownNumber") {
+
             } else {
                 echo "Message will be ignored\n";
             }
