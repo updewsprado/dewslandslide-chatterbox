@@ -3166,120 +3166,37 @@ class ChatMessageModel {
     }
 
     public function getSmsPerContact($fullname,$timestamp,$limit=20) {
-        $contact_details_raw = explode(" ",$fullname);
-        $contact_details = [];
-        $inbox_outbox_collection = [];
-        $number_query = "";
-        $data = [];
-        $mobile_ids = [];
-        $return_data = [];
-        $ctr = 0;
+       $contact_details_raw = explode(" ",$fullname);
+       $contact_details = [];
+       $inbox_outbox_collection = [];
+       $number_query = "";
+       $data = [];
+       $mobile_ids = [];
+       $return_data = [];
+       $ctr = 0;
 
-        $where_query = "";
-        for ($counter = 0; $counter < sizeof($contact_details_raw); $counter++) {
-            if ($contact_details_raw[$counter] != "" && $contact_details_raw[$counter] != "-") {
-                array_push($contact_details,$contact_details_raw[$counter]);
-            }
-        }
-        $org_team_checker_query = "SELECT * FROM dewsl_teams WHERE team_name LIKE '%".$contact_details[0]."%'";
-        $is_org = $this->dbconn->query($org_team_checker_query);
+       $where_query = "";
+       for ($counter = 0; $counter < sizeof($contact_details_raw); $counter++) {
+           if ($contact_details_raw[$counter] != "" && $contact_details_raw[$counter] != "-") {
+               array_push($contact_details,$contact_details_raw[$counter]);
+           }
+       }
+       $org_team_checker_query = "SELECT * FROM dewsl_teams WHERE team_name LIKE '%".$contact_details[0]."%'";
+       $is_org = $this->dbconn->query($org_team_checker_query);
 
-        if ($is_org->num_rows != 0) {
-            for ($counter = 2; $counter < sizeof($contact_details); $counter++) {
-                $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
-            }
-            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id RIGHT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id WHERE dewsl_teams.team_name LIKE '%".$contact_details[0]."%' ".$where_query.";";
-        } else {
-            for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
-                $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
-            }
-            $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.user_id = users.user_id RIGHT JOIN organization ON user_organization.org_name = organization.org_name RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE organization.org_name LIKE '%".$contact_details[1]."%' AND sites.site_code LIKE '%".$contact_details[0]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
-        }
+       if ($is_org->num_rows != 0) {
+           for ($counter = 2; $counter < sizeof($contact_details); $counter++) {
+               $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+           }
+           $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN dewsl_team_members ON dewsl_team_members.users_users_id = users.user_id RIGHT JOIN dewsl_teams ON dewsl_teams.team_id = dewsl_team_members.dewsl_teams_team_id WHERE dewsl_teams.team_name LIKE '%".$contact_details[0]."%' ".$where_query.";";
+       } else {
+           for ($counter = 3; $counter < sizeof($contact_details); $counter++) {
+               $where_query = $where_query."AND (users.firstname LIKE '%".trim($contact_details[$counter],";")."%' OR users.lastname LIKE '%".trim($contact_details[$counter],";")."%') ";
+           }
+           $get_numbers_query = "SELECT * FROM user_mobile INNER JOIN users ON user_mobile.user_id = users.user_id RIGHT JOIN user_organization ON user_organization.user_id = users.user_id RIGHT JOIN organization ON user_organization.org_name = organization.org_name RIGHT JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE organization.org_name LIKE '%".$contact_details[1]."%' AND sites.site_code LIKE '%".$contact_details[0]."%' AND users.salutation = '".$contact_details[2]."' ".$where_query.";";
+       }
 
-        $numbers = $this->dbconn->query($get_numbers_query);
-        if ($numbers->num_rows != 0) {
-            while ($row = $numbers->fetch_assoc()) {
-                if ($ctr == 0) {
-                    $number_query = "user_mobile.sim_num LIKE '%".$row['sim_num']."%' ";
-                    $ctr++;
-                } else {
-                    $number_query = $number_query."OR user_mobile.sim_num LIKE '%".$row['sim_num']."%' ";
-                    $ctr++;
-                }
-            }
-        } else {
-            echo "No number fetched!";
-        }
-
-        try {
-            $smsinbox_query = "SELECT * FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id RIGHT JOIN users ON user_mobile.user_id = users.user_id WHERE ".$number_query." LIMIT $limit;";
-
-            $fetch_inbox = $this->dbconn->query($smsinbox_query);
-            if ($fetch_inbox->num_rows != 0) {
-                while($row = $fetch_inbox->fetch_assoc()) {
-                    array_push($inbox_outbox_collection,$row);
-                }
-            } else {
-                echo "No message fetched!";
-            }
-
-            $smsoutbox_query = "SELECT * FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id RIGHT JOIN user_mobile ON user_mobile.mobile_id = smsoutbox_user_status.mobile_id RIGHT JOIN users ON users.user_id = user_mobile.user_id WHERE ".$number_query." LIMIT $limit";
-            $fetch_outbox = $this->dbconn->query($smsoutbox_query);
-            
-            if ($fetch_outbox->num_rows != 0) {
-                while($row = $fetch_outbox->fetch_assoc()) {
-                    array_push($inbox_outbox_collection,$row);
-                }
-            } else {
-                echo "No message fetched!";
-            }
-
-            $inbox_outbox_collection = $this->sort_msgs($inbox_outbox_collection);
-
-            $ctr = 0;
-            for ($sms_counter = 0; $sms_counter < sizeof($inbox_outbox_collection); $sms_counter++) {
-                if (isset($inbox_outbox_collection[$sms_counter]['outbox_id'])) {
-                    $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['outbox_id'];
-                    $data[$ctr]['ts_written'] = $inbox_outbox_collection[$sms_counter]['ts_written'];
-                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
-                    $data[$ctr]['stat_id'] = $inbox_outbox_collection[$sms_counter]['stat_id'];
-                    $data[$ctr]['mobile_id'] = $inbox_outbox_collection[$sms_counter]['mobile_id'];
-                    $data[$ctr]['ts_sent'] = $inbox_outbox_collection[$sms_counter]['ts_sent'];
-                    $data[$ctr]['sent_status'] = $inbox_outbox_collection[$sms_counter]['send_status'];
-                    $data[$ctr]['web_status'] = $inbox_outbox_collection[$sms_counter]['web_status'];
-                    $data[$ctr]['gsm_id'] = $inbox_outbox_collection[$sms_counter]['gsm_id'];
-                    $data[$ctr]['user_id'] = $inbox_outbox_collection[$sms_counter]['user_id'];
-                    $data[$ctr]['sim_num'] = $inbox_outbox_collection[$sms_counter]['sim_num'];
-                    $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
-                    $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
-                    $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
-                    $ctr++;
-                } else {
-                    $data[$ctr]['id'] = $inbox_outbox_collection[$sms_counter]['inbox_id'];
-                    $data[$ctr]['ts_received'] = $inbox_outbox_collection[$sms_counter]['ts_received'];
-                    $data[$ctr]['mobile_id'] = $inbox_outbox_collection[$sms_counter]['mobile_id'];
-                    $data[$ctr]['msg'] = $inbox_outbox_collection[$sms_counter]['sms_msg'];
-                    $data[$ctr]['read_status'] = $inbox_outbox_collection[$sms_counter]['read_status'];
-                    $data[$ctr]['web_status'] = $inbox_outbox_collection[$sms_counter]['web_status'];
-                    $data[$ctr]['gsm_id'] = $inbox_outbox_collection[$sms_counter]['gsm_id'];
-                    $data[$ctr]['user_id'] = $inbox_outbox_collection[$sms_counter]['user_id'];
-                    $data[$ctr]['sim_num'] = $inbox_outbox_collection[$sms_counter]['sim_num'];
-                    $data[$ctr]['firstname'] = $inbox_outbox_collection[$sms_counter]['firstname'];
-                    $data[$ctr]['lastname'] = $inbox_outbox_collection[$sms_counter]['lastname'];
-                    $data[$ctr]['active_status'] = $inbox_outbox_collection[$sms_counter]['status'];
-                    $ctr++;
-                }
-            }
-            $return_data['status'] = 'success';
-            $return_data['data'] = $data;
-            $return_data['result_msg'] = 'Messages fetched.';
-        } catch (Exception $e) {
-            $return_data['result_msg'] = 'Message fetch failed, please contact SWAT for more details';
-            $return_data['status'] = 'failed';
-        }
-
-        $return_data['type'] = 'fetchSms';
-        return $return_data;
+       $numbers = $this->dbconn->query($get_numbers_query);
     }
 
     // NEW CODE STARTS HERE
@@ -3314,7 +3231,7 @@ class ChatMessageModel {
         } else {
             echo "No message fetched!";
         }
-        
+
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
         $full_data['recipients'] = $mobile_number;
@@ -3369,7 +3286,11 @@ class ChatMessageModel {
 
     function getMobileDetails($details) {
         $mobile_number_container = [];
-        $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE users.firstname LIKE '%".$details['first_name']."%' AND users.lastname LIKE '%".$details['last_name']."%';";
+        if (isset($details->mobile_id) == false ) {
+            $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE users.firstname LIKE '%".$details['first_name']."%' AND users.lastname LIKE '%".$details['last_name']."%';";
+        } else {
+            $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE mobile_id = '".$details->mobile_id."';";
+        }
         $mobile_number = $this->dbconn->query($mobile_number_query);
         if ($mobile_number->num_rows != 0) {
             while ($row = $mobile_number->fetch_assoc()) {
@@ -3800,6 +3721,88 @@ class ChatMessageModel {
     }
 
     function fetchSearchedMessageViaGlobal($data) {
-        var_dump($data);
+        $convo_container = [];
+        $number_container = $this->getMobileDetails($data);
+        $full_name = $this->getUserFullname($number_container[0]);
+        $prev_messages_container = $this->getTwentySearchedPreviousMessages($number_container[0],$full_name);
+        $latest_messages_container = $this->getTwentySearchedLatestMessages($number_container[0],$full_name);
+        foreach ($prev_messages_container as $sms) {
+            array_push($convo_container,$sms);
+        }
+
+        foreach ($latest_messages_container as $sms) {
+            array_push($convo_container,$sms);
+        }
+
+        $full_data = [];
+        $full_data['full_name'] = $full_name;
+        $full_data['recipients'] = $number_container;
+        $full_data['type'] = "loadSmsConversation";
+        $full_data['data'] = $convo_container;
+        return $full_data;
+    }
+
+    function getUserFullname($data) {
+        $full_name_container = "";
+        $full_name_query = "SELECT CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name 
+        from users INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id where users.user_id = '".$data['user_id']."';";
+        $execute_query = $this->dbconn->query($full_name_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                $full_name_container = $full_name_container." ".$row['full_name'];
+            }
+        } else {
+            echo "0 results\n";
+        }
+
+        return strtoupper($full_name_container);
+    }
+
+    function getTwentySearchedPreviousMessages($details, $fullname) {
+        $convo_container = [];
+        $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
+                        smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
+                        null as send_status , ts_sms as timestamp , '".$full_name."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') and smsinbox_users.ts_sms <'"."123"."'";
+        $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms <'"."123"."'";
+
+
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+        $fetch_convo = $this->dbconn->query($full_query);
+        if ($fetch_convo->num_rows != 0) {
+            while($row = $fetch_convo->fetch_assoc()) {
+                array_push($convo_container,$row);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+        return $convo_container;
+    }
+
+    function getTwentySearchedLatestMessages($details, $fullname) {
+        $convo_container = [];
+        $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
+                        smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
+                        smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
+                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms >'"."123"."'";
+        $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
+                        null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') and smsinbox_users.ts_sms =>'"."123"."'";
+
+
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+        $fetch_convo = $this->dbconn->query($full_query);
+        if ($fetch_convo->num_rows != 0) {
+            while($row = $fetch_convo->fetch_assoc()) {
+                array_push($convo_container,$row);
+            }
+        } else {
+            echo "No message fetched!";
+        }
+        return $convo_container;
     }
 }
