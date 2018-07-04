@@ -3667,17 +3667,27 @@ class ChatMessageModel {
             "backbone" => $ewi_backbone_container,
             "tech_info" => $ewi_key_input_container,
             "recommended_response" => $ewi_recommended_container,
+            "formatted_data_timestamp" => $template_data->formatted_data_timestamp,
             "data_timestamp" => $template_data->data_timestamp,
             "alert_level" => $template_data->alert_level
         ];
 
-        $template = $this->reconstructEWITemplate($raw_template);
+        
         $full_data['type'] = "fetchedEWITemplateViaCbx";
-        $full_data['data'] = $template;
+        $full_data['data'] = $this->reconstructEWITemplate($raw_template);
+        return $full_data;
     }
 
     function reconstructEWITemplate($raw_data) {
         $counter = 0;
+
+        $time_submission = null;
+        $date_submission = null;
+        $ewi_time = null;
+        $greeting = null;
+        date_default_timezone_set('Asia/Manila');
+        $current_date = date('Y-m-d H:i:s');
+
         $final_template = $raw_data['backbone'][0]['template'];
         if ($raw_data['site'][0]['purok'] == "") {
             $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
@@ -3689,14 +3699,60 @@ class ChatMessageModel {
              $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         }
 
+        if($current_date >= date("Y-m-d 00:00:00") && $current_date < date("Y-m-d 11:59:00")){
+            $greeting = "umaga";
+        }else if($current_date >= date("Y-m-d 12:00:00") && $current_date < date("Y-m-d 13:00:00")){
+            $greeting = "tanghali";
+        }else if($current_date >= date("Y-m-d 13:01:00") && $current_date < date("Y-m-d 17:59:00")) {
+            $greeting = "hapon";
+        }else if($current_date >= date("Y-m-d 18:00:00") && $current_date < date("Y-m-d 23:59:00")){
+            $greeting = "gabi";
+        }
+
+        $time_of_release = $raw_data['data_timestamp'];
+        if($time_of_release >= date("Y-m-d 00:00:00") && $time_of_release < date("Y-m-d 04:00:00")){
+            $time_submission = "bago mag-07:30 AM";
+            $date_submission = "mamaya";
+            $ewi_time = "04:00 AM";
+        }else if($time_of_release >= date("Y-m-d 04:00:00") && $time_of_release < date("Y-m-d 08:00:00")){
+            $time_submission = "bago mag-07:30 AM";
+            $date_submission = "mamaya";
+            $ewi_time = "08:00 AM";
+        }else if($time_of_release >= date("Y-m-d 08:00:00") && $time_of_release < date("Y-m-d 12:00:00")){
+            $time_submission = "bago mag-11:30 AM";
+            $date_submission = "mamaya";
+            $ewi_time = "12:00 NN";
+        }else if($time_of_release >= date("Y-m-d 12:00:00") && $time_of_release < date("Y-m-d 16:00:00")){
+            $time_submission = "bago mag-3:30 PM";
+            $date_submission = "mamaya";
+            $ewi_time = "04:00 PM";
+        }else if($time_of_release >= date("Y-m-d 16:00:00") && $time_of_release < date("Y-m-d 20:00:00")){
+            $time_submission = "bago mag-7:30 AM";
+            $date_submission = "bukas";
+            $ewi_time = "08:00 PM";
+        }else if($time_of_release >= date("Y-m-d 20:00:00")){
+            $time_submission = "bago mag-7:30 AM";
+            $date_submission = "bukas";
+            $ewi_time = "12:00 MN";
+        }else {
+            echo "Error Occured: Please contact Administrator";
+        }
+
         $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
         $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+        $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+        $final_template = str_replace("(technical_info)",$raw_data['tech_info'][0]['key_input'],$final_template);
+        $final_template = str_replace("(recommended_response)",$raw_data['recommended_response'][0]['key_input'],$final_template);
+        $final_template = str_replace("(gndmeas_date_submission)",$date_submission,$final_template);
+        $final_template = str_replace("(gndmeas_time_submission)",$time_submission,$final_template);
+        $final_template = str_replace("(next_ewi_time)",$ewi_time,$final_template);
+        $final_template = str_replace("(greetings)",$greeting,$final_template);
 
-        var_dump($final_template);
+        return $final_template;
+    }
 
-        var_dump($raw_data['site']);
-        var_dump($raw_data['key_input']);
-        exit;
+    function getTemplateDetails($time_of_release){
+
     }
 
     function fetchSearchKeyViaGlobalMessages($search_key, $search_limit) {
