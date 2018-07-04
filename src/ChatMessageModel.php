@@ -3780,16 +3780,14 @@ class ChatMessageModel {
         $convo_container = [];
         $number_container = $this->getMobileDetails($data);
         $full_name = $this->getUserFullname($number_container[0]);
-        $prev_messages_container = $this->getTwentySearchedPreviousMessages($number_container[0],$full_name);
-        $latest_messages_container = $this->getTwentySearchedLatestMessages($number_container[0],$full_name);
-        foreach ($prev_messages_container as $sms) {
-            array_push($convo_container,$sms);
-        }
-
+        $prev_messages_container = $this->getTwentySearchedPreviousMessages($number_container[0],$full_name,$data->ts);
+        $latest_messages_container = $this->getTwentySearchedLatestMessages($number_container[0],$full_name,$data->ts);
         foreach ($latest_messages_container as $sms) {
             array_push($convo_container,$sms);
         }
-
+        foreach ($prev_messages_container as $sms) {
+            array_push($convo_container,$sms);
+        }
         $full_data = [];
         $full_data['full_name'] = $full_name;
         $full_data['recipients'] = $number_container;
@@ -3814,19 +3812,20 @@ class ChatMessageModel {
         return strtoupper($full_name_container);
     }
 
-    function getTwentySearchedPreviousMessages($details, $fullname) {
+    function getTwentySearchedPreviousMessages($details, $fullname, $ts) {
         $convo_container = [];
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp , '".$full_name."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') and smsinbox_users.ts_sms <'"."123"."'";
+                        null as send_status , ts_sms as timestamp , '".$fullname."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms <'".$ts."'";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms <'"."123"."'";
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsoutbox_users.ts_written <'".$ts."'";
 
 
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3838,19 +3837,19 @@ class ChatMessageModel {
         return $convo_container;
     }
 
-    function getTwentySearchedLatestMessages($details, $fullname) {
+    function getTwentySearchedLatestMessages($details, $fullname, $ts) {
         $convo_container = [];
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms >'"."123"."'";
+                        null as send_status , ts_sms as timestamp , '".$fullname."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsinbox_users.ts_sms >'".$ts."'";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') and smsinbox_users.ts_sms =>'"."123"."'";
+                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".substr($details["sim_num"], -10)."%') and smsoutbox_users.ts_written >='".$ts."'";
 
 
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 21;";
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
