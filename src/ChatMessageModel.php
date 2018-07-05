@@ -3776,6 +3776,27 @@ class ChatMessageModel {
         return $full_data;
     }
 
+    function fetchSearchKeyViaGintags($search_key, $search_limit) {
+        $search_key_query = "SELECT smsinbox_users.sms_msg, CONCAT(users.firstname,' ',users.lastname) AS user, smsinbox_users.ts_sms AS ts, smsinbox_users.inbox_id AS sms_id, 'smsinbox' AS table_source , smsinbox_users.mobile_id as mobile_id
+        FROM senslopedb.smsinbox_users 
+        INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+        INNER JOIN users ON user_mobile.user_id = users.user_id 
+        INNER JOIN gintags ON gintags.table_element_id = smsinbox_users.inbox_id
+        INNER JOIN gintags_reference ON gintags_reference.tag_id = gintags.tag_id_fk WHERE gintags_reference.tag_name = '".$search_key."' limit ".$search_limit.";";
+        
+        $execute_query = $this->dbconn->query($search_key_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($search_key_container, $row);
+            }
+        } else {
+            echo "0 results\n";
+        }
+        $full_data['type'] = "fetchedSearchKeyViaGlobalMessage";
+        $full_data['data'] = $search_key_container;
+        return $full_data;
+    }
+
     function fetchSearchedMessageViaGlobal($data) {
         $convo_container = [];
         $number_container = $this->getMobileDetails($data);
