@@ -3246,6 +3246,7 @@ class ChatMessageModel {
         $outbox_filter_query = "";
         $inbox_outbox_collection = [];
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
+
         foreach ($contact_lists as $mobile_data) {
             if ($counter == 0) {
                 $outbox_filter_query = "smsoutbox_user_status.mobile_id = ".$mobile_data['mobile_id'];
@@ -3318,7 +3319,7 @@ class ChatMessageModel {
             }
         }
 
-        $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id WHERE ".$site_office_query.";";
+        $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id = '".$site."' WHERE ".$site_office_query.";";
         $mobile_number = $this->dbconn->query($mobile_data_query);
         while ($row = $mobile_number->fetch_assoc()) {
             array_push($mobile_data_container, $row);
@@ -3763,6 +3764,8 @@ class ChatMessageModel {
         SELECT smsoutbox_users.sms_msg, 'You' AS user, smsoutbox_user_status.ts_sent AS ts, smsoutbox_user_status.outbox_id AS sms_id, 'smsoutbox' AS table_source , smsoutbox_user_status.mobile_id
         from smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE sms_msg LIKE '".$search_key."' order by ts desc limit ".$search_limit.";";
 
+        echo $search_key_query;
+
         $execute_query = $this->dbconn->query($search_key_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
@@ -3783,7 +3786,7 @@ class ChatMessageModel {
         INNER JOIN users ON user_mobile.user_id = users.user_id 
         INNER JOIN gintags ON gintags.table_element_id = smsinbox_users.inbox_id
         INNER JOIN gintags_reference ON gintags_reference.tag_id = gintags.tag_id_fk WHERE gintags_reference.tag_name = '".$search_key."' limit ".$search_limit.";";
-        
+
         $execute_query = $this->dbconn->query($search_key_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {

@@ -137,7 +137,6 @@ class ChatterBox implements MessageComponentInterface {
                 $offices = $decodedText->organizations;
                 $sitenames = $decodedText->sitenames;
                 $exchanges = $this->chatModel->getMessageConversationsPerSites($offices,$sitenames);
-                var_dump($exchanges);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "sendSmsToRecipients") {
                 $exchanges = $this->chatModel->sendSms($decodedText->recipients,$decodedText->message);
