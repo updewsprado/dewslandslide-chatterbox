@@ -3240,6 +3240,12 @@ class ChatMessageModel {
         return $full_data;
     }
 
+    function getMessageConversationsForMultipleContact($details) {
+        foreach($details as $raw) {
+            var_dump($raw);
+        }
+    }
+
     function getMessageConversationsPerSites($offices, $sites) {
         $counter = 0;
         $inbox_filter_query = "";

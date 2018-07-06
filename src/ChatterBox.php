@@ -123,15 +123,21 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getSmsPerContact($fullname,$timestamp);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "loadSmsConversation") {
-                $request = [
-                    "office" => $decodedText->data->office,
-                    "site" => $decodedText->data->site,
-                    "first_name" => $decodedText->data->firstname,
-                    "last_name" => $decodedText->data->lastname,
-                    "full_name" => $decodedText->data->full_name,
-                    "number" => $decodedText->data->number
-                ];
-                $exchanges = $this->chatModel->getMessageConversations($request);
+                var_dump($decodedText->data);
+                if ($decodedText->data->isMultiple == true) {
+                    var_dump($decodedText->data->data);
+                    $exchanges = $this->chatModel->getMessageConversationsForMultipleContact($decodedText->data->data);
+                } else {
+                    $request = [
+                        "office" => $decodedText->data->office,
+                        "site" => $decodedText->data->site,
+                        "first_name" => $decodedText->data->firstname,
+                        "last_name" => $decodedText->data->lastname,
+                        "full_name" => $decodedText->data->full_name,
+                        "number" => $decodedText->data->number
+                    ];
+                    $exchanges = $this->chatModel->getMessageConversations($request);
+                }
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "loadSmsForSites") {
                 $offices = $decodedText->organizations;
