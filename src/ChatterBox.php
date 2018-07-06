@@ -123,9 +123,7 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getSmsPerContact($fullname,$timestamp);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "loadSmsConversation") {
-                var_dump($decodedText->data);
                 if ($decodedText->data->isMultiple == true) {
-                    var_dump($decodedText->data->data);
                     $exchanges = $this->chatModel->getMessageConversationsForMultipleContact($decodedText->data->data);
                 } else {
                     $request = [
