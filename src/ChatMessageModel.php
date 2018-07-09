@@ -9,7 +9,6 @@ class ChatMessageModel {
     public function __construct() {
         $this->initDBforCB();
         $this->qiInit = true;
-        // $this->getCachedQuickInboxMessages();
     }
 
     public function initDBforCB() {
@@ -22,6 +21,7 @@ class ChatMessageModel {
             die("Connection failed: " . $this->dbconn->connect_error);
         } else {
             echo "Connection Established... \n";
+            return true;
         }
     }
 
@@ -1995,7 +1995,6 @@ class ChatMessageModel {
 
         if ($result->num_rows > 0) {
             $fullData['total'] = $result->num_rows;
-            echo $result->num_rows . " results\n";
             while ($row = $result->fetch_assoc()) {
                 $dbreturn[$ctr]['fullname'] = $this->convertNameToUTF8($row['fullname']);
                 $dbreturn[$ctr]['id'] = $row['id'];
@@ -2005,7 +2004,6 @@ class ChatMessageModel {
             $dbreturn = $this->utf8_encode_recursive($dbreturn);
 
             $fullData['data'] = $dbreturn;
-            echo "data size: " . $this->getArraySize($dbreturn);
         }
         else {
             echo "0 results\n";

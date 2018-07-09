@@ -6,6 +6,7 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Prophecy\\' => array($vendorDir . '/phpspec/prophecy/src'),
     'Guzzle\\Stream' => array($vendorDir . '/guzzle/stream'),
     'Guzzle\\Parser' => array($vendorDir . '/guzzle/parser'),
     'Guzzle\\Http' => array($vendorDir . '/guzzle/http'),
