@@ -3759,27 +3759,30 @@ class ChatMessageModel {
         }
 
         $time_of_release = $raw_data['data_timestamp'];
-        if($time_of_release >= date("Y-m-d 00:00:00") && $time_of_release < date("Y-m-d 04:00:00")){
+        $time_stamp = date("Y-m-d 02:30:00");
+        $datetime = explode(" ",$time_of_release);
+        $time = $datetime[1];
+        if($time >= date("00:00:00") && $time < date("04:00:00")){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 AM";
-        }else if($time_of_release >= date("Y-m-d 04:00:00") && $time_of_release < date("Y-m-d 08:00:00")){
+        }else if($time >= date("04:00:00") && $time < date("08:00:00")){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "08:00 AM";
-        }else if($time_of_release >= date("Y-m-d 08:00:00") && $time_of_release < date("Y-m-d 12:00:00")){
+        }else if($time >= date("08:00:00") && $time < date("12:00:00")){
             $time_submission = "bago mag-11:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "12:00 NN";
-        }else if($time_of_release >= date("Y-m-d 12:00:00") && $time_of_release < date("Y-m-d 16:00:00")){
+        }else if($time >= date("12:00:00") && $time < date("16:00:00")){
             $time_submission = "bago mag-3:30 PM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 PM";
-        }else if($time_of_release >= date("Y-m-d 16:00:00") && $time_of_release < date("Y-m-d 20:00:00")){
+        }else if($time >= date("16:00:00") && $time < date("20:00:00")){
             $time_submission = "bago mag-7:30 AM";
             $date_submission = "bukas";
             $ewi_time = "08:00 PM";
-        }else if($time_of_release >= date("Y-m-d 20:00:00")){
+        }else if($time >= date("20:00:00")){
             $time_submission = "bago mag-7:30 AM";
             $date_submission = "bukas";
             $ewi_time = "12:00 MN";
@@ -3798,10 +3801,6 @@ class ChatMessageModel {
         $final_template = str_replace("(greetings)",$greeting,$final_template);
 
         return $final_template;
-    }
-
-    function getTemplateDetails($time_of_release){
-
     }
 
     function fetchSearchKeyViaGlobalMessages($search_key, $search_limit) {
