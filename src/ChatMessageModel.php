@@ -2756,6 +2756,7 @@ class ChatMessageModel {
             $return_data['status'] = $result;
             $return_data['return_msg'] = "Contact update failed, Please recheck inputs.";
         }
+        
         $return_data['type'] = "updatedCmmtyContact";
         return $return_data;
     }

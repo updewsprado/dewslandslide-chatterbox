@@ -1,4 +1,7 @@
 <?php
+
+// To run test: ./vendor/bin/phpunit --bootstrap vendor/autoload.php test/cbxtest
+
 require_once "/var/www/chatterbox/src/ChatMessageModel.php";
 use MyApp\ChatMessageModel;
 
@@ -80,23 +83,46 @@ final class ChatterboxTest extends TestCase {
     }
 
     public function testGetReminderTemplate() {
-
+        $sample_data = [
+            "site_name" => "BLC",
+            "internal_alert" => "N/A",
+            "alert_status" => "Reminder",
+            "alert_level" => "N/A",
+            "data_timestamp" => "2018-07-09 00:00:00",
+            "formatted_data_timestamp" => "2018-07-09 00:00:00"
+        ];
+        $this->assertInternalType("array", $this->chatModel->fetchEventTemplate((object) $sample_data));
     }
 
     public function testGetRainfallTemplate() {
-
+        // ToDo
     }
 
     public function testGetQuickAccessSiteWithEvent() {
-
+        // ToDo
     }
 
     public function testGetQuickAccessGroupMessage() {
-
+        // ToDo
     }
 
     public function testUpdateCommunityContact() {
-
+        $sample_data = [
+            "user_id" => "",
+            "salutation" => "",
+            "firstname" => "",
+            "middlename" => "",
+            "lastname" => "",
+            "nickname" => "",
+            "birthdate" => "",
+            "gender" => "",
+            "contact_active_status" => "",
+            "ewi_recipient" => "",
+            "numbers" => "",
+            "landline" => "",
+            "sites" => "",
+            "organizations" => ""
+        ];
     }
 
     public function testUpdateEmployeeContact() {

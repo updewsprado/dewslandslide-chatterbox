@@ -66,6 +66,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "updateCommunityContact") {
                 $data = $decodedText->data;
+                var_dump($data);
                 $exchanges = $this->chatModel->updateCmmtyContact($data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "newDewslContact") {
