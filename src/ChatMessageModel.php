@@ -531,7 +531,7 @@ class ChatMessageModel {
     }
 
     //Return the quick inbox messages needed for the initial display on chatterbox
-    public function getQuickInboxMessages($periodDays = 3) {
+    public function getQuickInboxMessages($periodDays = 7) {
         // $start = microtime(true);
 
         // Get the name of the senders
