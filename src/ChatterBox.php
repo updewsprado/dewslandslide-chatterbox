@@ -188,6 +188,7 @@ class ChatterBox implements MessageComponentInterface {
                         "tag" => $tag,
                         "full_name" => $decodedText->data->full_name,
                         "ts" => $decodedText->data->ts,
+                        "msg" => $decodedText->data->msg,
                         "account_id" => $decodedText->data->account_id,
                         "tag_important" => $decodedText->data->tag_important
                     ];
