@@ -549,6 +549,11 @@ class ChatterBox implements MessageComponentInterface {
                 $data = $decodedText->teams;
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "getGroundMeasDefaultSettings") {
+                $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
+                $routine_sites = $this->chatModel->RoutineSites();
+                $event_sites = $this->chatModel->EventSites();
+                $extended_sites = $this->chatModel->ExtendedSites();
             } else {
                 echo "Message will be ignored\n";
             }

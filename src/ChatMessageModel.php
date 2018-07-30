@@ -3108,4 +3108,56 @@ class ChatMessageModel {
         // echo json_encode($fullData);
         return $fullData;
     }
+
+    function getGroundMeasurementReminderTemplate() {
+        $template_query = "SELECT template FROM ewi_backbone_template WHERE alert_status = 'GndMeasReminder'";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        return $result->fetch_assoc();
+    }
+
+    function RoutineSites() {
+        $sql = "SELECT name,season from site";
+        $result = $this->dbconn->query($sql);
+        $site_collection['sitename'] = [];
+        $site_collection['season'] = [];
+
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                array_push($site_collection['sitename'],$row['name']);
+                array_push($site_collection['season'],$row['season']);
+            }
+        } else {
+            echo "0 results";
+        }
+
+        $today = date("l");
+        switch ($today) {
+            case 'Wednesday':
+                # code...
+                break;
+            case 'Tuesday':
+            case 'Friday':
+                # code...
+                break;
+            
+            default:
+                # code...
+                break;
+        }
+    }
+
+    function EventSites() {
+        $event_sites = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+        $this->checkConnectionDB($event_sites);
+        $result = $this->dbconn->query($event_sites);
+        return $result->fetch_assoc();
+    }
+
+    function ExtendedSites() {
+        $extended_sites = "SELECT name from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended'";
+        $this->checkConnectionDB($extended_sites);
+        $result = $this->dbconn->query($extended_sites);
+        return $result->fetch_assoc();
+    }
 }
