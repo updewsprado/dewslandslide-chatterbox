@@ -566,7 +566,7 @@ class ChatterBox implements MessageComponentInterface {
                 $full_data['extended_sites'] = $extended_sites;
                 $full_data['routine_sites'] = $routine_sites;
                 $full_data['template'] = $ground_meas_reminder_template;
-                $full_data['current_time'] = date('H:m:i A');
+                $full_data['time_of_sending'] = $ground_time;
                 $full_data['type'] = "fetchGndMeasReminderSettings";
                 $from->send(json_encode($full_data));
             } else if ($msgType == "setGndMeasReminderSettings") {

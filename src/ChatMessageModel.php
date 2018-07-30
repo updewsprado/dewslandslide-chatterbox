@@ -3199,11 +3199,16 @@ class ChatMessageModel {
                 break;
         }
         $final_sites = [];
-        foreach ($sites_cant_send_gndmeas as $cant_send) {
-            foreach ($sites_on_routine as $rtn_site) {
-               if (strtoupper($rtn_site) != $cant_send) {
-                    array_push($final_sites, $rtn_site);
-               }
+        foreach ($sites_on_routine as $rtn_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                    var_dump($rtn_site);
+                   if (strtoupper($rtn_site) != $cant_send) {
+                        array_push($final_sites, $rtn_site);
+                   }
+                }
+            } else {
+                $final_sites = $sites_on_routine;
             }
         }
         return $final_sites;
@@ -3219,11 +3224,15 @@ class ChatMessageModel {
             array_push($event_sites, $row);
         }
         $final_sites = [];
-        foreach ($sites_cant_send_gndmeas as $cant_send) {
-            foreach ($event_sites as $evt_site) {
-               if (strtoupper($evt_site['name']) != $cant_send) {
-                    array_push($final_sites, $evt_site);
-               }
+        foreach ($event_sites as $evt_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                   if (strtoupper($evt_site['name']) != $cant_send) {
+                        array_push($final_sites, $evt_site);
+                   }
+                }
+            } else {
+                $final_sites = $event_sites;
             }
         }
         return $final_sites;
@@ -3244,12 +3253,18 @@ class ChatMessageModel {
             }
         }
         $final_sites = [];
-        foreach ($sites_cant_send_gndmeas as $cant_send) {
-            foreach ($extended_sites as $extnd_site) {
-               if (strtotupper($extnd_site) != $cant_send) {
-                    array_push($final_sites, $extnd_site);
-               }
+        foreach ($extended_sites as $extnd_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                    var_dump($extnd_site);
+                   if (strtotupper($extnd_site) != $cant_send) {
+                        array_push($final_sites, $extnd_site);
+                   }
+                }
+            } else {
+                $final_sites = $extended_sites;
             }
+
         }
         return $final_sites;
     }
