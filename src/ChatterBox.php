@@ -550,16 +550,31 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
+                if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+                    $ground_time = 'mag-11:30 AM';
+                } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
+                    $ground_time = 'mag-2:30 PM';
+                } else {
+                    $ground_time = 'mag-7:30 AM';
+                }
                 $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
                 $routine_sites = $this->chatModel->routineSites();
                 $event_sites = $this->chatModel->eventSites();
                 $extended_sites = $this->chatModel->extendedSites();
+                $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
                 $full_data['event_sites'] = $event_sites;
                 $full_data['extended_sites'] = $extended_sites;
                 $full_data['routine_sites'] = $routine_sites;
                 $full_data['template'] = $ground_meas_reminder_template;
+                $full_data['current_time'] = date('H:m:i A');
                 $full_data['type'] = "fetchGndMeasReminderSettings";
                 $from->send(json_encode($full_data));
+            } else if ($msgType == "setGndMeasReminderSettings") {
+                $site_status = [];
+                foreach ($decodedText->sites as $site) {
+                    $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template);
+                    // add notification here
+                }
             } else {
                 echo "Message will be ignored\n";
             }

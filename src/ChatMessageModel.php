@@ -3116,8 +3116,22 @@ class ChatMessageModel {
         return $result->fetch_assoc();
     }
 
-    function routineSites() {
+    function insertGndMeasReminderSettings($site, $type, $template) {
+        if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+            $ground_time = '11:30 AM';
+        } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
+            $ground_time = '2:30 PM';
+        } else {
+            $ground_time = '7:30 AM';
+        }
+        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."',0,'".$ground_time."',0)";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        return $result; 
+    }
 
+    function routineSites() {
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
         $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
         $result = $this->dbconn->query($sql);
         $site_routine_collection['sitename'] = [];
@@ -3184,22 +3198,40 @@ class ChatMessageModel {
                 }
                 break;
         }
-        return $sites_on_routine;
+        $final_sites = [];
+        foreach ($sites_cant_send_gndmeas as $cant_send) {
+            foreach ($sites_on_routine as $rtn_site) {
+               if (strtoupper($rtn_site) != $cant_send) {
+                    array_push($final_sites, $rtn_site);
+               }
+            }
+        }
+        return $final_sites;
     }
 
     function eventSites() {
-        $event_sites_query = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
+        $event_sites_query = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended'" ;
         $event_sites = [];
         $this->checkConnectionDB($event_sites_query);
         $result = $this->dbconn->query($event_sites_query);
         while ($row = $result->fetch_assoc()) {
             array_push($event_sites, $row);
         }
-        return $event_sites;
+        $final_sites = [];
+        foreach ($sites_cant_send_gndmeas as $cant_send) {
+            foreach ($event_sites as $evt_site) {
+               if (strtoupper($evt_site['name']) != $cant_send) {
+                    array_push($final_sites, $evt_site);
+               }
+            }
+        }
+        return $final_sites;
     }
 
     function extendedSites() {
         $extended_sites = [];
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
         $extended_sites_query = "SELECT site.name,public_alert_event.validity from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended'";
         $this->checkConnectionDB($extended_sites_query);
         $result = $this->dbconn->query($extended_sites_query);
@@ -3211,6 +3243,50 @@ class ChatMessageModel {
                 array_push($extended_sites, $row['name']); 
             }
         }
-        return $extended_sites;
+        $final_sites = [];
+        foreach ($sites_cant_send_gndmeas as $cant_send) {
+            foreach ($extended_sites as $extnd_site) {
+               if (strtotupper($extnd_site) != $cant_send) {
+                    array_push($final_sites, $extnd_site);
+               }
+            }
+        }
+        return $final_sites;
     }
+
+    function getGroundMeasurementsForToday() {
+        $current_date = date('Y-m-d H:m:i');
+        $previous_date_raw = date_create(date('Y-m-d H:i'));
+        $reconstruct_date = date_sub($previous_date_raw,date_interval_create_from_date_string("4 hours"));
+        $previous_date = date_format($reconstruct_date,"Y-m-d H:i:s");
+        $gndmeas_sent_sites = [];
+        $sql = "SELECT * FROM senslopedb.gintags 
+                INNER JOIN smsinbox ON smsinbox.sms_id = table_element_id 
+                INNER JOIN gintags_reference ON gintags.tag_id_fk = gintags_reference.tag_id
+                where (gintags_reference.tag_name = '#CantSendGndMeas' OR gintags_reference.tag_name = '#GroundMeas') AND smsinbox.timestamp < '".$current_date."' AND smsinbox.timestamp > '".$previous_date."' limit 100;";
+        $result = $this->dbconn->query($sql);
+        if ($result->num_rows > 0) {
+            foreach ($result as $tagged) {
+                $sql = "SELECT sitename FROM communitycontacts WHERE number like '%".substr($tagged['sim_num'],-10)."%'";
+                $get_sites = $this->dbconn->query($sql);
+                if ($get_sites->num_rows > 0) {
+                    foreach ($get_sites as $site) {
+                        if (sizeOf($gndmeas_sent_sites) == 1) {
+                            array_push($gndmeas_sent_sites, $site['sitename']);
+                        } else {
+                            if (!in_array($site['sitename'],$gndmeas_sent_sites)) {
+                                array_push($gndmeas_sent_sites,$site['sitename']);
+                            }
+                        }
+                    }
+                } else {
+                    echo "No contacts fetched. \n\n";
+                }
+            }
+        } else {
+            echo "No Ground measurement received.\n\n";
+        }
+        return $gndmeas_sent_sites;
+    }
+
 }
