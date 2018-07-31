@@ -3116,12 +3116,27 @@ class ChatMessageModel {
         return $result->fetch_assoc();
     }
 
-    function RoutineSites() {
+    function routineSites() {
+
+        $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+        $result = $this->dbconn->query($sql);
+        $site_routine_collection['sitename'] = [];
+        $site_routine_collection['status'] = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                array_push($site_routine_collection['sitename'],$row['name']);
+                array_push($site_routine_collection['status'],$row['status']);
+            }
+        } else {
+            echo "0 results";
+        }
+
+
         $sql = "SELECT name,season from site";
         $result = $this->dbconn->query($sql);
+        $sites_on_routine = [];
         $site_collection['sitename'] = [];
         $site_collection['season'] = [];
-
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 array_push($site_collection['sitename'],$row['name']);
@@ -3131,33 +3146,71 @@ class ChatMessageModel {
             echo "0 results";
         }
 
+        $on_routine_raw = array_diff($site_collection['sitename'],$site_routine_collection['sitename']);
+        
+        $on_routine['sitename'] = [];
+        $on_routine['season'] = [];
+        foreach ($on_routine_raw as $sites) {
+            array_push($on_routine['sitename'], $sites);
+        }
+
+        for ($allsite_counter = 0; $allsite_counter < sizeof($site_collection['sitename']);$allsite_counter++) {
+            for ($raw_counter = 0; $raw_counter < sizeof($on_routine['sitename']);$raw_counter++) { 
+                if ($on_routine['sitename'][$raw_counter] == $site_collection['sitename'][$allsite_counter]) {
+                    array_push($on_routine['season'],$site_collection['season'][$allsite_counter]);
+                }
+            }
+        }
+
+        // [[s1],[s2]];
+        $wet = [[1,2,6,7,8,9,10,11,12], [5,6,7,8,9,10]];
+        $dry = [[3,4,5], [1,2,3,4,11,12]];
+        $month = (int) date("m"); // ex 3.
         $today = date("l");
         switch ($today) {
             case 'Wednesday':
-                # code...
+                for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
+                    if (in_array($month,$dry[(int) ($on_routine['season'][$routine_counter]-1)])) {
+                        array_push($sites_on_routine, $on_routine['sitename'][$routine_counter]);
+                    }
+                }
                 break;
             case 'Tuesday':
             case 'Friday':
-                # code...
-                break;
-            
-            default:
-                # code...
+                for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
+                    if (in_array($month,$wet[(int) ($on_routine['season'][$routine_counter]-1)])){
+                        array_push($sites_on_routine, $on_routine['sitename'][$routine_counter]);
+                    }
+                }
                 break;
         }
+        return $sites_on_routine;
     }
 
-    function EventSites() {
-        $event_sites = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
-        $this->checkConnectionDB($event_sites);
-        $result = $this->dbconn->query($event_sites);
-        return $result->fetch_assoc();
+    function eventSites() {
+        $event_sites_query = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+        $event_sites = [];
+        $this->checkConnectionDB($event_sites_query);
+        $result = $this->dbconn->query($event_sites_query);
+        while ($row = $result->fetch_assoc()) {
+            array_push($event_sites, $row);
+        }
+        return $event_sites;
     }
 
-    function ExtendedSites() {
-        $extended_sites = "SELECT name from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended'";
-        $this->checkConnectionDB($extended_sites);
-        $result = $this->dbconn->query($extended_sites);
-        return $result->fetch_assoc();
+    function extendedSites() {
+        $extended_sites = [];
+        $extended_sites_query = "SELECT site.name,public_alert_event.validity from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended'";
+        $this->checkConnectionDB($extended_sites_query);
+        $result = $this->dbconn->query($extended_sites_query);
+        $current_date = strtotime(date("Y/m/d"));
+        while($row = $result->fetch_assoc()) {
+            $secs = $current_date - strtotime($row['validity']);
+            $days = $secs / 86400;
+            if ($days > 0.6) {
+                array_push($extended_sites, $row['name']); 
+            }
+        }
+        return $extended_sites;
     }
 }

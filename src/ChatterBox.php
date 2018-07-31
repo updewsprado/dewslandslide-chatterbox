@@ -551,9 +551,15 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
                 $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
-                $routine_sites = $this->chatModel->RoutineSites();
-                $event_sites = $this->chatModel->EventSites();
-                $extended_sites = $this->chatModel->ExtendedSites();
+                $routine_sites = $this->chatModel->routineSites();
+                $event_sites = $this->chatModel->eventSites();
+                $extended_sites = $this->chatModel->extendedSites();
+                $full_data['event_sites'] = $event_sites;
+                $full_data['extended_sites'] = $extended_sites;
+                $full_data['routine_sites'] = $routine_sites;
+                $full_data['template'] = $ground_meas_reminder_template;
+                $full_data['type'] = "fetchGndMeasReminderSettings";
+                $from->send(json_encode($full_data));
             } else {
                 echo "Message will be ignored\n";
             }
