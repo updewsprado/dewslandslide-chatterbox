@@ -13,6 +13,7 @@ class ChatMessageModel {
         //Cache the initial inbox messages
         $this->qiInit = true;
         $this->getCachedQuickInboxMessages();
+        date_default_timezone_set("Asia/Singapore");
     }
 
     public function helloWorld() {
@@ -3285,19 +3286,28 @@ class ChatMessageModel {
     }
 
     function getGroundMeasurementsForToday() {
-        $current_date = date('Y-m-d H:m:i');
-        $previous_date_raw = date_create(date('Y-m-d H:i'));
-        $reconstruct_date = date_sub($previous_date_raw,date_interval_create_from_date_string("4 hours"));
-        $previous_date = date_format($reconstruct_date,"Y-m-d H:i:s");
+        $current_date = date('Y-m-d H:i A').'11:30 AM';
+
+        if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+            $ground_time = '11:30 AM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
+            $ground_time = '2:30 PM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        } else {
+            $ground_time = '7:30 AM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        }
+
         $gndmeas_sent_sites = [];
         $sql = "SELECT * FROM senslopedb.gintags 
                 INNER JOIN smsinbox ON smsinbox.sms_id = table_element_id 
                 INNER JOIN gintags_reference ON gintags.tag_id_fk = gintags_reference.tag_id
-                where (gintags_reference.tag_name = '#CantSendGndMeas' OR gintags_reference.tag_name = '#GroundMeas') AND smsinbox.timestamp < '".$current_date."' AND smsinbox.timestamp > '".$previous_date."' limit 100;";
+                where (gintags_reference.tag_name = '#CantSendGroundMeas' OR gintags_reference.tag_name = '#GroundMeas' OR gintags_reference.tag_name = '#GroundObs') AND smsinbox.timestamp < '".date('Y-m-d ').$ground_time."' AND smsinbox.timestamp > '".$current_date."' limit 100;";
         $result = $this->dbconn->query($sql);
         if ($result->num_rows > 0) {
             foreach ($result as $tagged) {
-                $sql = "SELECT sitename FROM communitycontacts WHERE number like '%".substr($tagged['sim_num'],-10)."%'";
+                $sql = "SELECT DISTINCT sitename FROM communitycontacts WHERE number like '%".substr($tagged['sim_num'],-10)."%'";
                 $get_sites = $this->dbconn->query($sql);
                 if ($get_sites->num_rows > 0) {
                     foreach ($get_sites as $site) {
@@ -3316,7 +3326,7 @@ class ChatMessageModel {
         } else {
             echo "No Ground measurement received.\n\n";
         }
-        return $gndmeas_sent_sites;
+        return array_unique($gndmeas_sent_sites);
     }
 
 }
