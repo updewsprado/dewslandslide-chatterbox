@@ -551,22 +551,30 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
                 if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
-                    $ground_time = 'mag-11:30 AM';
+                    $ground_time = '11:30 AM';
                 } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
-                    $ground_time = 'mag-2:30 PM';
+                    $ground_time = '2:30 PM';
                 } else {
-                    $ground_time = 'mag-7:30 AM';
+                    $ground_time = '7:30 AM';
                 }
-                $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
+                $check_if_settings_set = $this->chatModel->checkForGndMeasSettings($ground_time);
                 $routine_sites = $this->chatModel->routineSites();
                 $event_sites = $this->chatModel->eventSites();
                 $extended_sites = $this->chatModel->extendedSites();
-                $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
+
+                if (sizeOf($check_if_settings_set) > 0) {
+                    $full_data['save_settings'] = $check_if_settings_set;
+                    $full_data['saved'] = true;
+                } else {
+                    $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
+                    $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
+                    $full_data['template'] = $ground_meas_reminder_template;
+                    $full_data['time_of_sending'] = $ground_time;
+                    $full_data['saved'] = false;
+                }
                 $full_data['event_sites'] = $event_sites;
                 $full_data['extended_sites'] = $extended_sites;
                 $full_data['routine_sites'] = $routine_sites;
-                $full_data['template'] = $ground_meas_reminder_template;
-                $full_data['time_of_sending'] = $ground_time;
                 $full_data['type'] = "fetchGndMeasReminderSettings";
                 $from->send(json_encode($full_data));
             } else if ($msgType == "setGndMeasReminderSettings") {

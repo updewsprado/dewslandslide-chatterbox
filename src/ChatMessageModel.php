@@ -3116,6 +3116,17 @@ class ChatMessageModel {
         return $result->fetch_assoc();
     }
 
+    function checkForGndMeasSettings($time) {
+        $settings_container = [];
+        $template_query = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0 and timestamp = '".$time."'";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        while ($row = $result->fetch_assoc()) {
+            array_push($settings_container, $row);
+        }
+        return $settings_container;
+    }
+
     function insertGndMeasReminderSettings($site, $type, $template) {
         if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
             $ground_time = '11:30 AM';
@@ -3202,7 +3213,6 @@ class ChatMessageModel {
         foreach ($sites_on_routine as $rtn_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
                 foreach ($sites_cant_send_gndmeas as $cant_send) {
-                    var_dump($rtn_site);
                    if (strtoupper($rtn_site) != $cant_send) {
                         array_push($final_sites, $rtn_site);
                    }
@@ -3216,7 +3226,7 @@ class ChatMessageModel {
 
     function eventSites() {
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
-        $event_sites_query = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended'" ;
+        $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id,public_alert_release.internal_alert_level from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%'" ;
         $event_sites = [];
         $this->checkConnectionDB($event_sites_query);
         $result = $this->dbconn->query($event_sites_query);
@@ -3256,7 +3266,6 @@ class ChatMessageModel {
         foreach ($extended_sites as $extnd_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
                 foreach ($sites_cant_send_gndmeas as $cant_send) {
-                    var_dump($extnd_site);
                    if (strtotupper($extnd_site) != $cant_send) {
                         array_push($final_sites, $extnd_site);
                    }
