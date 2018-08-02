@@ -557,6 +557,7 @@ class ChatterBox implements MessageComponentInterface {
                 } else {
                     $ground_time = '7:30 AM';
                 }
+                
                 $check_if_settings_set = $this->chatModel->checkForGndMeasSettings($ground_time);
                 $routine_sites = $this->chatModel->routineSites();
                 $event_sites = $this->chatModel->eventSites();
@@ -572,9 +573,9 @@ class ChatterBox implements MessageComponentInterface {
                     $full_data['time_of_sending'] = $ground_time;
                     $full_data['saved'] = false;
                 }
-                $full_data['event_sites'] = $event_sites;
-                $full_data['extended_sites'] = $extended_sites;
-                $full_data['routine_sites'] = $routine_sites;
+                    $full_data['event_sites'] = $event_sites;
+                    $full_data['extended_sites'] = $extended_sites;
+                    $full_data['routine_sites'] = $routine_sites;
                 $full_data['type'] = "fetchGndMeasReminderSettings";
                 $from->send(json_encode($full_data));
             } else if ($msgType == "setGndMeasReminderSettings") {
