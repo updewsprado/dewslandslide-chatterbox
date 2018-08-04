@@ -3118,7 +3118,7 @@ class ChatMessageModel {
 
     function checkForGndMeasSettings($time) {
         $settings_container = [];
-        $template_query = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0 and timestamp = '".$time."'";
+        $template_query = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0 and timestamp = '".$time."' order by site";
         $this->checkConnectionDB($template_query);
         $result = $this->dbconn->query($template_query);
         while ($row = $result->fetch_assoc()) {
@@ -3127,7 +3127,13 @@ class ChatMessageModel {
         return $settings_container;
     }
 
-    function insertGndMeasReminderSettings($site, $type, $template) {
+    function flagGndMeasSettingsSentStatus() {
+        $overwrite_query = "UPDATE ground_meas_reminder_automation SET status = 1 WHERE status = 0";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+    }
+
+    function insertGndMeasReminderSettings($site, $type, $template, $altered) {
         if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
             $ground_time = '11:30 AM';
         } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
@@ -3135,7 +3141,7 @@ class ChatMessageModel {
         } else {
             $ground_time = '7:30 AM';
         }
-        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."',0,'".$ground_time."',0)";
+        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."','".$altered."','".$ground_time."',0)";
         $this->checkConnectionDB($template_query);
         $result = $this->dbconn->query($template_query);
         return $result; 
@@ -3143,7 +3149,7 @@ class ChatMessageModel {
 
     function routineSites() {
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
-        $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid'";
+        $sql = "SELECT DISTINCT name,status from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' order by name";
         $result = $this->dbconn->query($sql);
         $site_routine_collection['sitename'] = [];
         $site_routine_collection['status'] = [];
@@ -3226,7 +3232,8 @@ class ChatMessageModel {
 
     function eventSites() {
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
-        $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id,public_alert_release.internal_alert_level from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%'" ;
+        $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id,public_alert_release.internal_alert_level from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by name" ;
+        var_dump($event_sites_query);
         $event_sites = [];
         $this->checkConnectionDB($event_sites_query);
         $result = $this->dbconn->query($event_sites_query);
@@ -3251,7 +3258,7 @@ class ChatMessageModel {
     function extendedSites() {
         $extended_sites = [];
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
-        $extended_sites_query = "SELECT site.name,public_alert_event.validity from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended'";
+        $extended_sites_query = "SELECT site.name,public_alert_event.validity from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id WHERE public_alert_event.status = 'extended' order by site.name";
         $this->checkConnectionDB($extended_sites_query);
         $result = $this->dbconn->query($extended_sites_query);
         $current_date = strtotime(date("Y/m/d"));

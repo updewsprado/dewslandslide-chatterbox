@@ -550,6 +550,7 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
+
                 if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
                     $ground_time = '11:30 AM';
                 } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
@@ -557,7 +558,7 @@ class ChatterBox implements MessageComponentInterface {
                 } else {
                     $ground_time = '7:30 AM';
                 }
-                
+                if ($decodedText->overwrite == true) {$this->chatModel->flagGndMeasSettingsSentStatus();}
                 $check_if_settings_set = $this->chatModel->checkForGndMeasSettings($ground_time);
                 $routine_sites = $this->chatModel->routineSites();
                 $event_sites = $this->chatModel->eventSites();
@@ -581,8 +582,7 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "setGndMeasReminderSettings") {
                 $site_status = [];
                 foreach ($decodedText->sites as $site) {
-                    $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template);
-                    // add notification here
+                    $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered);
                 }
             } else {
                 echo "Message will be ignored\n";
