@@ -111,7 +111,6 @@ class ChatterBox implements MessageComponentInterface {
 
                         echo "sentTS = $sentTS \n";
 
-                        var_dump(isset($decodedText->retry));
                         if (!isset($decodedText->retry)) {
                             //store data in 'smsoutbox' table
                             $result_ewi_entry = $this->chatModel->insertSMSOutboxEntry($recipients, $sentMsg, $sentTS,$ewitag);
@@ -158,7 +157,6 @@ class ChatterBox implements MessageComponentInterface {
                     echo "Blocked list checking..\n";
 
                     $isBlocked = $this->isBlockedListed($sender);
-                    var_dump($isBlocked);
                     if ($isBlocked == false) {
                         $this->chatModel->insertSMSInboxEntry($rcvTS, $sender, $rcvMsg);
 
@@ -393,7 +391,6 @@ class ChatterBox implements MessageComponentInterface {
                 //Attempt to Update the smsoutbox entry
                 $updateStatus = $this->chatModel->updateSMSOutboxEntry($recipients, 
                                                     $writtenTS, $sendStatus, $sentTS);
-                var_dump($msg);
                 if ($updateStatus >= 0) {
                     //Send the acknowledgment to all connected web socket clients
                     foreach ($this->clients as $client) {
@@ -558,6 +555,7 @@ class ChatterBox implements MessageComponentInterface {
                 } else {
                     $ground_time = '7:30 AM';
                 }
+
                 if ($decodedText->overwrite == true) {$this->chatModel->flagGndMeasSettingsSentStatus();}
                 $check_if_settings_set = $this->chatModel->checkForGndMeasSettings($ground_time);
                 $routine_sites = $this->chatModel->routineSites();
@@ -584,6 +582,45 @@ class ChatterBox implements MessageComponentInterface {
                 foreach ($decodedText->sites as $site) {
                     $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered);
                 }
+            } else if ($msgType == "setUneditedGndMeasReminderSetting") {
+                if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+                    $ground_time = '11:30 AM';
+                } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
+                    $ground_time = '2:30 PM';
+                } else {
+                    $ground_time = '7:30 AM';
+                }
+                $routine_sites = $this->chatModel->routineSites();
+                $event_sites = $this->chatModel->eventSites();
+                $extended_sites = $this->chatModel->extendedSites();
+                $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
+                $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
+                if (sizeOf($routine_sites) != 0) {
+                    foreach ($routine_sites as $key => $site) {
+                        $type = 'routine';
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $ground_meas_reminder_template['template'], 0);
+                        var_dump($type);
+                        var_dump($set_gnd_meas_reminder);
+                    }
+                }
+
+                if (sizeOf($event_sites) != 0) {
+                    foreach($event_sites as $site) {
+                        $type = 'event';
+                        var_dump($site);
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $ground_meas_reminder_template['template'], 0);
+                        var_dump($set_gnd_meas_reminder);
+                    }
+                }
+
+                if (sizeOf($extended_sites) != 0) {
+                    foreach ($extended_site as $site) {
+                        $type = 'extended';
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $ground_meas_reminder_template['template'], 0);
+                        var_dump($type);
+                        var_dump($set_gnd_meas_reminder);
+                    }
+                }
             } else {
                 echo "Message will be ignored\n";
             }
@@ -604,7 +641,7 @@ class ChatterBox implements MessageComponentInterface {
     }
 
     public function isBlockedListed($sender) {
-        $blocked_list = ['9189008008','9189008007','9168888888','9258828008','9255217304','9189031278'];
+        $blocked_list = ['9189008008','9189008007','9168888888','9258828008','9255217304','9189031278','9338241944','9189008002'];
         $trim_number = substr($sender,'-10');
         foreach ($blocked_list as $blocked) {
             if ($blocked == $trim_number) {

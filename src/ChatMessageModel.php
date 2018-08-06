@@ -3233,7 +3233,6 @@ class ChatMessageModel {
     function eventSites() {
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
         $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id,public_alert_release.internal_alert_level from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by name" ;
-        var_dump($event_sites_query);
         $event_sites = [];
         $this->checkConnectionDB($event_sites_query);
         $result = $this->dbconn->query($event_sites_query);

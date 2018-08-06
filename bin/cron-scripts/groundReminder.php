@@ -83,6 +83,15 @@
         echo "Connection established.\n\n";
     }
 
+    $check_if_settings_exists_query = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0";
+    $exists = $conn->query($check_if_settings_exists_query);
+
+    if ($exists->num_rows == 0) {
+        $gnd_settings = (object) array("type"=>"setUneditedGndMeasReminderSetting");
+        $WebSocketClient = new WebsocketClient('localhost', 5050);
+        $WebSocketClient->sendData(json_encode($gnd_settings));
+    }
+
     $sql = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0";
     $result = $conn->query($sql);
     $ground_meas_collection = [];
