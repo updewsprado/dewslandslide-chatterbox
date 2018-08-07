@@ -578,6 +578,7 @@ class ChatterBox implements MessageComponentInterface {
                 $full_data['cant_send_gndmeas'] = $this->chatModel->getGroundMeasurementsForToday();
                 $full_data['type'] = "fetchGndMeasReminderSettings";
                 $from->send(json_encode($full_data));
+                
             } else if ($msgType == "setGndMeasReminderSettings") {
                 $site_status = [];
                 foreach ($decodedText->sites as $site) {
