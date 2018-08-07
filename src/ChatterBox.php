@@ -547,10 +547,6 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
-
-                var_dump(date('h:i A'));
-                var_dump('11:30 AM');
-
                 if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:i A')) < strtotime('11:30 AM')) {
                     $ground_time = '11:30 AM';
                 } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
