@@ -3228,8 +3228,13 @@ class ChatMessageModel {
                 $final_sites = $sites_on_routine;
             }
         }
-        var_dump(array_unique($final_sites));
-        return array_unique($final_sites);
+        $temp = [];
+
+        foreach (array_unique($final_sites) as $site) {
+            array_push($temp, $site);
+        }
+
+        return $temp;
     }
 
     function eventSites() {
@@ -3253,7 +3258,11 @@ class ChatMessageModel {
                 $final_sites = $event_sites;
             }
         }
-        return array_unique($final_sites,SORT_REGULAR);
+        $temp = [];
+        foreach (array_unique($final_sites,SORT_REGULAR) as $site) {
+            array_push($temp, $site);
+        }
+        return $temp;
     }
 
     function extendedSites() {
@@ -3281,10 +3290,13 @@ class ChatMessageModel {
             } else {
                 $final_sites = $extended_sites;
             }
-
         }
-        var_dump(array_unique($final_sites));
-        return array_unique($final_sites);
+
+        $temp = [];
+        foreach (array_unique($final_sites) as $site) {
+            array_push($temp, $site);
+        }
+        return $temp;
     }
 
     function getGroundMeasurementsForToday() {
