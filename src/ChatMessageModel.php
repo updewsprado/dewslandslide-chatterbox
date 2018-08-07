@@ -3228,8 +3228,8 @@ class ChatMessageModel {
                 $final_sites = $sites_on_routine;
             }
         }
-        var_dump($final_sites);
-        return $final_sites;
+        var_dump(array_unique($final_sites));
+        return array_unique($final_sites);
     }
 
     function eventSites() {
@@ -3245,7 +3245,7 @@ class ChatMessageModel {
         foreach ($event_sites as $evt_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
                 foreach ($sites_cant_send_gndmeas as $cant_send) {
-                   if (strtoupper($evt_site['name']) != $cant_send) {
+                   if (strtoupper($evt_site['name']) != strtoupper($cant_send)) {
                         array_push($final_sites, $evt_site);
                    }
                 }
@@ -3284,8 +3284,8 @@ class ChatMessageModel {
             }
 
         }
-        var_dump($final_sites);
-        return $final_sites;
+        var_dump(array_unique($final_sites));
+        return array_unique($final_sites);
     }
 
     function getGroundMeasurementsForToday() {
