@@ -3273,7 +3273,7 @@ class ChatMessageModel {
         foreach ($extended_sites as $extnd_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
                 foreach ($sites_cant_send_gndmeas as $cant_send) {
-                   if (strtotupper($extnd_site) != $cant_send) {
+                   if (strtoupper($extnd_site) != $cant_send) {
                         array_push($final_sites, $extnd_site);
                    }
                 }
