@@ -3228,6 +3228,7 @@ class ChatMessageModel {
                 $final_sites = $sites_on_routine;
             }
         }
+        var_dump($final_sites);
         return $final_sites;
     }
 
@@ -3252,6 +3253,7 @@ class ChatMessageModel {
                 $final_sites = $event_sites;
             }
         }
+        var_dump($final_sites);
         return $final_sites;
     }
 
@@ -3282,6 +3284,7 @@ class ChatMessageModel {
             }
 
         }
+        var_dump($final_sites);
         return $final_sites;
     }
 
