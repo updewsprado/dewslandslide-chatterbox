@@ -550,7 +550,7 @@ class ChatterBox implements MessageComponentInterface {
                 if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:i A')) < strtotime('11:30 AM')) {
                     $ground_time = '11:30 AM';
                 } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
-                    $ground_time = '2:30 PM';
+                    $ground_time = '3:30 PM';
                 } else {
                     $ground_time = '7:30 AM';
                 }
@@ -590,7 +590,7 @@ class ChatterBox implements MessageComponentInterface {
                 if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:m A')) < strtotime('11:30 AM')) {
                     $ground_time = '11:30 AM';
                 } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
-                    $ground_time = '2:30 PM';
+                    $ground_time = '3:30 PM';
                 } else {
                     $ground_time = '7:30 AM';
                 }
