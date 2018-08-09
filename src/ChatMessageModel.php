@@ -93,7 +93,6 @@ class ChatMessageModel {
         $sql = "INSERT INTO smsinbox (timestamp, sim_num, sms_msg, read_status, web_flag)
         VALUES ('$timestamp', '$sender', '$message', 'READ-FAIL', 'WS')";
 
-        var_dump($sql);
         $this->checkConnectionDB($sql);
 
         if ($this->dbconn->query($sql) === TRUE) {
@@ -1338,7 +1337,6 @@ class ChatMessageModel {
                 $query = $queryOutbox . "UNION " . $queryInbox . " ORDER BY timestamp desc";
             }
 
-            var_dump($query);
             $this->checkConnectionDB($query);
             $result = $this->dbconn->query($query);
 
@@ -2412,7 +2410,6 @@ class ChatMessageModel {
         $returnObj['data'] = $returnData;
         $returnObj['type'] = "fetchedSelectedCmmtyContact";
 
-        // var_dump($returnObj);
         return $returnObj;
     }
 
@@ -3019,7 +3016,6 @@ class ChatMessageModel {
             }
 
             $get_mobile_ids_query = "SELECT * FROM users INNER JOIN user_mobile ON users.user_id = user_mobile.user_id LEFT JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE (".$site_query.") AND (".$org_query.")";
-            var_dump($get_mobile_ids_query);
             $mobile_ids_raw = $this->dbconn->query($get_mobile_ids_query);
             if ($mobile_ids_raw->num_rows != 0) {
                 while ($row = $mobile_ids_raw->fetch_assoc()) {
@@ -3066,8 +3062,6 @@ class ChatMessageModel {
             for ($counter = 0; $counter < sizeof($mobile_data); $counter++) {
                 $mobile_data[$counter]['mobile_numbers'] = [];
                 for ($sub_counter = 0; $sub_counter < sizeof($mobile_numbers); $sub_counter++) {
-                    var_dump($mobile_data[$counter]);
-                    var_dump($mobile_numbers[$sub_counter]);
                     if ($mobile_data[$counter]['user_id'] == $mobile_numbers[$sub_counter]['user_id']) {
                         array_push($mobile_data[$counter]['mobile_numbers'],$mobile_numbers[$sub_counter]);
                     }
@@ -3334,23 +3328,39 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
 
+        $title_collection = [];
         foreach ($inbox_outbox_collection as $raw) {
-            var_dump($raw['convo_id']);
-            var_dump($raw['sms_msg']);
-            var_dump($raw['ts_received']);
-            var_dump($raw['ts_sent']);
-            var_dump("----------------------");
+            if ($raw['user'] == 'You') {
+                $titles = $this->getSentStatusForGroupConvos($raw['sms_msg'],$raw['timestamp'], $raw['mobile_id']);
+                var_dump("-------------------------------");
+                var_dump($titles);
+                var_dump("-------------------------------");
+                // array_push($title_collection,);
+            } else {
+                // array_push($raw['user']);
+            }
         }
 
         $full_data = [];
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $inbox_outbox_collection;
+        $full_data['titles'] = $title_collection;
         $full_data['recipients'] = $contact_lists;
         return $full_data;
     }
 
-    function getSentStatusForGroupConvos() {
-
+    function getSentStatusForGroupConvos($sms_msg, $timestamp, $mobile_id) {
+        $status_container = [];
+        $get_sent_status_query = "SELECT smsoutbox_users.outbox_id as sms_id, smsoutbox_user_status.send_status as status, CONCAT(users.lastname,', ',users.firstname) as full_name FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id INNER JOIN user_mobile ON smsoutbox_user_status.mobile_id = user_mobile.mobile_id INNER JOIN users ON user_mobile.user_id = users.user_id WHERE sms_msg = '".$sms_msg."' AND ts_written = '".$timestamp."';";
+        $sent_status = $this->dbconn->query($get_sent_status_query);
+        if ($sent_status->num_rows !=0) {
+            while ($row = $sent_status->fetch_assoc()) {
+                array_push($status_container, $row);
+            }
+        } else {
+            echo "No sent status fetched.\n\n PMS FIRED!";
+        }
+        return $status_container;
     }
 
     function getMobileDetails($details) {
@@ -3545,12 +3555,10 @@ class ChatMessageModel {
                 if ($execute_query == true) {
                     $status = true;
                     $last_inserted_id = $this->dbconn->insert_id;
-                    var_dump($last_inserted_id);
                 }
             } else {
                 $status = true;
                 $last_inserted_id = $execute_query->fetch_assoc()['tag_id'];
-                var_dump($last_inserted_id);
             }
 
             if ($data['full_name'] == "You") {
