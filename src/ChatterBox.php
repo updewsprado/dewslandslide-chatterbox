@@ -547,9 +547,9 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getMessageExchangesFromEmployeeTags($type,$data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
-                if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:i A')) < strtotime('11:30 AM')) {
+                if (strtotime(date('h:i A')) >= strtotime('7:30 AM') && strtotime(date('h:i A')) <= strtotime('11:30 AM')) {
                     $ground_time = '11:30 AM';
-                } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
+                } else if (strtotime(date('h:i A')) >= strtotime('11:30 AM') && strtotime(date('h:i A')) <= strtotime('2:30 PM')) {
                     $ground_time = '3:30 PM';
                 } else {
                     $ground_time = '7:30 AM';
@@ -583,7 +583,7 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "setGndMeasReminderSettings") {
                 $site_status = [];
                 foreach ($decodedText->sites as $site) {
-                    $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered);
+                    $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered, $decodedText->modified);
                 }
             } else if ($msgType == "setUneditedGndMeasReminderSetting") {
 
@@ -615,7 +615,7 @@ class ChatterBox implements MessageComponentInterface {
                     foreach ($routine_sites as $key => $site) {
                         $type = 'routine';
                         $ground_meas_reminder_template['template'] = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $ground_meas_reminder_template['template'], 0);
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $ground_meas_reminder_template['template'], 0, 'default');
                     }
                 }
 
@@ -623,7 +623,7 @@ class ChatterBox implements MessageComponentInterface {
                     foreach($event_sites as $site) {
                         $type = 'event';
                         $ground_meas_reminder_template['template'] = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $ground_meas_reminder_template['template'], 0);
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $ground_meas_reminder_template['template'], 0, 'default');
                     }
                 }
 
@@ -631,7 +631,7 @@ class ChatterBox implements MessageComponentInterface {
                     foreach ($extended_sites as $site) {
                         $type = 'extended';
                         $ground_meas_reminder_template['template'] = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $ground_meas_reminder_template['template'], 0);
+                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $ground_meas_reminder_template['template'], 0, 'default');
                     }
                 }
             } else {
