@@ -3134,7 +3134,7 @@ class ChatMessageModel {
         $result = $this->dbconn->query($template_query);
     }
 
-    function insertGndMeasReminderSettings($site, $type, $template, $altered) {
+    function insertGndMeasReminderSettings($site, $type, $template, $altered, $modified_by) {
         if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
             $ground_time = '11:30 AM';
         } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
@@ -3142,7 +3142,7 @@ class ChatMessageModel {
         } else {
             $ground_time = '7:30 AM';
         }
-        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."','".$altered."','".$ground_time."',0)";
+        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."','".$altered."','".$ground_time."',0, '".$modified_by."')";
         $this->checkConnectionDB($template_query);
         $result = $this->dbconn->query($template_query);
         return $result; 
