@@ -12,10 +12,10 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.90";
-        $usr = "dyna_staff";
-        $pwd = "accelerometer";
-        $dbname = "senslopedb";
+        $host = "192.168.150.75";
+        $usr = "reader";
+        $pwd = "canreadonly2018";
+        $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
@@ -3332,12 +3332,20 @@ class ChatMessageModel {
         foreach ($inbox_outbox_collection as $raw) {
             if ($raw['user'] == 'You') {
                 $titles = $this->getSentStatusForGroupConvos($raw['sms_msg'],$raw['timestamp'], $raw['mobile_id']);
-                var_dump("-------------------------------");
-                var_dump($titles);
-                var_dump("-------------------------------");
                 // array_push($title_collection,);
+                $constructed_title = "";
+                foreach ($titles as $concat_title) {
+                    if ($concat_title['status'] >= 5 ) {
+                        $constructed_title = $constructed_title.$concat_title['full_name']." (SENT) <split>";
+                    } else if ($concat_title['status'] < 5 && $concat_title >= 1) {
+                        $constructed_title = $constructed_title.$concat_title['full_name']." (RESENDING) <split>";
+                    } else {
+                        $constructed_title = $constructed_title.$concat_title['full_name']." (FAIL) <split>";
+                    }
+                }
+                array_push($title_collection, $constructed_title);
             } else {
-                // array_push($raw['user']);
+                array_push($title_collection, $raw['user']);
             }
         }
 
