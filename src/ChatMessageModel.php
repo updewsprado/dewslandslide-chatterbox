@@ -13,8 +13,8 @@ class ChatMessageModel {
 
     public function initDBforCB() {
         $host = "192.168.150.75";
-        $usr = "reader";
-        $pwd = "canreadonly2018";
+        $usr = "admin";
+        $pwd = "nearalmighty2018";
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -3215,7 +3215,7 @@ class ChatMessageModel {
 
 
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
-
+        echo $full_query;
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3313,6 +3313,10 @@ class ChatMessageModel {
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
 
+        echo $outbox_query;
+
+        // echo $full_query;
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3332,7 +3336,6 @@ class ChatMessageModel {
         foreach ($inbox_outbox_collection as $raw) {
             if ($raw['user'] == 'You') {
                 $titles = $this->getSentStatusForGroupConvos($raw['sms_msg'],$raw['timestamp'], $raw['mobile_id']);
-                // array_push($title_collection,);
                 $constructed_title = "";
                 foreach ($titles as $concat_title) {
                     if ($concat_title['status'] >= 5 ) {
@@ -3352,7 +3355,7 @@ class ChatMessageModel {
         $full_data = [];
         $full_data['type'] = "loadSmsConversation";
         $full_data['data'] = $inbox_outbox_collection;
-        $full_data['titles'] = $title_collection;
+        $full_data['titles'] = array_reverse($title_collection);
         $full_data['recipients'] = $contact_lists;
         return $full_data;
     }
