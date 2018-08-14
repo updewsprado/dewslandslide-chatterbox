@@ -148,7 +148,31 @@
 	    			$number_result = $rack_conn->query($insert_dewsl_number_query);
 	    			echo "Added mobile number for ".$row['firstname']." ".$row['lastname'].", mobile #: ".$number." Status: ".$number_result."\n";
 	    			$counter++;
+
+                    $mobile_id_query = "SELECT LAST_INSERT_ID();";
+                    $mobile_result = $rack_conn->query($mobile_id_query);
+                    $mobile_id = $mobile_result->fetch_assoc()["LAST_INSERT_ID()"];
+
+                    $ewi_query = "INSERT INTO comms_db.user_ewi_status VALUES ('".$mobile_id."', '1', 'Active', '".$user_id."')";
+                    $ewi_result = $rack_conn->query($ewi_query);
+                    if ($ewi_result == true) {
+                        echo "Added as EWI Recipient. Status: ".$ewi_result."\n";
+                    } else {
+                        echo "Failed to add EWI Recipient. Status: ".$ewi_result."\n";
+                    }
 	    		}
+                $get_scope_query = "SELECT org_scope FROM comms_db.organization WHERE org_name LIKE '%".$row['office']."%'";
+                $scope_result = $rack_conn->query($get_scope_query);
+                while ($row_scope = $scope_result->fetch_assoc()) {
+                    $insert_org_query = "INSERT INTO user_organization VALUES (0,'".$user_id."',(SELECT site_id FROM comms_db.sites WHERE site_code = '".$row['sitename']."'),'".strtoupper($row['office'])."','".$row_scope['org_scope']."')";
+                    $result_org  = $rack_conn->query($insert_org_query);
+                    if ($result_org == true) {
+                        echo "Added reference site for ".$row['firstname']." ".$row['lastname']."\n";
+                    } else {
+                        echo "Failed to add reference site for ".$row['firstname']." ".$row['lastname']."\n";
+                    }                
+                }
+
 	    	} else {
     			echo "Error";
     		}

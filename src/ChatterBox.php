@@ -66,7 +66,6 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "updateCommunityContact") {
                 $data = $decodedText->data;
-                var_dump($data);
                 $exchanges = $this->chatModel->updateCmmtyContact($data);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "newDewslContact") {
@@ -124,7 +123,7 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->getSmsPerContact($fullname,$timestamp);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "loadSmsConversation") {
-                if ($decodedText->data->isMultiple == true) {
+                if (isset($decodedText->data->isMultiple) && $decodedText->data->isMultiple == true) {
                     $exchanges = $this->chatModel->getMessageConversationsForMultipleContact($decodedText->data->data);
                 } else {
                     $request = [
