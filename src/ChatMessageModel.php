@@ -3239,13 +3239,23 @@ class ChatMessageModel {
 
     function eventSites() {
         $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
-        $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by name" ;
+        $event_sites_query = "SELECT DISTINCT name,status,public_alert_release.event_id from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by name";
+
+        $sites_with_stepup_alert = "SELECT DISTINCT name,status,public_alert_release.event_id from site INNER JOIN public_alert_event ON site.id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status = 'on-going' and public_alert_release.internal_alert_level like '%A3%' order by name;";
+
+        $alert_three = [];
+        $result = $this->dbconn->query($sites_with_stepup_alert);
+        while ($row = $result->fetch_assoc()) {
+            array_push($alert_three, $row['name']);
+        }
+
         $event_sites = [];
         $this->checkConnectionDB($event_sites_query);
         $result = $this->dbconn->query($event_sites_query);
         while ($row = $result->fetch_assoc()) {
             array_push($event_sites, $row);
         }
+
         $final_sites = [];
         foreach ($event_sites as $evt_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
@@ -3258,8 +3268,23 @@ class ChatMessageModel {
                 $final_sites = $event_sites;
             }
         }
+
+        $temp_sites = [];
+        foreach ($final_sites as $evt_site) {
+            if (sizeOf($alert_three) > 0) {
+                foreach ($alert_three as $cant_send) {
+                   if (strtoupper($evt_site['name']) != strtoupper($cant_send)) {
+                        array_push($temp_sites, $evt_site);
+                   }
+                }
+            } else {
+                $temp_sites = $event_sites;
+            }
+        }
+
+
         $temp = [];
-        foreach (array_unique($final_sites,SORT_REGULAR) as $site) {
+        foreach (array_unique($temp_sites,SORT_REGULAR) as $site) {
             array_push($temp, $site);
         }
         return $temp;
