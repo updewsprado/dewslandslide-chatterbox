@@ -582,6 +582,7 @@ class ChatterBox implements MessageComponentInterface {
                 
             } else if ($msgType == "setGndMeasReminderSettings") {
                 $site_status = [];
+                $this->chatModel->flagGndMeasSettingsSentStatus();
                 foreach ($decodedText->sites as $site) {
                     $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered, $decodedText->modified);
                 }
