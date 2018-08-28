@@ -3130,8 +3130,8 @@ class ChatMessageModel {
 
     function flagGndMeasSettingsSentStatus() {
         $overwrite_query = "UPDATE ground_meas_reminder_automation SET status = 1 WHERE status = 0";
-        $this->checkConnectionDB($template_query);
-        $result = $this->dbconn->query($template_query);
+        $this->checkConnectionDB($overwrite_query);
+        $result = $this->dbconn->query($overwrite_query);
     }
 
     function insertGndMeasReminderSettings($site, $type, $template, $altered, $modified_by) {
@@ -3323,13 +3323,11 @@ class ChatMessageModel {
     }
 
     function getGroundMeasurementsForToday() {
-        $current_date = date('Y-m-d H:i A').'11:30 AM';
-
-        if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+        if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:m A')) < strtotime('11:30 AM')) {
             $ground_time = '11:30 AM';
             $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
-        } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
-            $ground_time = '2:30 PM';
+        } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
+            $ground_time = '3:30 PM';
             $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
         } else {
             $ground_time = '7:30 AM';
@@ -3341,6 +3339,7 @@ class ChatMessageModel {
                 INNER JOIN smsinbox ON smsinbox.sms_id = table_element_id 
                 INNER JOIN gintags_reference ON gintags.tag_id_fk = gintags_reference.tag_id
                 where (gintags_reference.tag_name = '#CantSendGroundMeas' OR gintags_reference.tag_name = '#GroundMeas' OR gintags_reference.tag_name = '#GroundObs') AND smsinbox.timestamp < '".date('Y-m-d ').$ground_time."' AND smsinbox.timestamp > '".$current_date."' limit 100;";
+
         $result = $this->dbconn->query($sql);
         if ($result->num_rows > 0) {
             foreach ($result as $tagged) {
