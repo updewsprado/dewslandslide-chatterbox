@@ -568,6 +568,15 @@ class ChatterBox implements MessageComponentInterface {
                 } else {
                     $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
                     $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
+
+                    if (strtotime(date('h:i A')) >= strtotime('7:30 AM') && strtotime(date('h:i A')) <= strtotime('11:30 AM')) {
+                        $ground_meas_reminder_template['template'] = str_replace("(greetings)","umaga",$ground_meas_reminder_template['template']);
+                    } else if (strtotime(date('h:i A')) >= strtotime('11:30 AM') && strtotime(date('h:i A')) <= strtotime('2:30 PM')) {
+                        $ground_meas_reminder_template['template'] = str_replace("(greetings)","hapon",$ground_meas_reminder_template['template']);
+                    } else {
+                        $ground_meas_reminder_template['template'] = str_replace("(greetings)","umaga",$ground_meas_reminder_template['template']);
+                    }
+
                     $full_data['template'] = $ground_meas_reminder_template;
                     $full_data['time_of_sending'] = $ground_time;
                     $full_data['saved'] = false;
@@ -584,6 +593,9 @@ class ChatterBox implements MessageComponentInterface {
                 $site_status = [];
                 $this->chatModel->flagGndMeasSettingsSentStatus();
                 foreach ($decodedText->sites as $site) {
+                    if ($site == 'MSL' || $site == 'MSU') {
+                        $site = 'mes';
+                    }
                     $to_send = $this->chatModel->insertGndMeasReminderSettings($site, $decodedText->category, $decodedText->template, $decodedText->altered, $decodedText->modified);
                 }
             } else if ($msgType == "setUneditedGndMeasReminderSetting") {
@@ -599,24 +611,29 @@ class ChatterBox implements MessageComponentInterface {
                 $routine_sites = $this->chatModel->routineSites();
                 $event_sites = $this->chatModel->eventSites();
                 $extended_sites = $this->chatModel->extendedSites();
+                $cant_send_gndmeas = $this->chatModel->getGroundMeasurementsForToday();
                 $ground_meas_reminder_template = $this->chatModel->getGroundMeasurementReminderTemplate();
                 $ground_meas_reminder_template['template'] = str_replace("(ground_meas_submission)",$ground_time,$ground_meas_reminder_template['template']);
 
 
-                if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:m A')) < strtotime('11:30 AM')) {
-                    $ground_meas_reminder_template['template'] = str_replace("(greetings)", "umaga",$ground_meas_reminder_template['template']);
-                } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:m A')) < strtotime('1:30 PM')) {
-                    $ground_meas_reminder_template['template'] = str_replace("(greetings)", "hapon",$ground_meas_reminder_template['template']);
+                if (strtotime(date('h:i A')) >= strtotime('7:30 AM') && strtotime(date('h:i A')) <= strtotime('11:30 AM')) {
+                    $ground_meas_reminder_template['template'] = str_replace("(greetings)","umaga",$ground_meas_reminder_template['template']);
+                } else if (strtotime(date('h:i A')) >= strtotime('11:30 AM') && strtotime(date('h:i A')) <= strtotime('2:30 PM')) {
+                    $ground_meas_reminder_template['template'] = str_replace("(greetings)","hapon",$ground_meas_reminder_template['template']);
                 } else {
-                    $ground_meas_reminder_template['template'] = str_replace("(greetings)", "umaga",$ground_meas_reminder_template['template']);
+                    $ground_meas_reminder_template['template'] = str_replace("(greetings)","umaga",$ground_meas_reminder_template['template']);
                 }
-
 
                 if (sizeOf($routine_sites) != 0 && strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:m A')) < strtotime('11:35 AM')) {
                     foreach ($routine_sites as $key => $site) {
                         $type = 'routine';
                         $template_gnd_meas = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $template_gnd_meas, 0, 'default');
+                        if (in_array($site, $cant_send_gndmeas) == false) {
+                            if ($site == 'msl' || $site == 'msu') {
+                                $site = 'mes';
+                            }
+                            $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $template_gnd_meas, 0, 'default');
+                        } 
                     }
                 }
 
@@ -624,7 +641,12 @@ class ChatterBox implements MessageComponentInterface {
                     foreach($event_sites as $site) {
                         $type = 'event';
                         $template_gnd_meas = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $template_gnd_meas, 0, 'default');
+                        if (in_array($site['name'], $cant_send_gndmeas) == false) {
+                            if ($site['name'] == 'msl' || $site['name'] == 'msu') {
+                                $site['name'] = 'mes';
+                            }
+                            $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site['name'], $type, $template_gnd_meas, 0, 'default');
+                        } 
                     }
                 }
 
@@ -632,7 +654,12 @@ class ChatterBox implements MessageComponentInterface {
                     foreach ($extended_sites as $site) {
                         $type = 'extended';
                         $template_gnd_meas = str_replace("(monitoring_type)", $type, $ground_meas_reminder_template['template']);
-                        $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $template_gnd_meas, 0, 'default');
+                        if (in_array($site, $cant_send_gndmeas) == false) {
+                            if ($site == 'msl' || $site == 'msu') {
+                                $site = 'mes';
+                            }
+                            $set_gnd_meas_reminder = $this->chatModel->insertGndMeasReminderSettings($site, $type, $template_gnd_meas, 0, 'default');
+                        } 
                     }
                 }
             } else {
