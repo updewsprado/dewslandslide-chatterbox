@@ -3423,7 +3423,8 @@ class ChatMessageModel {
             $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
             $convo_id = $this->dbconn->insert_id;
             if ($smsoutbox == true) {
-                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,4)";
+                // '".$gsm_id."'
+                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,'".$this->getGsmId($recipients)."')";
                 $smsoutbox_status = $this->dbconn->query($insert_smsoutbox_status);
                 if ($smsoutbox_status == true) {
                     $stats = [
@@ -3457,6 +3458,16 @@ class ChatMessageModel {
             "data" => $sms_status_container
         ];
         return $result;
+    }
+
+    function getGsmId($mobile_id) {
+        $gsm_id_query = "SELECT gsm_id FROM user_mobile WHERE mobile_id = '".$mobile_id."'";
+        $gsm_continer = $this->dbconn->query($gsm_id_query);
+        $gsm_id = "";
+        while ($row = $gsm_container->fetch_assoc()) {
+            $gsm_id = $row['gsm_id'];
+        }
+        return $gsm_id;
     }
 
     function fetchSmsInboxData($inbox_id) {
