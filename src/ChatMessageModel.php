@@ -3461,8 +3461,8 @@ class ChatMessageModel {
     }
 
     function getGsmId($mobile_id) {
-        $gsm_id_query = "SELECT gsm_id FROM user_mobile WHERE mobile_id = '".$mobile_id."'";
-        $gsm_continer = $this->dbconn->query($gsm_id_query);
+        $gsm_id_query = "SELECT gsm_id FROM user_mobile WHERE mobile_id = '".$mobile_id[0]."'";
+        $gsm_container = $this->dbconn->query($gsm_id_query);
         $gsm_id = "";
         while ($row = $gsm_container->fetch_assoc()) {
             $gsm_id = $row['gsm_id'];
