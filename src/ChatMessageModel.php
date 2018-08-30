@@ -8,7 +8,6 @@ class ChatMessageModel {
 
     public function __construct() {
         $this->initDBforCB();
-        $this->qiInit = true;
     }
 
     public function initDBforCB() {
@@ -317,10 +316,34 @@ class ChatMessageModel {
                 INNER JOIN user_organization ON users.user_id = user_organization.user_id 
                 INNER JOIN sites ON user_organization.fk_site_id = sites.site_id 
                 WHERE smsinbox_users.ts_sms > (now() - interval 7 day) ORDER BY smsinbox_users.ts_sms desc) as smsinbox2 
-            USING(inbox_id);";
+            USING(inbox_id) ORDER BY ts_sms";
 
-        $this->checkConnectionDB($get_all_sms_from_period);
-        $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
+        $get_all_sms_from_period_employee = "SELECT * FROM (SELECT MAX(inbox_id) AS inbox_id FROM (SELECT smsinbox_users.inbox_id,smsinbox_users.ts_sms,smsinbox_users.mobile_id,smsinbox_users.sms_msg,smsinbox_users.read_status,smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num,
+            CONCAT(dewsl_teams.team_code,' - ', users.lastname, ', ', users.firstname) AS full_name
+            FROM
+                smsinbox_users
+            INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
+            INNER JOIN users ON user_mobile.user_id = users.user_id
+            INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id 
+                                    INNER JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id
+            WHERE
+                smsinbox_users.ts_sms > (NOW() - INTERVAL 7 DAY)) AS smsinbox
+            GROUP BY full_name) AS quickinbox INNER JOIN (SELECT smsinbox_users.inbox_id,smsinbox_users.ts_sms,smsinbox_users.mobile_id,smsinbox_users.sms_msg,smsinbox_users.read_status,smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num,CONCAT(dewsl_teams.team_code,' - ', users.lastname, ', ', users.firstname) AS full_name
+            FROM
+                smsinbox_users
+            INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
+            INNER JOIN users ON user_mobile.user_id = users.user_id
+            INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id 
+                                    INNER JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id
+            WHERE
+                smsinbox_users.ts_sms > (NOW() - INTERVAL 7 DAY)
+            ORDER BY smsinbox_users.ts_sms DESC) AS smsinbox2 USING (inbox_id)
+            ORDER BY ts_sms";
+
+        $full_query = "SELECT * FROM (".$get_all_sms_from_period.") as community UNION SELECT * FROM (".$get_all_sms_from_period_employee.") as employee ORDER BY ts_sms";
+
+        $this->checkConnectionDB($full_query);
+        $sms_result_from_period = $this->dbconn->query($full_query);
 
         $full_data['type'] = 'smsloadquickinbox';
         $distinct_numbers = "";
@@ -348,8 +371,6 @@ class ChatMessageModel {
         }
 
         // echo "JSON DATA: " . json_encode($full_data);
-        var_dump($full_data['data']);
-        $this->qiInit = false;
         return $this->utf8_encode_recursive($full_data);
     }
 
@@ -3206,6 +3227,7 @@ class ChatMessageModel {
 
 
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3371,7 +3393,6 @@ class ChatMessageModel {
         } else {
             $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE mobile_id = '".$details->mobile_id."';";
         }
-        echo $mobile_number_query."\n";
 
         $mobile_number = $this->dbconn->query($mobile_number_query);
         if ($mobile_number->num_rows != 0) {
@@ -3469,8 +3490,6 @@ class ChatMessageModel {
                         FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
                         INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.inbox_id = '".$inbox_id."';";
         $execute_query = $this->dbconn->query($inbox_data);
-
-        $full_data['type'] = 'newSmsInbox';
         $distinct_numbers = "";
         $all_numbers = [];
         $all_messages = [];
@@ -3493,9 +3512,38 @@ class ChatMessageModel {
 
             $full_data['data'] = $all_messages;
         } else {
-            echo "0 results\n";
-            $full_data['data'] = null;
+            $inbox_data = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, 
+                            smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(dewsl_teams.team_code,' - ', users.lastname, ', ', users.firstname) as full_name, users.user_id 
+                            FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id 
+                            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id 
+                            INNER JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id WHERE smsinbox_users.inbox_id = '".$inbox_id."';";
+            $execute_query = $this->dbconn->query($inbox_data);
+            $distinct_numbers = "";
+            $all_numbers = [];
+            $all_messages = [];
+            $quick_inbox_messages = [];
+            $ctr = 0;
+
+            if ($execute_query->num_rows > 0) {
+                while ($row = $execute_query->fetch_assoc()) {
+                    $normalized_number = substr($row["sim_num"], -10);
+                    $all_messages[$ctr]['user_id'] = $row['user_id'];
+                    $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
+                    $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
+                    $all_messages[$ctr]['user_number'] = $normalized_number;
+                    $all_messages[$ctr]['mobile_id'] = $row['mobile_id'];
+                    $all_messages[$ctr]['msg'] = $row['sms_msg'];
+                    $all_messages[$ctr]['gsm_id'] = $row['gsm_id'];
+                    $all_messages[$ctr]['ts_received'] = $row['ts_sms'];
+                    $ctr++;
+                }
+                $full_data['data'] = $all_messages;
+            } else {
+                echo "0 results\n";
+                $full_data['data'] = null;
+            }
         }
+        $full_data['type'] = "newSmsInbox";
         return $full_data;
     }
 

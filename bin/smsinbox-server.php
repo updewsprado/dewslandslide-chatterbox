@@ -95,6 +95,8 @@
 			$update_status = $conn->query($update_status_query);
 			if ($update_status != true) {
 				echo "Failed to update read status.\n";
+			} else {
+				echo "Update complte.\n";
 			}
 		}
 
@@ -112,14 +114,13 @@
     }
 
     while (true) {
-    	echo "Listening for new SMS.. \n";
     	$inbox = $server->checkIncommingSMS($conn);
     	if (sizeOf($inbox) != 0) {
     		echo "New SMS received.\n";
     		$format_request = $server->formatWSSRequest($inbox);
 	        $server->sendData($format_request);
-	        echo "Data sent to WSS.\n";
+	        echo "Data sent to WSS.\n\n\n";
     	}
-    	sleep(1);
+    	sleep(0.1);
     }
 ?>
