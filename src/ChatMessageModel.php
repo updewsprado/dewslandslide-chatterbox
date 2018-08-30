@@ -3438,7 +3438,7 @@ class ChatMessageModel {
             $convo_id = $this->dbconn->insert_id;
             if ($smsoutbox == true) {
                 // '".$gsm_id."'
-                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,'".$this->getGsmId($recipients)."')";
+                $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,'".$this->getGsmId($recipient)."')";
                 $smsoutbox_status = $this->dbconn->query($insert_smsoutbox_status);
                 if ($smsoutbox_status == true) {
                     $stats = [
@@ -4051,5 +4051,21 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
         return $convo_container;
+    }
+
+    function fetchTeams() {
+        $teams = [];
+        $get_teams_query = "SELECT DISTINCT TRIM(team_name) as team_name FROM dewsl_teams;";
+        $get_teams = $this->dbconn->query($get_teams_query);
+        if ($get_teams->num_rows != 0) {
+            while ($row = $get_teams->fetch_assoc()) {
+               array_push($teams, $row['team_name']);
+            }
+        } else {
+            echo "No teams fetched!\n\n";
+        }
+        $full_data['type'] = "fetchedTeams";
+        $full_data['data'] = $teams;
+        return $full_data;
     }
 }
