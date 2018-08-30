@@ -13,8 +13,8 @@ class ChatMessageModel {
 
     public function initDBforCB() {
         $host = "192.168.150.75";
-        $usr = "admin";
-        $pwd = "nearalmighty2018";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -227,31 +227,7 @@ class ChatMessageModel {
     public function getQuickInboxMain($isForceLoad=false) {
 
         $start = microtime(true);
-         $qiResults = $this->getQuickInboxMessages();
-        // $os = PHP_OS;
-        // $qiResults;
-
-        // if (strpos($os,'WIN') !== false) {
-        //     $qiResults = $this->getQuickInboxMessages();
-        // } elseif ((strpos($os,'Ubuntu') !== false) || (strpos($os,'Linux') !== false)) {
-
-        //     $mem = new \Memcached();
-        //     $mem->addServer("127.0.0.1", 11211);
-        //     $qiCached = $mem->get("cachedQI");
-        //     if ( ($this->qiInit == true) || $isForceLoad ) {
-        //         echo "Initialize the Quick Inbox Messages \n";
-
-        //         $qiResults = $this->getQuickInboxMessages();
-        //         $mem->set("cachedQI", $qiResults) or die("couldn't save quick inbox results");
-        //     } 
-        //     else {
-        //         $qiResults = $mem->get("cachedQI");
-        //     }
-        // }
-        // else {
-           
-        // }
-
+        $qiResults = $this->getQuickInboxMessages();
         $execution_time = microtime(true) - $start;
         echo "\n\nExecution Time: $execution_time\n\n";
 
@@ -324,10 +300,24 @@ class ChatMessageModel {
     }
 
     public function getQuickInboxMessages($periodDays = 7) {
-        $get_all_sms_from_period = "SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name
-            FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
-            INNER JOIN users ON user_mobile.user_id = users.user_id INNER JOIN user_organization ON users.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE smsinbox_users.ts_sms > (now() - interval $periodDays day)
-            GROUP BY user_mobile.sim_num ORDER BY ts_sms";
+        $get_all_sms_from_period = "SELECT * FROM (
+                SELECT max(inbox_id) as inbox_id FROM (
+                    SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name
+                    FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
+                    INNER JOIN users ON user_mobile.user_id = users.user_id 
+                    INNER JOIN user_organization ON users.user_id = user_organization.user_id 
+                    INNER JOIN sites ON user_organization.fk_site_id = sites.site_id 
+                    WHERE smsinbox_users.ts_sms > (now() - interval 7 day)
+                    ) as smsinbox 
+                GROUP BY full_name) as quickinbox 
+            INNER JOIN (
+                SELECT smsinbox_users.inbox_id, smsinbox_users.ts_sms, smsinbox_users.mobile_id, smsinbox_users.sms_msg, smsinbox_users.read_status, smsinbox_users.web_status,smsinbox_users.gsm_id,user_mobile.sim_num, CONCAT(sites.site_code,' ',user_organization.org_name, ' - ', users.lastname, ', ', users.firstname) as full_name
+                FROM smsinbox_users INNER JOIN user_mobile ON smsinbox_users.mobile_id = user_mobile.mobile_id
+                INNER JOIN users ON user_mobile.user_id = users.user_id 
+                INNER JOIN user_organization ON users.user_id = user_organization.user_id 
+                INNER JOIN sites ON user_organization.fk_site_id = sites.site_id 
+                WHERE smsinbox_users.ts_sms > (now() - interval 7 day) ORDER BY smsinbox_users.ts_sms desc) as smsinbox2 
+            USING(inbox_id);";
 
         $this->checkConnectionDB($get_all_sms_from_period);
         $sms_result_from_period = $this->dbconn->query($get_all_sms_from_period);
@@ -358,6 +348,7 @@ class ChatMessageModel {
         }
 
         // echo "JSON DATA: " . json_encode($full_data);
+        var_dump($full_data['data']);
         $this->qiInit = false;
         return $this->utf8_encode_recursive($full_data);
     }
@@ -1981,7 +1972,7 @@ class ChatMessageModel {
         return $dbreturn;
     }
 
-    public function getContactSuggestions($queryName) {
+    public function getContactSuggestions($queryName = "") {
         $sql = "SELECT * FROM (SELECT UPPER(CONCAT(sites.site_code,' ',user_organization.org_name,' - ',users.lastname,', ',users.firstname)) as fullname,users.user_id as id FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id RIGHT JOIN sites ON sites.site_id = user_organization.fk_site_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id UNION SELECT UPPER(CONCAT(dewsl_teams.team_name,' - ',users.salutation,' ',users.lastname,', ',users.firstname)) as fullname,users.user_id as id FROM users INNER JOIN dewsl_team_members ON users.user_id = dewsl_team_members.users_users_id RIGHT JOIN dewsl_teams ON dewsl_team_members.dewsl_teams_team_id = dewsl_teams.team_id RIGHT JOIN user_mobile ON user_mobile.user_id = users.user_id) as fullcontact WHERE fullname LIKE '%$queryName%' or id LIKE '%$queryName%'";
 
         $this->checkConnectionDB($sql);
@@ -3380,6 +3371,8 @@ class ChatMessageModel {
         } else {
             $mobile_number_query = "SELECT * FROM users NATURAL JOIN user_mobile WHERE mobile_id = '".$details->mobile_id."';";
         }
+        echo $mobile_number_query."\n";
+
         $mobile_number = $this->dbconn->query($mobile_number_query);
         if ($mobile_number->num_rows != 0) {
             while ($row = $mobile_number->fetch_assoc()) {
