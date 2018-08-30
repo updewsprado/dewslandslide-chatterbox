@@ -63,18 +63,26 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "updateDewslContact") {
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->updateDwslContact($data);
+                $namesuggestions = $this->chatModel->getContactSuggestions();
+                $from->send(json_encode($namesuggestions));
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "updateCommunityContact") {
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->updateCmmtyContact($data);
+                $namesuggestions = $this->chatModel->getContactSuggestions();
+                $from->send(json_encode($namesuggestions));
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "newDewslContact") {
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->createDwlsContact($data);
+                $namesuggestions = $this->chatModel->getContactSuggestions();
+                $from->send(json_encode($namesuggestions));
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "newCommunityContact") {
                 $data = $decodedText->data;
                 $exchanges = $this->chatModel->createCommContact($data);
+                $namesuggestions = $this->chatModel->getContactSuggestions();
+                $from->send(json_encode($namesuggestions));
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getSelectedDewslContact") {
                 $id = $decodedText->data;
