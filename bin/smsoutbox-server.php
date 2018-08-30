@@ -113,13 +113,12 @@
     }
 
     while (true) {
-    	echo "Listening for new SMS outbox update.. \n";
     	$oubox = $server->checkStatusUpdate($conn);
     	if (sizeOf($oubox) != 0) {
     		echo "New update received.\n";
     		$format_request = $server->formatWSSRequest($oubox);
 	        $server->sendData($format_request);
-	        echo "Data sent to WSS.\n";
+	        echo "Data sent to WSS.\n\n\n";
     	}
     	// unset($server);
     	sleep(1);
