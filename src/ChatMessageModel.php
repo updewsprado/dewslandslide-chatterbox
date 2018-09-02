@@ -14,6 +14,11 @@ class ChatMessageModel {
         $host = "192.168.150.75";
         $usr = "pysys_local";
         $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+
+        // $host = "localhost";
+        // $usr = "root";
+        // $pwd = "senslope";
+
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -3324,11 +3329,6 @@ class ChatMessageModel {
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
-
-        echo $outbox_query;
-
-        // echo $full_query;
-
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3422,6 +3422,7 @@ class ChatMessageModel {
         }
 
         $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id = '".$site."' WHERE ".$site_office_query.";";
+
         $mobile_number = $this->dbconn->query($mobile_data_query);
         while ($row = $mobile_number->fetch_assoc()) {
             array_push($mobile_data_container, $row);
@@ -3437,7 +3438,6 @@ class ChatMessageModel {
             $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
             $convo_id = $this->dbconn->insert_id;
             if ($smsoutbox == true) {
-                // '".$gsm_id."'
                 $insert_smsoutbox_status = "INSERT INTO smsoutbox_user_status VALUES (0,'".$this->dbconn->insert_id."','".$recipient."',null,0,0,'".$this->getGsmId($recipient)."')";
                 $smsoutbox_status = $this->dbconn->query($insert_smsoutbox_status);
                 if ($smsoutbox_status == true) {
@@ -3811,7 +3811,7 @@ class ChatMessageModel {
             echo "0 results\n";
         }
 
-        $key_input_query = "SELECT * FROM senslopedb.ewi_template WHERE alert_symbol_level = '".$template_data->internal_alert."' AND alert_status = '".$template_data->alert_status."';";
+        $key_input_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$template_data->internal_alert."' AND alert_status = '".$template_data->alert_status."';";
         $execute_query = $this->dbconn->query($key_input_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
@@ -3821,7 +3821,8 @@ class ChatMessageModel {
             echo "0 results\n";
         }
 
-        $recom_query = "SELECT * FROM senslopedb.ewi_template WHERE alert_symbol_level = '".$template_data->alert_level."' AND alert_status = '".$template_data->alert_status."';";
+        $alert_level = str_replace('A','Alert ',$template_data->alert_level);
+        $recom_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$alert_level."' AND alert_status = '".$template_data->alert_status."';";
         $execute_query = $this->dbconn->query($recom_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
@@ -3839,11 +3840,9 @@ class ChatMessageModel {
             "recommended_response" => $ewi_recommended_container,
             "formatted_data_timestamp" => $template_data->formatted_data_timestamp,
             "data_timestamp" => $template_data->data_timestamp,
-            "alert_level" => $template_data->alert_level
+            "alert_level" => $alert_level
         ];
 
-        
-        $full_data['type'] = "fetchedEWITemplateViaCbx";
         $full_data['data'] = $this->reconstructEWITemplate($raw_template);
         return $full_data;
     }
@@ -3873,9 +3872,9 @@ class ChatMessageModel {
             $greeting = "umaga";
         }else if($current_date >= date("Y-m-d 12:00:00") && $current_date < date("Y-m-d 13:00:00")){
             $greeting = "tanghali";
-        }else if($current_date >= date("Y-m-d 13:01:00") && $current_date < date("Y-m-d 17:59:00")) {
+        }else if($current_date >= date("Y-m-d 13:01:00") && $current_date < date("Y-m-d 18:00:00")) {
             $greeting = "hapon";
-        }else if($current_date >= date("Y-m-d 18:00:00") && $current_date < date("Y-m-d 23:59:00")){
+        }else if($current_date >= date("Y-m-d 18:00:00") && $current_date < date("Y-m-d 00:00:00")){
             $greeting = "gabi";
         }
 
@@ -3883,31 +3882,32 @@ class ChatMessageModel {
         $time_stamp = date("Y-m-d 02:30:00");
         $datetime = explode(" ",$time_of_release);
         $time = $datetime[1];
-        if($time >= date("00:00:00") && $time < date("04:00:00")){
+
+        if(strtotime($time) >= strtotime(date("00:00:00")) && strtotime($time) <= strtotime(date("04:00:00"))){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 AM";
-        }else if($time >= date("04:00:00") && $time < date("08:00:00")){
+        } else if(strtotime($time) >= strtotime(date("04:00:00")) && strtotime($time) <= strtotime(date("08:00:00"))){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "08:00 AM";
-        }else if($time >= date("08:00:00") && $time < date("12:00:00")){
+        } else if(strtotime($time) >= strtotime(date("08:00:00")) && strtotime($time) <= strtotime(date("12:00:00"))){
             $time_submission = "bago mag-11:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "12:00 NN";
-        }else if($time >= date("12:00:00") && $time < date("16:00:00")){
+        } else if(strtotime($time) >= strtotime(date("12:00:00")) && strtotime($time) <= strtotime(date("16:00:00"))){
             $time_submission = "bago mag-3:30 PM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 PM";
-        }else if($time >= date("16:00:00") && $time < date("20:00:00")){
+        } else if(strtotime($time) >= strtotime(date("16:00:00")) && strtotime($time) <= strtotime(date("20:00:00"))){
             $time_submission = "bago mag-7:30 AM";
             $date_submission = "bukas";
             $ewi_time = "08:00 PM";
-        }else if($time >= date("20:00:00")){
+        } else if(strtotime($time) >= strtotime(date("20:00:00"))){
             $time_submission = "bago mag-7:30 AM";
             $date_submission = "bukas";
             $ewi_time = "12:00 MN";
-        }else {
+        } else {
             echo "Error Occured: Please contact Administrator";
         }
 

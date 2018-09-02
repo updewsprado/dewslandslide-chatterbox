@@ -229,6 +229,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "fetchTemplateViaLoadTemplateCbx") {
                 $exchanges = $this->chatModel->fetchEventTemplate($decodedText->data);
+                $exchanges['type'] = "fetchedEWITemplateViaCbx";
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "searchMessageGlobal") {
                 $exchanges = $this->chatModel->fetchSearchKeyViaGlobalMessages($decodedText->searchKey, $decodedText->searchLimit);
@@ -242,6 +243,63 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "fetchTeams") {
                 $exchanges = $this->chatModel->fetchTeams();
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "getEwiDetailsViaDashboard") {
+                $internal_alert = explode('-',$decodedText->data->internal_alert_level);
+
+                switch ($decodedText->event_category) {
+                    case 'event':
+                        $alert_status = 'Event';
+                        $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                        $sites = [$decodedText->data->site_id];
+                        $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
+                        break;
+                    case 'extended':
+                        $alert_status = 'Extended';
+                        $offices = ['LEWC'];
+                        $sites = [$decodedText->data->site_id];
+                        $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
+                        break;
+                    default:
+                        break;
+                }
+
+                $data = [
+                    "internal_alert" => $internal_alert[1],
+                    "alert_level" => substr($decodedText->data->internal_alert_level, 0, 2),
+                    "alert_status" => $alert_status,
+                    "site_name" => $decodedText->data->site_code,
+                    "data_timestamp" => $decodedText->data->data_timestamp,
+                    "formatted_data_timestamp" => $decodedText->data->formatted_data_timestamp
+                ];
+                
+                $template = $this->chatModel->fetchEventTemplate((object) $data);
+                $full_data = [
+                    "type" => "fetchedEwiDashboardTemplate",
+                    "recipients" => $recipients,
+                    "template" => $template
+                ];
+                $from->send(json_encode($full_data));
+            } else if ($msgType == "sendEwiViaDashboard") {
+                $status = [];
+                $counter = 0;
+                foreach ($decodedText->recipients as $recipient) {
+                    $raw = explode(" - ",$recipient);
+                    $raw_name = explode(".",$raw[1]);
+                    $name_data = [
+                        "first_name" => trim($raw_name[0]),
+                        "last_name" => trim($raw_name[1])
+                    ];
+                    $mobile_details = $this->chatModel->getMobileDetails($name_data);
+                    $send_status = $this->chatModel->sendSms([$mobile_details[0]["mobile_id"]],$decodedText->msg);
+                    $temp = [
+                        "status" => $send_status['data'],
+                        "recipient" => $recipient
+                    ];
+                    array_push($status,$temp);
+                }
+                $full_data['type'] = "sentEwiDashboard";
+                $full_data['statuses'] = $status;
+                $from->send(json_encode($full_data));
             } else if ($msgType == "searchViaTsSent") {
                 
             } else if ($msgType == "searchViaTsWritten") {

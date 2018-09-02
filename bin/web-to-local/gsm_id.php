@@ -1,8 +1,8 @@
 <?php
 
-    $rack_servername = "192.168.150.75";
-    $rack_username = "pysys_local";
-    $rack_password = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+    $rack_servername = "192.168.150.72";
+    $rack_username = "root";
+    $rack_password = "senslope";
     $rack_dbname = "comms_db";
 
     $networkSmart = ["00","07","08","09","10","11","12","14","18","19","20","21","22","23","24","25","28","29","30","31","32","33","34","38","39","40","42","43","44","46"];

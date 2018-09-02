@@ -42,26 +42,15 @@
 	$read = "SELECT * FROM membership";
 	$members_container = $conn->query($read);
 
-	while ($row = $members_container->fetch_assoc()) {
-		echo "Checking user: ".$row['first_name'].", ".$row['last_name']." if existing in the rack database..\n";
-		$rack_users = "SELECT user_id FROM comms_db.users where firstname = '".$row['first_name']."' AND lastname = '".$row['last_name']."'";
-    	$result = $rack->query($rack_users);
-    	if ($result->num_rows != 0) {
-    		while ($user_details = $result->fetch_assoc()) {
-				echo $row['first_name'].", ".$row['last_name']." exists!\n";
-	    		echo "Insert hashed password into rack database..\n";
-	    		$sql = "INSERT INTO comms_db.membership VALUES (0, '".$user_details['user_id']."','".$row['username']."','".$row['password']."','NULL','1')";
+	    $incomplete_id = ["2","5","7","10","11","12","13","14","15","16","17","18","19","20","21","22","28","32","33","35","36","41","42","45","46","47","49","52","61","71","73","74","75","78","79","80","81","82"];
 
-	    		$insert_members_to_rack = $rack->query($sql);
-	    		if ($insert_members_to_rack == true) {
-	    			echo "Successfully inserted membership account for ".$row['first_name'].", ".$row['last_name']."\n\n";
-	    		} else {
-	    			echo "Failed to insert membership account for ".$row['first_name'].", ".$row['last_name']."\n\n";
-	    		}
-    		}
-    	} else {
-    		echo "User: ".$row['first_name'].", ".$row['last_name']." does not exist\n\n";
-    	}
+	while ($row = $members_container->fetch_assoc()) {
+		if (in_array($row['id'], $incomplete_id) == true) {
+			$insert_user_query = "INSERT INTO comms_db.users VALUES (".$row['id'].", 'NA', '".$row['first_name']."', 'NA', '".$row['last_name']."', '".$row['first_name']."','1994-08-16', 'M' ,'1')";
+			$result = $rack->query($insert_user_query);
+			echo $result;
+			echo "\n\n";
+		}
 	}
 
 
