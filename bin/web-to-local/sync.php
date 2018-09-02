@@ -5,9 +5,9 @@
     $password = "senslope";
     $dbname = "old_senslopedb";
 
-    $rack_servername = "192.168.150.75";
-    $rack_username = "pysys_local";
-    $rack_password = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+    $rack_servername = "192.168.150.72";
+    $rack_username = "root";
+    $rack_password = "senslope";
     $rack_dbname = "comms_db";
 
     // $rack_servername = "localhost";
@@ -18,11 +18,14 @@
     // Clean existing files
     $clean = exec('sudo rm community.sql');
     $clean = exec('sudo rm dewsl.sql');
+    $clean = exec('sudo rm membership.sql');
 
-    // Dump sql files
+ //    // Dump sql files
 	$get_web_db_community = exec('sudo ssh -i /var/www/keys/senslopeReservedInstanceT2Medium.pem ubuntu@www.dewslandslide.com mysqldump -uroot -psenslope senslopedb communitycontacts > community.sql');
 	$get_out = exec('exit');
-	$get_web_db_dewsl = exec('sudo ssh -i /var/www/keys/senslopeReservedInstanceT2Medium.pem ubuntu@www.dewslandslide.com mysqldump -uroot -psenslope senslopedb dewslcontacts > dewsl.sql');
+	$get_web_db_membership = exec('sudo ssh -i /var/www/keys/senslopeReservedInstanceT2Medium.pem ubuntu@www.dewslandslide.com mysqldump -uroot -psenslope senslopedb membership > membership.sql');
+
+    $get_web_db_dewsl = exec('sudo ssh -i /var/www/keys/senslopeReservedInstanceT2Medium.pem ubuntu@www.dewslandslide.com mysqldump -uroot -psenslope senslopedb dewslcontacts > dewsl.sql');
 
     // Create connection
     $conn = new mysqli($servername, $username, $password, $dbname);
@@ -41,8 +44,14 @@
     $sql = "DROP TABLE dewslcontacts";
 	$result = $conn->query($sql);
 
+    $sql = "DROP TABLE membership";
+    $result = $conn->query($sql);
+
 	echo "Importing database dewsl...\n";
 	$import_database_outbox = exec('mysql -uroot -psenslope old_senslopedb < dewsl.sql');
+
+    echo "Importing database membership...\n";
+    $import_database_outbox = exec('mysql -uroot -psenslope old_senslopedb < membership.sql');
 	echo "Importing database community...\n";
 	$import_database_outbox = exec('mysql -uroot -psenslope old_senslopedb < community.sql');
 
@@ -61,7 +70,7 @@
 
     echo "Fetching Old database ..\n\n";
 
-    $dewsl_contacts_query = "SELECT * FROM dewslcontacts;";
+    $dewsl_contacts_query = "SELECT * FROM dewslcontacts INNER JOIN membership ON dewslcontacts.firstname LIKE membership.first_name;";
     $result = $conn->query($dewsl_contacts_query);
 
     $networkSmart = ["00","07","08","09","10","11","12","14","18","19","20","21","22","23","24","25","28","29","30","31","32","33","34","38","39","40","42","43","44","46"];
@@ -75,7 +84,7 @@
    		$if_exists_query = "SELECT * FROM comms_db.users WHERE firstname = '".$row['firstname']."' AND lastname = '".$row['lastname']."';";
    		$rack_result = $rack_conn->query($if_exists_query);
    		if ($rack_result->num_rows == 0) {
-   			$insert_dewsl_contact_to_rack_query = "INSERT INTO comms_db.users VALUES (".$row['eid'].", 'NA', '".$row['firstname']."', 'NA', '".$row['lastname']."', '".$row['nickname']."','".$row['birthday']."', 'M' ,'1')";
+   			$insert_dewsl_contact_to_rack_query = "INSERT INTO comms_db.users VALUES (".$row['id'].", 'NA', '".$row['firstname']."', 'NA', '".$row['lastname']."', '".$row['nickname']."','".$row['birthday']."', 'M' ,'1')";
 	    	$user_result = $rack_conn->query($insert_dewsl_contact_to_rack_query);
             $get_last_id = "SELECT user_id FROM comms_db.users WHERE firstname = '".$row['firstname']."' AND lastname = '".$row['lastname']."';";
             $result_rack_last_id = $rack_conn->query($get_last_id);
