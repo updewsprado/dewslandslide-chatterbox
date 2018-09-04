@@ -11,13 +11,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -3433,6 +3433,8 @@ class ChatMessageModel {
     function sendSms($recipients, $message) {
         $sms_status_container = [];
         $current_ts = date("Y-m-d H:i:s", time());
+        var_dump($recipients);
+        echo "\n\n";
         foreach ($recipients as $recipient) {
             $insert_smsoutbox_query = "INSERT INTO smsoutbox_users VALUES (0,'".$current_ts."','central','".$message."')";
             $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
@@ -3475,7 +3477,7 @@ class ChatMessageModel {
     }
 
     function getGsmId($mobile_id) {
-        $gsm_id_query = "SELECT gsm_id FROM user_mobile WHERE mobile_id = '".$mobile_id[0]."'";
+        $gsm_id_query = "SELECT gsm_id FROM user_mobile WHERE mobile_id = '".$mobile_id."'";
         $gsm_container = $this->dbconn->query($gsm_id_query);
         $gsm_id = "";
         while ($row = $gsm_container->fetch_assoc()) {
@@ -3931,8 +3933,6 @@ class ChatMessageModel {
         UNION 
         SELECT smsoutbox_users.sms_msg, 'You' AS user, smsoutbox_user_status.ts_sent AS ts, smsoutbox_user_status.outbox_id AS sms_id, 'smsoutbox' AS table_source , smsoutbox_user_status.mobile_id
         from smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE sms_msg LIKE '".$search_key."' order by ts desc limit ".$search_limit.";";
-
-        echo $search_key_query;
 
         $execute_query = $this->dbconn->query($search_key_query);
         if ($execute_query->num_rows > 0) {
