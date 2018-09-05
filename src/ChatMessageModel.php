@@ -19,6 +19,7 @@ class ChatMessageModel {
         // $usr = "root";
         // $pwd = "senslope";
 
+        $analysis_db = "senslopedb";
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -3433,8 +3434,6 @@ class ChatMessageModel {
     function sendSms($recipients, $message) {
         $sms_status_container = [];
         $current_ts = date("Y-m-d H:i:s", time());
-        var_dump($recipients);
-        echo "\n\n";
         foreach ($recipients as $recipient) {
             $insert_smsoutbox_query = "INSERT INTO smsoutbox_users VALUES (0,'".$current_ts."','central','".$message."')";
             $smsoutbox = $this->dbconn->query($insert_smsoutbox_query);
@@ -3678,8 +3677,58 @@ class ChatMessageModel {
     }
 
 
-    function autoTagMessage($data) {
+    function autoTagMessage($offices, $event_id, $site_id,$data_timestamp, $timestamp, $tag, $msg) {
+        $get_tag_narrative = "SELECT narrative_input FROM comms_db.gintags_manager INNER JOIN gintags_reference ON gintags_manager.tag_id_fk = gintags_reference.tag_id WHERE gintags_reference.tag_name = '".$tag."';";
+        $narrative_input = $this->dbconn->query($get_tag_narrative);
 
+        $template = $narrative_input->fetch_assoc()['narrative_input'];
+        $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
+        if ($template != "") {
+            $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".$data_timestamp."','".$narrative."')";
+            $result = $this->dbconn->query($sql);
+        } else {
+            $result = false;
+            echo "No templates fetch..\n\n";
+        }
+        return $result;
+    }
+
+    function parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg) {
+        $codes = ["(sender)","(sms_msg)","(current_release_time)","(stakeholders)"];
+        foreach ($codes as $code) {
+            switch ($code) {
+                case '(sender)':
+                    $template = str_replace($code,'NA',$template);
+                    break;
+
+                case '(sms_msg)':
+                    $template = str_replace($code, $msg,$template);
+                    break;
+
+                case '(current_release_time)':
+                    $template = str_replace($code,$timestamp,$template);
+                    break;
+
+                case '(stakeholders)':
+                    $stakeholders = "";
+                    $counter = 0;
+                    foreach ($offices as $office) {
+                        if ($counter == 0) {
+                            $stakeholders = $office;
+                        } else {
+                            $stakeholders = $stakeholders.", ".$office;
+                        }
+                        $counter++;
+                    }
+                    $template = str_replace($code,$stakeholders,$template);
+                    break;
+
+                default:
+                    $template = str_replace($code,'NA',$template);
+                    break;
+            }
+        }
+        return $template;
     }
 
     function fetchSitesForRoutine() {
