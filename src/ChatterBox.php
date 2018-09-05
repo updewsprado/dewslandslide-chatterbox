@@ -173,19 +173,6 @@ class ChatterBox implements MessageComponentInterface {
                         }
                     } 
                 }
-            } else if ($msgType == "autoGintagMessage") {
-                echo "Message flagged for auto gintagging.\n";
-                $request = [
-                    "office" => $decodedText->data->office,
-                    "site" => $decodedText->data->site,
-                    "gintag" => $decodedText->data->gintag,
-                    "sms_id" => $decodedText->data->sms_id,
-                    "message" => $decodedText->data->message,
-                    "account_id" => $decodedText->data->account_id,
-                    "tag_important" => $decodedText->data->tag_important
-                ];
-                $exchanges = $this->chatModel->autoTagMessage($request);
-                $from->send(json_encode($exchanges));
             } else if ($msgType == "gintaggedMessage") {
                 echo "Message flagged for gintagging.\n";
                 foreach ($decodedText->data->tag as $tag) {
@@ -281,9 +268,11 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($full_data));
             } else if ($msgType == "sendEwiViaDashboard") {
                 $status = [];
+                $recipients_to_tag = [];
                 $counter = 0;
                 foreach ($decodedText->recipients as $recipient) {
                     $raw = explode(" - ",$recipient);
+                    $temp_org = explode(" ",$raw[0]);
                     $raw_name = explode(".",$raw[1]);
                     $name_data = [
                         "first_name" => trim($raw_name[0]),
@@ -295,10 +284,13 @@ class ChatterBox implements MessageComponentInterface {
                         "status" => $send_status['data'],
                         "recipient" => $recipient
                     ];
+                    $temp_site = $temp_org[0];
+                    array_push($recipients_to_tag,$temp_org[1]);
                     array_push($status,$temp);
                 }
                 $full_data['type'] = "sentEwiDashboard";
                 $full_data['statuses'] = $status;
+                $full_data['gintag_status'] = $this->chatModel->autoTagMessage(array_unique($recipients_to_tag), $decodedText->event_id,$decodedText->site_id,$decodedText->data_timestamp,$decodedText->timestamp ,"#EwiMessage",$decodedText->msg);
                 $from->send(json_encode($full_data));
             } else if ($msgType == "searchViaTsSent") {
                 
