@@ -8,6 +8,7 @@ class ChatMessageModel {
 
     public function __construct() {
         $this->initDBforCB();
+        $this->switchDBforCB();
     }
 
     public function initDBforCB() {
@@ -18,14 +19,31 @@ class ChatMessageModel {
         // $host = "localhost";
         // $usr = "root";
         // $pwd = "senslope";
-
-        $analysis_db = "senslopedb";
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
         } else {
-            echo "Connection Established... \n";
+            echo "Connection Established for comms_db... \n";
+            return true;
+        }
+    }
+
+    function switchDBforCB() {
+        $host = "192.168.150.72";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+
+        // $host = "localhost";
+        // $usr = "root";
+        // $pwd = "senslope";
+
+        $analysis_db = "senslopedb";
+        $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
+        if ($this->senslope_dbconn->connect_error) {
+            die("Connection failed: " . $this->senslope_dbconn->connect_error);
+        } else {
+            echo "Connection Established for senslopedb... \n";
             return true;
         }
     }
@@ -3685,7 +3703,7 @@ class ChatMessageModel {
         $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
         if ($template != "") {
             $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".$data_timestamp."','".$narrative."')";
-            $result = $this->dbconn->query($sql);
+            $result = $this->senslope_dbconn->query($sql);
         } else {
             $result = false;
             echo "No templates fetch..\n\n";
@@ -3871,7 +3889,7 @@ class ChatMessageModel {
         } else {
             echo "0 results\n";
         }
-
+        if ($template_data->alert_level == "ND"){$template_data->alert_level = "A1";}
         $alert_level = str_replace('A','Alert ',$template_data->alert_level);
         $recom_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$alert_level."' AND alert_status = '".$template_data->alert_status."';";
         $execute_query = $this->dbconn->query($recom_query);
