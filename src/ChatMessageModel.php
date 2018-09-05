@@ -12,9 +12,9 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         // $host = "localhost";
         // $usr = "root";
@@ -3673,7 +3673,7 @@ class ChatMessageModel {
 
     function searchConvoIdViaMessageAttribute($ts, $msg) {
         $convo_id_container = [];
-        $convo_id_query = "SELECT * FROM senslopedb.smsoutbox_users natural join smsoutbox_user_status where sms_msg = '".$msg."' and ts_written = '".$ts."' order by ts_written desc;";
+        $convo_id_query = "SELECT * FROM smsoutbox_users natural join smsoutbox_user_status where sms_msg = '".$msg."' and ts_written = '".$ts."' order by ts_written desc;";
         $execute_query = $this->dbconn->query($convo_id_query);
         while ($row = $execute_query->fetch_assoc()) {
             array_push($convo_id_container, $row['outbox_id']);
@@ -3682,15 +3682,52 @@ class ChatMessageModel {
     }
 
     function tagToNarratives($data) {
-        $database_reference = ($data['account_id'] == 'You') ? "smsoutbox_users" : "smsinbox_users";
+        $database_reference = ($data['site_code'] == 'you') ? "smsoutbox_users" : "smsinbox_users";
         $tag_query = "INSERT INTO gintags VALUES (0,(SELECT tag_id FROM gintags_reference WHERE tag_name = '".$data['tag']."'),'".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
         $execute_query = $this->dbconn->query($tag_query);
         if ($execute_query == true) {
-            $narrative_template_query = "";
-            $execute_query = $this->dbconn->query($narrative_template_query);
-            
-        } else {
+            $event_query = "SELECT DISTINCT public_alert_event.event_id,public_alert_event.site_id from senslopedb.public_alert_event INNER JOIN senslopedb.public_alert_trigger ON public_alert_event.event_id=public_alert_trigger.event_id WHERE status='on-going' OR status='extended'";
+            $event_execute_query = $this->dbconn->query($event_query);
 
+            $site_query = "SELECT site_id from sites WHERE site_code = '".$data['site_code']."'";
+            $site_execute_query = $this->dbconn->query($site_query);
+
+            $gintags_reference_query = "SELECT * FROM gintags_manager INNER JOIN gintags_reference ON gintags_reference.tag_id = gintags_manager.tag_id_fk WHERE gintags_reference.tag_name = '".$data['tag']."'";
+
+            $gintags_execute_query = $this->dbconn->query($gintags_reference_query);
+
+            while(($row = $event_execute_query->fetch_assoc())) {
+              $events[] = $row;
+            }
+
+            while(($row = $site_execute_query->fetch_assoc())) {
+              $sites[] = $row;
+            }
+
+            while(($row = $gintags_execute_query->fetch_assoc())) {
+              $gintag[] = $row;
+            }
+
+            $full_name = $data["full_name"];
+            $get_office = explode(" ", $full_name);
+            $offices = [];
+            array_push($offices, $get_office[1]);
+
+            foreach ($events as $event_row) {
+                foreach ($sites as $site_row) {
+                    if ($event_row["site_id"] == $site_row["site_id"]) {
+                        foreach ($gintag as $gintag_row) {
+                            $narrative_template = $this->parseTemplateCodes($offices, $site_row["site_id"], $data["ts"], $data["time_sent"], $gintag_row["narrative_input"], $data["msg"], $full_name);
+                            $narrative_template_query = "INSERT INTO narratives VALUES(0,'".$event_row["event_id"]."','".$data["ts"]."','".$narrative_template."')";
+                            $execute_query = $this->dbconn->query($narrative_template_query);
+                        }
+                    }
+                }
+            }
+
+
+            
+            
         }
     }
 
@@ -3711,12 +3748,12 @@ class ChatMessageModel {
         return $result;
     }
 
-    function parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg) {
+    function parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg, $full_name) {
         $codes = ["(sender)","(sms_msg)","(current_release_time)","(stakeholders)"];
         foreach ($codes as $code) {
             switch ($code) {
                 case '(sender)':
-                    $template = str_replace($code,'NA',$template);
+                    $template = str_replace($code,$full_name,$template);
                     break;
 
                 case '(sms_msg)':

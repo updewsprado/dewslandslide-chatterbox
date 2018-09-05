@@ -182,9 +182,11 @@ class ChatterBox implements MessageComponentInterface {
                         "tag" => $tag,
                         "full_name" => $decodedText->data->full_name,
                         "ts" => $decodedText->data->ts,
+                        "time_sent" => $decodedText->data->time_sent,
                         "msg" => $decodedText->data->msg,
                         "account_id" => $decodedText->data->account_id,
-                        "tag_important" => $decodedText->data->tag_important
+                        "tag_important" => $decodedText->data->tag_important,
+                        "site_code" => $decodedText->data->site_code
                     ];
                     $exchanges = $this->chatModel->tagMessage($request);
                     $from->send(json_encode($exchanges));
