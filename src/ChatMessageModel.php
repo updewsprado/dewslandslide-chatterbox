@@ -12,9 +12,9 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "localhost";
-        $usr = "root";
-        $pwd = "senslope";
+        $host = "192.168.150.75";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
         // $host = "localhost";
         // $usr = "root";
@@ -30,9 +30,9 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "localhost";
-        $usr = "root";
-        $pwd = "senslope";
+        $host = "192.168.150.72";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
         // $host = "localhost";
         // $usr = "root";
