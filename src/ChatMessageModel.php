@@ -3951,7 +3951,7 @@ class ChatMessageModel {
         $time_stamp = date("Y-m-d 02:30:00");
         $datetime = explode(" ",$time_of_release);
         $time = $datetime[1];
-
+        // 
         if(strtotime($time) >= strtotime(date("00:00:00")) && strtotime($time) <= strtotime(date("03:59:59"))){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
