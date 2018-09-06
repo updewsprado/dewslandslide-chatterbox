@@ -3941,7 +3941,7 @@ class ChatMessageModel {
             $greeting = "umaga";
         }else if(strtotime($current_date) >= strtotime(date("Y-m-d 12:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 13:00:00"))){
             $greeting = "tanghali";
-        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 13:01:59")) && strtotime($current_date) < strtotime(date("Y-m-d 17:59:59"))) {
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 13:00:01")) && strtotime($current_date) < strtotime(date("Y-m-d 17:59:59"))) {
             $greeting = "hapon";
         }else if(strtotime($current_date) >= strtotime(date("Y-m-d 18:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 23:59:59"))){
             $greeting = "gabi";
@@ -3952,23 +3952,23 @@ class ChatMessageModel {
         $datetime = explode(" ",$time_of_release);
         $time = $datetime[1];
 
-        if(strtotime($time) >= strtotime(date("00:00:00")) && strtotime($time) <= strtotime(date("04:00:00"))){
+        if(strtotime($time) >= strtotime(date("00:00:00")) && strtotime($time) <= strtotime(date("03:59:59"))){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 AM";
-        } else if(strtotime($time) >= strtotime(date("04:00:00")) && strtotime($time) <= strtotime(date("08:00:00"))){
+        } else if(strtotime($time) >= strtotime(date("04:00:00")) && strtotime($time) <= strtotime(date("07:59:59"))){
             $time_submission = "bago mag-07:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "08:00 AM";
-        } else if(strtotime($time) >= strtotime(date("08:00:00")) && strtotime($time) <= strtotime(date("12:00:00"))){
+        } else if(strtotime($time) >= strtotime(date("08:00:00")) && strtotime($time) <= strtotime(date("11:59:59"))){
             $time_submission = "bago mag-11:30 AM";
             $date_submission = "mamaya";
             $ewi_time = "12:00 NN";
-        } else if(strtotime($time) >= strtotime(date("12:00:00")) && strtotime($time) <= strtotime(date("16:00:00"))){
+        } else if(strtotime($time) >= strtotime(date("12:00:00")) && strtotime($time) <= strtotime(date("15:59:59"))){
             $time_submission = "bago mag-3:30 PM";
             $date_submission = "mamaya";
             $ewi_time = "04:00 PM";
-        } else if(strtotime($time) >= strtotime(date("16:00:00")) && strtotime($time) <= strtotime(date("20:00:00"))){
+        } else if(strtotime($time) >= strtotime(date("16:00:00")) && strtotime($time) <= strtotime(date("19:59:59"))){
             $time_submission = "bago mag-7:30 AM";
             $date_submission = "bukas";
             $ewi_time = "08:00 PM";
