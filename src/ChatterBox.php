@@ -182,9 +182,11 @@ class ChatterBox implements MessageComponentInterface {
                         "tag" => $tag,
                         "full_name" => $decodedText->data->full_name,
                         "ts" => $decodedText->data->ts,
+                        "time_sent" => $decodedText->data->time_sent,
                         "msg" => $decodedText->data->msg,
                         "account_id" => $decodedText->data->account_id,
-                        "tag_important" => $decodedText->data->tag_important
+                        "tag_important" => $decodedText->data->tag_important,
+                        "site_code" => $decodedText->data->site_code
                     ];
                     $exchanges = $this->chatModel->tagMessage($request);
                     $from->send(json_encode($exchanges));
@@ -232,7 +234,6 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
-
                 switch ($decodedText->event_category) {
                     case 'event':
                         $alert_status = 'Event';

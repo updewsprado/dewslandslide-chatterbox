@@ -12,9 +12,9 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         // $host = "localhost";
         // $usr = "root";
@@ -30,9 +30,9 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         // $host = "localhost";
         // $usr = "root";
@@ -3937,13 +3937,13 @@ class ChatMessageModel {
              $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         }
 
-        if($current_date >= date("Y-m-d 00:00:00") && $current_date < date("Y-m-d 11:59:00")){
+        if(strtotime($current_date) >= strtotime(date("Y-m-d 00:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 11:59:00"))){
             $greeting = "umaga";
-        }else if($current_date >= date("Y-m-d 12:00:00") && $current_date < date("Y-m-d 13:00:00")){
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 12:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 13:00:00"))){
             $greeting = "tanghali";
-        }else if($current_date >= date("Y-m-d 13:01:00") && $current_date < date("Y-m-d 18:00:00")) {
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 13:01:59")) && strtotime($current_date) < strtotime(date("Y-m-d 17:59:59"))) {
             $greeting = "hapon";
-        }else if($current_date >= date("Y-m-d 18:00:00") && $current_date < date("Y-m-d 00:00:00")){
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 18:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 23:59:59"))){
             $greeting = "gabi";
         }
 
