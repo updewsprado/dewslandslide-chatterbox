@@ -19,7 +19,7 @@ class ChatMessageModel {
         // $host = "localhost";
         // $usr = "root";
         // $pwd = "senslope";
-        $dbname = "comms_db";
+        // $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
@@ -296,7 +296,7 @@ class ChatMessageModel {
     public function getLatestAlerts(){
         $senslope_dbconn; // initialize a variable for analysis database connection
         $this->switchDBforCB(); // switch database to senslopedb from comms_db to get data from senslopedb
-        $query = "SELECT * FROM sites inner join public_alert_event alerts on sites.site_id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'"; // LOUIE
+        $query = "SELECT * FROM sites inner join public_alert_event alerts on sites.site_id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'"; 
         $this->checkConnectionDB($query);
         $alerts = $this->senslope_dbconn->query($query);
         $fullData['type'] = 'latestAlerts';
