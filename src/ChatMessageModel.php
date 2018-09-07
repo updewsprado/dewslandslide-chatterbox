@@ -19,6 +19,7 @@ class ChatMessageModel {
         // $host = "localhost";
         // $usr = "root";
         // $pwd = "senslope";
+
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -379,7 +380,6 @@ class ChatMessageModel {
         if ($sms_result_from_period->num_rows > 0) {
             while ($row = $sms_result_from_period->fetch_assoc()) {
                 $normalized_number = substr($row["sim_num"], -10);
-                var_dump($row['inbox_id']);
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
                 $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
