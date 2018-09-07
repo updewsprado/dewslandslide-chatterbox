@@ -174,6 +174,7 @@ class ChatterBox implements MessageComponentInterface {
                     } 
                 }
             } else if ($msgType == "gintaggedMessage") {
+                var_dump("ECHO");
                 echo "Message flagged for gintagging.\n";
                 foreach ($decodedText->data->tag as $tag) {
                     if (isset($decodedText->data->recipients)) {

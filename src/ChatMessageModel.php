@@ -3261,6 +3261,8 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
 
+        var_dump($inbox_outbox_collection);
+
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
         $full_data['recipients'] = $mobile_number;
