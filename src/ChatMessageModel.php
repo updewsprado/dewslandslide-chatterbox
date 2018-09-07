@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -30,13 +30,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.72";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
@@ -379,6 +379,7 @@ class ChatMessageModel {
         if ($sms_result_from_period->num_rows > 0) {
             while ($row = $sms_result_from_period->fetch_assoc()) {
                 $normalized_number = substr($row["sim_num"], -10);
+                var_dump($row['inbox_id']);
                 $all_messages[$ctr]['sms_id'] = $row['inbox_id'];
                 $all_messages[$ctr]['full_name'] = strtoupper($row['full_name']);
                 $all_messages[$ctr]['user_number'] = $normalized_number;
@@ -3235,6 +3236,7 @@ class ChatMessageModel {
         $temp_timestamp = [];
         $sorted_sms = [];
         $recipient_container = [];
+        $mobile_id_container = [];
         $filter_builder = "";
         if ($details['number'] == "N/A") {
             $counter = 0;
@@ -3245,20 +3247,35 @@ class ChatMessageModel {
                 } else {
                     $filter_builder = $filter_builder." OR sim_num LIKE '%".substr($number['sim_num'], -10)."%'";
                 }
+                $counter++;
             }
+        }
+
+        $mobile_id_query = "SELECT mobile_id FROM user_mobile where ".$filter_builder.";";
+        $mobile_id = $this->dbconn->query($mobile_id_query);
+
+        $counter = 0;
+        while ($row = $mobile_id->fetch_assoc()) {
+            if ($counter == 0) {
+                $inbox_builder = "mobile_id = '".$row['mobile_id']."'";
+                $outbox_builder = "smsoutbox_user_status.mobile_id = '".$row['mobile_id']."'";
+            } else {
+                $inbox_builder = $inbox_builder." OR mobile_id = '".$row['mobile_id']."'";
+                $outbox_builder = $outbox_builder." OR smsoutbox_user_status.mobile_id = '".$row['mobile_id']."'";
+            }
+            $counter++;
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where ".$filter_builder.") ";
+                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE ".$inbox_builder." ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
-                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where ".$filter_builder.")";
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_builder."";
 
 
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by timestamp order by timestamp desc limit 20;";
 
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
