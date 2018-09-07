@@ -294,16 +294,18 @@ class ChatMessageModel {
     }
 
     public function getLatestAlerts(){
-        $query = "SELECT * FROM site inner join public_alert_event alerts on site.id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'";
+        $senslope_dbconn; // initialize a variable for analysis database connection
+        $this->switchDBforCB(); // switch database to senslopedb from comms_db to get data from senslopedb
+        $query = "SELECT * FROM sites inner join public_alert_event alerts on sites.site_id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'"; // LOUIE
         $this->checkConnectionDB($query);
-        $alerts = $this->dbconn->query($query);
+        $alerts = $this->senslope_dbconn->query($query);
         $fullData['type'] = 'latestAlerts';
         $raw_data = array();
         $ctr = 0;
         if ($alerts->num_rows > 0) {
             while ($row = $alerts->fetch_assoc()) {
-                $raw_data["id"] = $row["id"];
-                $raw_data["name"] = $row["name"];
+                $raw_data["site_id"] = $row["site_id"];
+                $raw_data["site_code"] = $row["site_code"];
                 $raw_data["sitio"] = $row["sitio"];
                 $raw_data["barangay"] = $row["barangay"];
                 $raw_data["province"] = $row["province"];
