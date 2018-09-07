@@ -3234,20 +3234,28 @@ class ChatMessageModel {
         $inbox_outbox_collection = [];
         $temp_timestamp = [];
         $sorted_sms = [];
-
+        $recipient_container = [];
+        $filter_builder = "";
         if ($details['number'] == "N/A") {
+            $counter = 0;
             $mobile_number = $this->getMobileDetails($details);
-            $details['number'] = substr($mobile_number[0]['sim_num'], -10);
+            foreach ($mobile_number as $number) {
+                if ($counter == 0) {
+                    $filter_builder = "sim_num LIKE '%".substr($number['sim_num'], -10)."%'";
+                } else {
+                    $filter_builder = $filter_builder." OR sim_num LIKE '%".substr($number['sim_num'], -10)."%'";
+                }
+            }
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
+                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where ".$filter_builder.") ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
+                        (SELECT mobile_id FROM user_mobile where ".$filter_builder.")";
 
 
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
