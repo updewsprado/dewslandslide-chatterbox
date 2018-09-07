@@ -3356,6 +3356,7 @@ class ChatMessageModel {
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3396,7 +3397,7 @@ class ChatMessageModel {
         $full_data['data'] = $inbox_outbox_collection;
         $full_data['titles'] = array_reverse($title_collection);
         $full_data['recipients'] = $contact_lists;
-        return $full_data;
+        return $this->utf8_encode_recursive($full_data);
     }
 
     function getSentStatusForGroupConvos($sms_msg, $timestamp, $mobile_id) {
