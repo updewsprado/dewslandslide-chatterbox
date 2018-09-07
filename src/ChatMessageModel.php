@@ -3882,7 +3882,6 @@ class ChatMessageModel {
     }
 
     function fetchEventTemplate($template_data) {
-        var_dump($template_data->ewi_details->day);
         $site_query = "SELECT * FROM sites WHERE site_code = '".$template_data->site_name."';";
         $site_container = [];
         $ewi_backbone_container = [];
@@ -3968,9 +3967,7 @@ class ChatMessageModel {
     }
 
     function reconstructEWITemplate($raw_data) {
-        var_dump($raw_data);
         $counter = 0;
-
         $time_submission = null;
         $date_submission = null;
         $ewi_time = null;
