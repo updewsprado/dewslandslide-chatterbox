@@ -24,7 +24,7 @@ class ChatterBox implements MessageComponentInterface {
     public function onMessage(ConnectionInterface $from, $msg) {
         $numRecv = count($this->clients) - 1;
 
-        $decodedText = json_decode($msg);
+        $decodedText = (object) $this->chatModel->utf8_encode_recursive(json_decode($msg));
 
         if ($decodedText == NULL) {
             echo "Message is not in JSON format ($msg).\n";
@@ -176,18 +176,32 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "gintaggedMessage") {
                 echo "Message flagged for gintagging.\n";
                 foreach ($decodedText->data->tag as $tag) {
-                    $request = [
-                        "user_id" => $decodedText->data->user_id,
-                        "sms_id" => $decodedText->data->sms_id,
-                        "tag" => $tag,
-                        "full_name" => $decodedText->data->full_name,
-                        "ts" => $decodedText->data->ts,
-                        "time_sent" => $decodedText->data->time_sent,
-                        "msg" => $decodedText->data->msg,
-                        "account_id" => $decodedText->data->account_id,
-                        "tag_important" => $decodedText->data->tag_important,
-                        "site_code" => $decodedText->data->site_code
-                    ];
+                    if (isset($decodedText->data->recipients)) {
+                        $request = [
+                            "recipients" => $decodedText->data->recipients,
+                            "tag" => $tag,
+                            "full_name" => $decodedText->data->full_name,
+                            "ts" => $decodedText->data->ts,
+                            "time_sent" => $decodedText->data->time_sent,
+                            "msg" => $decodedText->data->msg,
+                            "account_id" => $decodedText->data->account_id,
+                            "tag_important" => $decodedText->data->tag_important,
+                            "site_code" => $decodedText->data->site_code
+                        ];
+                    } else {
+                        $request = [
+                            "user_id" => $decodedText->data->user_id,
+                            "sms_id" => $decodedText->data->sms_id,
+                            "tag" => $tag,
+                            "full_name" => $decodedText->data->full_name,
+                            "ts" => $decodedText->data->ts,
+                            "time_sent" => $decodedText->data->time_sent,
+                            "msg" => $decodedText->data->msg,
+                            "account_id" => $decodedText->data->account_id,
+                            "tag_important" => $decodedText->data->tag_important,
+                            "site_code" => $decodedText->data->site_code
+                        ];
+                    }
                     $exchanges = $this->chatModel->tagMessage($request);
                     $from->send(json_encode($exchanges));
                 }
@@ -234,7 +248,6 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
-
                 switch ($decodedText->event_category) {
                     case 'event':
                         $alert_status = 'Event';
