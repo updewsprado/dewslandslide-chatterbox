@@ -3288,6 +3288,8 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
 
+        var_dump($inbox_outbox_collection);
+
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
         $full_data['recipients'] = $mobile_number;
@@ -3640,7 +3642,6 @@ class ChatMessageModel {
         $get_tags_query = "SELECT * FROM gintags INNER JOIN gintags_reference ON tag_id_fk = gintags_reference.tag_id WHERE table_element_id = '".$sms_id."';";
         $execute_query = $this->dbconn->query($get_tags_query);
         if ($execute_query->num_rows > 0) {
-            $full_data['data'] = $execute_query->fetch_assoc();
             while ($row = $execute_query->fetch_assoc()) {
                 array_push($tags,$row['tag_name']);
             }
@@ -3648,60 +3649,108 @@ class ChatMessageModel {
         } else {
             $full_data['data'] = [];
         }
-        $full_data['type'] = "fetchedSmsTag ";
+        $full_data['type'] = "fetchedSmsTags";
         return $full_data;
     }
 
     function tagMessage($data) {
         $status = false;
+        $full_data['type'] = "taggingStatus";
         if ($data['tag_important'] != true) {
-            
-            $tag_exist_query = "SELECT * FROM gintags_reference WHERE tag_name = '".$data['tag']."'";
-            $execute_query = $this->dbconn->query($tag_exist_query);
-            if ($execute_query->num_rows == 0) {
-                $tag_message_query = "INSERT INTO gintags_reference VALUES (0,'".$data['tag']."','NULL')";
-                $execute_query = $this->dbconn->query($tag_message_query);
-                if ($execute_query == true) {
-                    $status = true;
-                    $last_inserted_id = $this->dbconn->insert_id;
-                }
-            } else {
-                $status = true;
-                $last_inserted_id = $execute_query->fetch_assoc()['tag_id'];
-            }
-
-            if ($data['full_name'] == "You") {
-                $database_reference = "smsoutbox_users";
-                $convo_id_collection = $this->searchConvoIdViaMessageAttribute  ($data['ts'], $data['msg']);
-            } else {
-                $database_reference = "smsinbox_users";
-                array_push($convo_id_collection, $data['sms_id']);
-            }
-
-            foreach ($convo_id_collection as $id) {
-                if ($status == true) {
-                    $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$last_inserted_id."','".$data['account_id']."','".$id."','".$database_reference."','".$data['ts']."','Null')";
-                    $execute_query = $this->dbconn->query($tag_insertion_query);
-                }
-            }
-
-            $full_data['type'] = "messageTaggingStatus";
-            if ($execute_query == true) {
-                $full_data['status_message'] = "Successfully tagged message!";
-                $full_data['status'] = true;
-            } else {
-                $full_data['status_message'] = "Failed to tag message!";
-                $full_data['status'] = false;
-            }
-            return $full_data;
-        } else { 
-            $this->tagToNarratives($data);
+            $insert_tag_status = $this->insertTag($data); 
+            $full_data['tag_status'] = $insert_tag_status;
+        } else {
+            $full_data['tag_status'] = $this->tagToNarratives($data);
         }
+        return $full_data;
     }
 
-    function searchConvoIdViaMessageAttribute($ts, $msg) {
+    function tagToNarratives($data) {
+        $event_container = [];
+        $offices = [];
+
+        if (isset($data['sms_id']) == true) {
+            $insert_tag_status = $this->insertTag($data);
+            if ($insert_tag_status['status'] == true) {
+                $narrative_input = $this->getNarrativeInput($data['tag']);
+                $template = $narrative_input->fetch_assoc()['narrative_input'];
+                $raw_office = explode(" ",$data['full_name']);
+                $office = [$raw_office[1]];
+                $get_ongoing_query = "SELECT site_code,sites.site_id,event_id FROM senslopedb.public_alert_event INNER JOIN sites ON public_alert_event.site_id = sites.site_id where status = 'on-going';";
+                $ongoing = $this->senslope_dbconn->query($get_ongoing_query);
+
+                while ($row = $ongoing->fetch_assoc()) {
+                    if (strtoupper($row['site_code']) == strtoupper($raw_office[0])) {
+                        array_push($event_container, $row);
+                    }
+                }
+
+                $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $data['time_sent'], $template, $data['msg'], $data['full_name']);
+                $sql = "INSERT INTO narratives VALUES(0,'".$event_container[0]['event_id']."','".$data['ts']."','".$narrative."')";
+                $result = $this->senslope_dbconn->query($sql);
+            } else {
+                // Add error message
+            }
+
+        } else {
+
+            $insert_tag_status = $this->insertTag($data);
+            if ($insert_tag_status['status'] == true) {
+                $filter_builder = "";
+
+                for ($counter=0; $counter < sizeOf($data['recipients']); $counter++) { 
+                    if ($counter == 0 ) {
+                        $filter_builder = " mobile_id = ".$data['recipients'][$counter];
+                    } else {
+                        $filter_builder = $filter_builder." or mobile_id = ".$data['recipients'][$counter];
+                    }
+                }
+
+                $get_site = "SELECT DISTINCT site_code FROM comms_db.user_mobile INNER JOIN user_organization ON user_mobile.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$filter_builder.";";
+                $site_code = $this->dbconn->query($get_site);
+                $site_code = $site_code->fetch_assoc()['site_code'];
+                $get_ongoing_query = "SELECT site_code,sites.site_id,event_id FROM senslopedb.public_alert_event INNER JOIN sites ON public_alert_event.site_id = sites.site_id where status = 'on-going';";
+                $ongoing = $this->senslope_dbconn->query($get_ongoing_query);
+
+                while ($row = $ongoing->fetch_assoc()) {
+                    if ($row['site_code'] == $site_code) {
+                        array_push($event_container, $row);
+                    }
+                }
+
+                if (sizeOf($event_container) != 0) {
+                    $narrative_input = $this->getNarrativeInput($data['tag']);
+                    $template = $narrative_input->fetch_assoc()['narrative_input'];
+                    $get_offices_query = "SELECT DISTINCT org_name FROM comms_db.user_mobile INNER JOIN user_organization ON user_mobile.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE ".$filter_builder.";";
+                    $get_office = $this->dbconn->query($get_offices_query);
+                    while ($row = $get_office->fetch_assoc()) {
+                        array_push($offices, $row['org_name']);
+                    }
+                    $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $data['time_sent'], $template, $data['msg']);
+                    $sql = "INSERT INTO narratives VALUES(0,'".$event_container[0]['event_id']."','".$data['ts']."','".$narrative."')";
+                    $result = $this->senslope_dbconn->query($sql);
+                }
+
+            } else {
+                // Add error message
+            }
+        }
+        return $result;
+    }
+
+    function searchConvoIdViaMessageAttribute($ts, $msg, $recipients) {
         $convo_id_container = [];
-        $convo_id_query = "SELECT * FROM senslopedb.smsoutbox_users natural join smsoutbox_user_status where sms_msg = '".$msg."' and ts_written = '".$ts."' order by ts_written desc;";
+        $filter_builder = "";
+
+        for ($counter=0; $counter < sizeOf($recipients); $counter++) { 
+            if ($counter == 0 ) {
+                $filter_builder = " mobile_id = ".$recipients[$counter];
+            } else {
+                $filter_builder = $filter_builder." or mobile_id = ".$recipients[$counter];
+            }
+        }
+
+        $convo_id_query = "SELECT * FROM smsoutbox_users natural join smsoutbox_user_status where sms_msg = '".$msg."' and ts_written = '".$ts."' and (".$filter_builder.") order by ts_written desc;";
         $execute_query = $this->dbconn->query($convo_id_query);
         while ($row = $execute_query->fetch_assoc()) {
             array_push($convo_id_container, $row['outbox_id']);
@@ -3709,24 +3758,50 @@ class ChatMessageModel {
         return $convo_id_container;
     }
 
-    function tagToNarratives($data) {
-        $database_reference = ($data['account_id'] == 'You') ? "smsoutbox_users" : "smsinbox_users";
-        $tag_query = "INSERT INTO gintags VALUES (0,(SELECT tag_id FROM gintags_reference WHERE tag_name = '".$data['tag']."'),'".$data['account_id']."','".$data['sms_id']."','".$database_reference."','".$data['ts']."','Null')";
-        $execute_query = $this->dbconn->query($tag_query);
-        if ($execute_query == true) {
-            $narrative_template_query = "";
-            $execute_query = $this->dbconn->query($narrative_template_query);
-            
+    function insertTag($data) {
+        $convo_id_collection = [];
+        $tag_exist_query = "SELECT * FROM gintags_reference WHERE tag_name = '".$data['tag']."'";
+        $execute_query = $this->dbconn->query($tag_exist_query);
+        if ($execute_query->num_rows == 0) {
+            $tag_message_query = "INSERT INTO gintags_reference VALUES (0,'".$data['tag']."','NULL')";
+            $execute_query = $this->dbconn->query($tag_message_query);
+            if ($execute_query == true) {
+                $status = true;
+                $last_inserted_id = $this->dbconn->insert_id;
+            }
         } else {
-
+            $status = true;
+            $last_inserted_id = $execute_query->fetch_assoc()['tag_id'];
         }
+
+        if ($data['full_name'] == "You") {
+            $database_reference = "smsoutbox_users";
+            $convo_id_collection = $this->searchConvoIdViaMessageAttribute($data['ts'], str_replace("<br />","\n",$data['msg']), $data['recipients']);
+        } else {
+            $database_reference = "smsinbox_users";
+            array_push($convo_id_collection, $data['sms_id']);
+        }
+
+        foreach ($convo_id_collection as $id) {
+            if ($status == true) {
+                $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$last_inserted_id."','".$data['account_id']."','".$id."','".$database_reference."','".$data['ts']."','Null')";
+                $execute_query = $this->dbconn->query($tag_insertion_query);
+            }
+        }
+
+        $full_data['type'] = "messageTaggingStatus";
+        if ($execute_query == true) {
+            $full_data['status_message'] = "Successfully tagged message!";
+            $full_data['status'] = true;
+        } else {
+            $full_data['status_message'] = "Failed to tag message!";
+            $full_data['status'] = false;
+        }
+        return $full_data;
     }
 
-
     function autoTagMessage($offices, $event_id, $site_id,$data_timestamp, $timestamp, $tag, $msg) {
-        $get_tag_narrative = "SELECT narrative_input FROM comms_db.gintags_manager INNER JOIN gintags_reference ON gintags_manager.tag_id_fk = gintags_reference.tag_id WHERE gintags_reference.tag_name = '".$tag."';";
-        $narrative_input = $this->dbconn->query($get_tag_narrative);
-
+        $narrative_input = $this->getNarrativeInput($tag);
         $template = $narrative_input->fetch_assoc()['narrative_input'];
         $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
         if ($template != "") {
@@ -3739,12 +3814,18 @@ class ChatMessageModel {
         return $result;
     }
 
-    function parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg) {
+    function getNarrativeInput($tag) {
+        $get_tag_narrative = "SELECT narrative_input FROM comms_db.gintags_manager INNER JOIN gintags_reference ON gintags_manager.tag_id_fk = gintags_reference.tag_id WHERE gintags_reference.tag_name = '".$tag."';";
+        $narrative_input = $this->dbconn->query($get_tag_narrative);
+        return $narrative_input;
+    }
+
+    function parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg, $full_name = "") {
         $codes = ["(sender)","(sms_msg)","(current_release_time)","(stakeholders)"];
         foreach ($codes as $code) {
             switch ($code) {
                 case '(sender)':
-                    $template = str_replace($code,'NA',$template);
+                    $template = str_replace($code,$full_name,$template);
                     break;
 
                 case '(sms_msg)':
