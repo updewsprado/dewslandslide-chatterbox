@@ -19,6 +19,7 @@ class ChatMessageModel {
         // $host = "localhost";
         // $usr = "root";
         // $pwd = "senslope";
+      
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
         if ($this->dbconn->connect_error) {
@@ -294,16 +295,18 @@ class ChatMessageModel {
     }
 
     public function getLatestAlerts(){
-        $query = "SELECT * FROM site inner join public_alert_event alerts on site.id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'";
+        $senslope_dbconn; // initialize a variable for analysis database connection
+        $this->switchDBforCB(); // switch database to senslopedb from comms_db to get data from senslopedb
+        $query = "SELECT * FROM sites inner join public_alert_event alerts on sites.site_id=alerts.site_id inner join public_alert_release releases on alerts.latest_release_id = releases.release_id WHERE alerts.status <> 'finished' AND alerts.status <> 'invalid' AND alerts.status <> 'routine'"; 
         $this->checkConnectionDB($query);
-        $alerts = $this->dbconn->query($query);
+        $alerts = $this->senslope_dbconn->query($query);
         $fullData['type'] = 'latestAlerts';
         $raw_data = array();
         $ctr = 0;
         if ($alerts->num_rows > 0) {
             while ($row = $alerts->fetch_assoc()) {
-                $raw_data["id"] = $row["id"];
-                $raw_data["name"] = $row["name"];
+                $raw_data["site_id"] = $row["site_id"];
+                $raw_data["site_code"] = $row["site_code"];
                 $raw_data["sitio"] = $row["sitio"];
                 $raw_data["barangay"] = $row["barangay"];
                 $raw_data["province"] = $row["province"];
@@ -3234,23 +3237,47 @@ class ChatMessageModel {
         $inbox_outbox_collection = [];
         $temp_timestamp = [];
         $sorted_sms = [];
-
+        $recipient_container = [];
+        $mobile_id_container = [];
+        $filter_builder = "";
         if ($details['number'] == "N/A") {
+            $counter = 0;
             $mobile_number = $this->getMobileDetails($details);
-            $details['number'] = substr($mobile_number[0]['sim_num'], -10);
+            foreach ($mobile_number as $number) {
+                if ($counter == 0) {
+                    $filter_builder = "sim_num LIKE '%".substr($number['sim_num'], -10)."%'";
+                } else {
+                    $filter_builder = $filter_builder." OR sim_num LIKE '%".substr($number['sim_num'], -10)."%'";
+                }
+                $counter++;
+            }
+        }
+
+        $mobile_id_query = "SELECT mobile_id FROM user_mobile where ".$filter_builder.";";
+        $mobile_id = $this->dbconn->query($mobile_id_query);
+
+        $counter = 0;
+        while ($row = $mobile_id->fetch_assoc()) {
+            if ($counter == 0) {
+                $inbox_builder = "mobile_id = '".$row['mobile_id']."'";
+                $outbox_builder = "smsoutbox_user_status.mobile_id = '".$row['mobile_id']."'";
+            } else {
+                $inbox_builder = $inbox_builder." OR mobile_id = '".$row['mobile_id']."'";
+                $outbox_builder = $outbox_builder." OR smsoutbox_user_status.mobile_id = '".$row['mobile_id']."'";
+            }
+            $counter++;
         }
 
         $inbox_query = "SELECT smsinbox_users.inbox_id as convo_id, mobile_id, 
                         smsinbox_users.ts_sms as ts_received, null as ts_written, null as ts_sent, smsinbox_users.sms_msg,
                         smsinbox_users.read_status, smsinbox_users.web_status, smsinbox_users.gsm_id ,
-                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE mobile_id = (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%') ";
+                        null as send_status , ts_sms as timestamp , '".$details['full_name']."' as user from smsinbox_users WHERE ".$inbox_builder." ";
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
-                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE smsoutbox_user_status.mobile_id = 
-                        (SELECT mobile_id FROM user_mobile where sim_num LIKE '%".$details['number']."%')";
+                        web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_builder."";
 
 
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 20;";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by timestamp order by timestamp desc limit 20;";
 
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
@@ -3943,6 +3970,7 @@ class ChatMessageModel {
         $ewi_backbone_container = [];
         $ewi_key_input_container = [];
         $ewi_recommended_container = [];
+        $extended_day = 0;
         $execute_query = $this->dbconn->query($site_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
@@ -3952,14 +3980,34 @@ class ChatMessageModel {
             echo "0 results\n";
         }
 
-        $ewi_backbone_query = "SELECT * FROM ewi_backbone_template WHERE alert_status = '".$template_data->alert_status."';";
-        $execute_query = $this->dbconn->query($ewi_backbone_query);
-        if ($execute_query->num_rows > 0) {
-            while ($row = $execute_query->fetch_assoc()) {
-                array_push($ewi_backbone_container, $row);
+        if($template_data->alert_level == "A0") {
+            $alert_status = null;
+            if($template_data->event_category == "event" && $template_data->alert_status == "Event"){// for lowering
+                $alert_status = "Lowering";
+            }else {// for extended
+                $alert_status = "Extended";
+                $extended_day = $template_data->ewi_details->day;
             }
-        } else {
-            echo "0 results\n";
+
+            $ewi_backbone_query = "SELECT * FROM ewi_backbone_template WHERE alert_status = '".$alert_status."';";
+            $execute_query = $this->dbconn->query($ewi_backbone_query);
+            if ($execute_query->num_rows > 0) {
+                while ($row = $execute_query->fetch_assoc()) {
+                    array_push($ewi_backbone_container, $row);
+                }
+            } else {
+                echo "0 results\n";
+            }
+        }else {
+             $ewi_backbone_query = "SELECT * FROM ewi_backbone_template WHERE alert_status = '".$template_data->alert_status."';";
+            $execute_query = $this->dbconn->query($ewi_backbone_query);
+            if ($execute_query->num_rows > 0) {
+                while ($row = $execute_query->fetch_assoc()) {
+                    array_push($ewi_backbone_container, $row);
+                }
+            } else {
+                echo "0 results\n";
+            }
         }
 
         $key_input_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$template_data->internal_alert."' AND alert_status = '".$template_data->alert_status."';";
@@ -3971,6 +4019,8 @@ class ChatMessageModel {
         } else {
             echo "0 results\n";
         }
+        
+
         if ($template_data->alert_level == "ND"){$template_data->alert_level = "A1";}
         $alert_level = str_replace('A','Alert ',$template_data->alert_level);
         $recom_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$alert_level."' AND alert_status = '".$template_data->alert_status."';";
@@ -3991,7 +4041,8 @@ class ChatMessageModel {
             "recommended_response" => $ewi_recommended_container,
             "formatted_data_timestamp" => $template_data->formatted_data_timestamp,
             "data_timestamp" => $template_data->data_timestamp,
-            "alert_level" => $alert_level
+            "alert_level" => $alert_level,
+            "extended_day" => $extended_day
         ];
 
         $full_data['data'] = $this->reconstructEWITemplate($raw_template);
@@ -4000,7 +4051,6 @@ class ChatMessageModel {
 
     function reconstructEWITemplate($raw_data) {
         $counter = 0;
-
         $time_submission = null;
         $date_submission = null;
         $ewi_time = null;
@@ -4009,6 +4059,8 @@ class ChatMessageModel {
         $current_date = date('Y-m-d H:i:s');
 
         $final_template = $raw_data['backbone'][0]['template'];
+        
+        
         if ($raw_data['site'][0]['purok'] == "") {
             $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         }
@@ -4019,58 +4071,67 @@ class ChatMessageModel {
              $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         }
 
-        if($current_date >= date("Y-m-d 00:00:00") && $current_date < date("Y-m-d 11:59:00")){
+        if(strtotime($current_date) >= strtotime(date("Y-m-d 00:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 11:59:59"))){
             $greeting = "umaga";
-        }else if($current_date >= date("Y-m-d 12:00:00") && $current_date < date("Y-m-d 13:00:00")){
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 12:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 13:00:00"))){
             $greeting = "tanghali";
-        }else if($current_date >= date("Y-m-d 13:01:00") && $current_date < date("Y-m-d 18:00:00")) {
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 13:00:01")) && strtotime($current_date) < strtotime(date("Y-m-d 17:59:59"))) {
             $greeting = "hapon";
-        }else if($current_date >= date("Y-m-d 18:00:00") && $current_date < date("Y-m-d 00:00:00")){
+        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 18:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 23:59:59"))){
             $greeting = "gabi";
         }
 
         $time_of_release = $raw_data['data_timestamp'];
-        $time_stamp = date("Y-m-d 02:30:00");
+        // $time_stamp = date("Y-m-d 02:30:00");
         $datetime = explode(" ",$time_of_release);
         $time = $datetime[1];
 
-        if(strtotime($time) >= strtotime(date("00:00:00")) && strtotime($time) <= strtotime(date("04:00:00"))){
-            $time_submission = "bago mag-07:30 AM";
+        if($time >= date("00:00:00") && $time <= date("03:59:59")){
             $date_submission = "mamaya";
+            $time_submission = "bago mag-07:30 AM";
             $ewi_time = "04:00 AM";
-        } else if(strtotime($time) >= strtotime(date("04:00:00")) && strtotime($time) <= strtotime(date("08:00:00"))){
+        } else if($time >= date("04:00:00") && $time <= date("07:59:59")){
+            $date_submission = "mamaya";
             $time_submission = "bago mag-07:30 AM";
-            $date_submission = "mamaya";
             $ewi_time = "08:00 AM";
-        } else if(strtotime($time) >= strtotime(date("08:00:00")) && strtotime($time) <= strtotime(date("12:00:00"))){
-            $time_submission = "bago mag-11:30 AM";
+        } else if($time >= date("08:00:00") && $time <= date("15:59:59")){
             $date_submission = "mamaya";
-            $ewi_time = "12:00 NN";
-        } else if(strtotime($time) >= strtotime(date("12:00:00")) && strtotime($time) <= strtotime(date("16:00:00"))){
             $time_submission = "bago mag-3:30 PM";
-            $date_submission = "mamaya";
             $ewi_time = "04:00 PM";
-        } else if(strtotime($time) >= strtotime(date("16:00:00")) && strtotime($time) <= strtotime(date("20:00:00"))){
-            $time_submission = "bago mag-7:30 AM";
+        } else if($time >= date("16:00:00") && $time <= date("19:59:59")){
             $date_submission = "bukas";
+            $time_submission = "bago mag-7:30 AM";
             $ewi_time = "08:00 PM";
-        } else if(strtotime($time) >= strtotime(date("20:00:00"))){
-            $time_submission = "bago mag-7:30 AM";
+        } else if($time >= date("20:00:00")){
             $date_submission = "bukas";
+            $time_submission = "bago mag-7:30 AM";
             $ewi_time = "12:00 MN";
         } else {
             echo "Error Occured: Please contact Administrator";
         }
 
-        $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
-        $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
-        $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
-        $final_template = str_replace("(technical_info)",$raw_data['tech_info'][0]['key_input'],$final_template);
-        $final_template = str_replace("(recommended_response)",$raw_data['recommended_response'][0]['key_input'],$final_template);
-        $final_template = str_replace("(gndmeas_date_submission)",$date_submission,$final_template);
-        $final_template = str_replace("(gndmeas_time_submission)",$time_submission,$final_template);
-        $final_template = str_replace("(next_ewi_time)",$ewi_time,$final_template);
-        $final_template = str_replace("(greetings)",$greeting,$final_template);
+        if($raw_data['alert_level'] == "Alert 0"){
+            $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
+            $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+            $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+            $final_template = str_replace("(greetings)",$greeting,$final_template);
+            if($raw_data["recommended_response"][0]["alert_status"] == "Extended"){
+                $final_template = str_replace("(current_date)",$raw_data['formatted_data_timestamp'],$final_template);
+                $final_template = str_replace("(nth-day-extended)",$raw_data['extended_day'] . "-day" ,$final_template);
+            }
+        }else {
+            $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
+            $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+            $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+            $final_template = str_replace("(technical_info)",$raw_data['tech_info'][0]['key_input'],$final_template);
+            $final_template = str_replace("(recommended_response)",$raw_data['recommended_response'][0]['key_input'],$final_template);
+            $final_template = str_replace("(gndmeas_date_submission)",$date_submission,$final_template);
+            $final_template = str_replace("(gndmeas_time_submission)",$time_submission,$final_template);
+            $final_template = str_replace("(next_ewi_time)",$ewi_time,$final_template);
+            $final_template = str_replace("(greetings)",$greeting,$final_template);
+        }
+
+        
 
         return $final_template;
     }

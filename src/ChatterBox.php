@@ -248,6 +248,13 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
+                if($decodedText->data->internal_alert_level == "A0"){
+                    $internal_alert = "A0-0";
+                    $internal_alert = explode('-',$internal_alert);
+                }else {
+                    $internal_alert = explode('-',$decodedText->data->internal_alert_level);
+                }
+              
                 switch ($decodedText->event_category) {
                     case 'event':
                         $alert_status = 'Event';
@@ -266,6 +273,8 @@ class ChatterBox implements MessageComponentInterface {
                 }
 
                 $data = [
+                    "ewi_details" => $decodedText->data,
+                    "event_category" => $decodedText->event_category,
                     "internal_alert" => $internal_alert[1],
                     "alert_level" => substr($decodedText->data->internal_alert_level, 0, 2),
                     "alert_status" => $alert_status,
