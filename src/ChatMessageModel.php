@@ -3350,6 +3350,7 @@ class ChatMessageModel {
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
         $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
+
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
@@ -3614,7 +3615,6 @@ class ChatMessageModel {
         $get_tags_query = "SELECT * FROM gintags INNER JOIN gintags_reference ON tag_id_fk = gintags_reference.tag_id WHERE table_element_id = '".$sms_id."';";
         $execute_query = $this->dbconn->query($get_tags_query);
         if ($execute_query->num_rows > 0) {
-            $full_data['data'] = $execute_query->fetch_assoc();
             while ($row = $execute_query->fetch_assoc()) {
                 array_push($tags,$row['tag_name']);
             }
@@ -3622,7 +3622,7 @@ class ChatMessageModel {
         } else {
             $full_data['data'] = [];
         }
-        $full_data['type'] = "fetchedSmsTag ";
+        $full_data['type'] = "fetchedSmsTags";
         return $full_data;
     }
 
@@ -3658,7 +3658,6 @@ class ChatMessageModel {
                     }
                 }
 
-                var_dump($event_container);
                 $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $data['time_sent'], $template, $data['msg'], $data['full_name']);
                 $sql = "INSERT INTO narratives VALUES(0,'".$event_container[0]['event_id']."','".$data['ts']."','".$narrative."')";
                 $result = $this->senslope_dbconn->query($sql);
