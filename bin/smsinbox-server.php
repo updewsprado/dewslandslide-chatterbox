@@ -110,7 +110,7 @@
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }  else {
-        echo "Connection established.\n\n";
+        echo "Connection established for smsinbox...\n\n";
     }
 
     while (true) {
