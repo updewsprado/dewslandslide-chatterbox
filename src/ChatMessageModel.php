@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -31,13 +31,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.72";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
