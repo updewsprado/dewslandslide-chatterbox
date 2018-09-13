@@ -246,6 +246,9 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "fetchTeams") {
                 $exchanges = $this->chatModel->fetchTeams();
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "fetchTeamsForContactSettings") {
+                $exchanges = $this->chatModel->fetchTeamsForContactSettings();
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
                 if($decodedText->data->internal_alert_level == "A0"){
