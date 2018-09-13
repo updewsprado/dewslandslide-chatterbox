@@ -3805,7 +3805,7 @@ class ChatMessageModel {
         $template = $narrative_input->fetch_assoc()['narrative_input'];
         $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
         if ($template != "") {
-            $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".$data_timestamp."','".$narrative."')";
+            $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".date("Y-m-d H:i:s")."','".$narrative."')";
             $result = $this->senslope_dbconn->query($sql);
         } else {
             $result = false;
@@ -3833,6 +3833,8 @@ class ChatMessageModel {
                     break;
 
                 case '(current_release_time)':
+                    $raw_time = explode(":",$timestamp);
+                    if (strlen($raw_time[0]) == 1) {$timestamp = "0".$timestamp;}
                     $template = str_replace($code,$timestamp,$template);
                     break;
 
@@ -4060,13 +4062,13 @@ class ChatMessageModel {
 
         $final_template = $raw_data['backbone'][0]['template'];
         
-        
-        if ($raw_data['site'][0]['purok'] == "") {
+        var_dump($raw_data['site'][0]['purok']);
+        if (($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL) && $raw_data['site'][0]['sitio'] != NULL) {
             $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
-        }
-
-        if ($raw_data['site'][0]['sitio'] == "") {
+        } else if ($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) {
              $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        } else if (($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) && ($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL)) {
+            $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         } else {
              $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         }
@@ -4086,23 +4088,23 @@ class ChatMessageModel {
         $datetime = explode(" ",$time_of_release);
         $time = $datetime[1];
 
-        if($time >= date("00:00:00") && $time <= date("03:59:59")){
+        if(strtotime($time) >= date("00:00:00") && strtotime($time) <= date("03:59:59")){
             $date_submission = "mamaya";
             $time_submission = "bago mag-07:30 AM";
             $ewi_time = "04:00 AM";
-        } else if($time >= date("04:00:00") && $time <= date("07:59:59")){
+        } else if(strtotime($time) >= date("04:00:00") && strtotime($time) <= date("07:59:59")){
             $date_submission = "mamaya";
             $time_submission = "bago mag-07:30 AM";
             $ewi_time = "08:00 AM";
-        } else if($time >= date("08:00:00") && $time <= date("15:59:59")){
+        } else if(strtotime($time) >= date("08:00:00") && strtotime($time) <= date("15:59:59")){
             $date_submission = "mamaya";
             $time_submission = "bago mag-3:30 PM";
             $ewi_time = "04:00 PM";
-        } else if($time >= date("16:00:00") && $time <= date("19:59:59")){
+        } else if(strtotime($time) >= date("16:00:00") && strtotime($time) <= date("19:59:59")){
             $date_submission = "bukas";
             $time_submission = "bago mag-7:30 AM";
             $ewi_time = "08:00 PM";
-        } else if($time >= date("20:00:00")){
+        } else if(strtotime($time) >= date("20:00:00")){
             $date_submission = "bukas";
             $time_submission = "bago mag-7:30 AM";
             $ewi_time = "12:00 MN";
