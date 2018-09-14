@@ -3282,13 +3282,19 @@ class ChatMessageModel {
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
+                $tag = $this->fetchSmsTags($row['convo_id']);
+                if (sizeOf($tag['data']) == 0) {
+                    $row['hasTag'] = 0;
+                } else {
+                    $row['hasTag'] = 1;
+                }
                 array_push($inbox_outbox_collection,$row);
             }
         } else {
             echo "No message fetched!";
         }
 
-        var_dump($inbox_outbox_collection);
+        // var_dump($inbox_outbox_collection);
 
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
@@ -3672,6 +3678,7 @@ class ChatMessageModel {
         if (isset($data['sms_id']) == true) {
             $insert_tag_status = $this->insertTag($data);
             if ($insert_tag_status['status'] == true) {
+                $time_sent = null;
                 $narrative_input = $this->getNarrativeInput($data['tag']);
                 $template = $narrative_input->fetch_assoc()['narrative_input'];
                 $raw_office = explode(" ",$data['full_name']);
@@ -3684,8 +3691,8 @@ class ChatMessageModel {
                         array_push($event_container, $row);
                     }
                 }
-
-                $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $data['time_sent'], $template, $data['msg'], $data['full_name']);
+                // $time_sent = $this->setTimeSent($data['ts'], $data['time_sent']);
+                $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $time_sent, $template, $data['msg'], $data['full_name']);
                 $sql = "INSERT INTO narratives VALUES(0,'".$event_container[0]['event_id']."','".$data['ts']."','".$narrative."')";
                 $result = $this->senslope_dbconn->query($sql);
             } else {
@@ -3736,6 +3743,21 @@ class ChatMessageModel {
             }
         }
         return $result;
+    }
+
+    function setTimeSent ($timestamp, $time_sent) {
+        $time_state = null;
+        if(strtotime($timestamp) >= strtotime(date("Y-m-d 00:00:01")) && strtotime($timestamp) < strtotime(date("Y-m-d 11:59:59"))){
+            $time_state = "AM";
+        }else if(strtotime($timestamp) == strtotime(date("Y-m-d 12:00:00"))){
+            $time_state = "NN";
+        }else if(strtotime($timestamp) >= strtotime(date("Y-m-d 12:01:00")) && strtotime($timestamp) < strtotime(date("Y-m-d 23:59:59"))) {
+            $time_state = "PM";
+        }else if(strtotime($timestamp) == strtotime(date("Y-m-d 00:00:00"))){
+            $time_state = "MN";
+        }
+        $time = "$time_sent $time_state";
+        return $time;
     }
 
     function searchConvoIdViaMessageAttribute($ts, $msg, $recipients) {
