@@ -3288,7 +3288,7 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
 
-        var_dump($inbox_outbox_collection);
+        // var_dump($inbox_outbox_collection);
 
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
@@ -3354,6 +3354,9 @@ class ChatMessageModel {
         $outbox_filter_query = "";
         $inbox_outbox_collection = [];
         $convo_id_container = [];
+        if(empty($offices)){
+            $offices = ["mlgu","blgu","lewc","plgu","lewc","mlgu","plgu","blgu"];
+        }
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
 
         foreach ($contact_lists as $mobile_data) {
@@ -3469,13 +3472,12 @@ class ChatMessageModel {
                 $counter++;
             }
         }
-
         $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id = '".$site."' WHERE ".$site_office_query.";";
-
         $mobile_number = $this->dbconn->query($mobile_data_query);
         while ($row = $mobile_number->fetch_assoc()) {
             array_push($mobile_data_container, $row);
         }
+
         return $mobile_data_container;
     }
 
