@@ -42,11 +42,11 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($quickInboxMessages));
             } else if ($msgType == "smsloadquickinboxunregisteredrequest") {
 
-            } else if ($msgType == "getLEWCMobileDetailsForRoutine") { // LOUIE
+            } else if ($msgType == "getRoutineMobileIDsForRoutine") { // LOUIE
                 echo "Loading LEWC Mobile Details for routine...";
                 $sites = $decodedText->sites;
                 $offices = $decodedText->offices;
-                $exchanges = $this->chatModel->getLEWCMobileDetailsViaSiteName($offices,$sites);
+                $exchanges = $this->chatModel->getRoutineMobileIDsViaSiteName($offices,$sites);
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "latestAlerts") {
                 echo "Loading latest public alerts.";
