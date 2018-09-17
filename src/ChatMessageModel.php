@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        // $host = "192.168.150.75";
-        // $usr = "pysys_local";
-        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        $host = "192.168.150.75";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        $host = "localhost";
-        $usr = "root";
-        $pwd = "senslope";
+        // $host = "localhost";
+        // $usr = "root";
+        // $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -31,13 +31,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        // $host = "192.168.150.72";
-        // $usr = "pysys_local";
-        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        $host = "192.168.150.72";
+        $usr = "pysys_local";
+        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        $host = "localhost";
-        $usr = "root";
-        $pwd = "senslope";
+        // $host = "localhost";
+        // $usr = "root";
+        // $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
@@ -3482,8 +3482,6 @@ class ChatMessageModel {
     function getRoutineMobileIDsViaSiteName($offices,$site_codes) {
         $where = "";
         $counter = 0;
-        echo "OFFICES\n";
-        var_dump($offices);
         $site_office_query = "";
         $mobile_id_container = [];
         foreach ($offices as $office) {
@@ -3498,8 +3496,6 @@ class ChatMessageModel {
         }
 
         $mobile_data_query = "SELECT DISTINCT mobile_id FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id WHERE ".$site_office_query.";"; 
-
-        var_dump($mobile_data_query);
 
         $execute_query = $this->dbconn->query($mobile_data_query);
         if ($execute_query->num_rows > 0) {
