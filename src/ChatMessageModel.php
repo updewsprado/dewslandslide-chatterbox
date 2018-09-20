@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -31,13 +31,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.72";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
@@ -3991,6 +3991,8 @@ class ChatMessageModel {
     }
 
     function fetchEventTemplate($template_data) {
+        // var_dump($template_data);
+        // echo "========================================================";
         $site_query = "SELECT * FROM sites WHERE site_code = '".$template_data->site_name."';";
         $site_container = [];
         $ewi_backbone_container = [];
@@ -4008,7 +4010,7 @@ class ChatMessageModel {
 
         if($template_data->alert_level == "A0") {
             $alert_status = null;
-            if($template_data->event_category == "event" && $template_data->alert_status == "Event"){// for lowering
+            if($template_data->event_category == "event"){// for lowering
                 $alert_status = "Lowering";
             }else {// for extended
                 $alert_status = "Extended";
@@ -4046,8 +4048,11 @@ class ChatMessageModel {
             echo "0 results\n";
         }
         
+        if ($template_data->alert_level == "ND"){
+            $template_data->alert_level = "A1";
+            $extended_day = $template_data->ewi_details->day;
+        }
 
-        if ($template_data->alert_level == "ND"){$template_data->alert_level = "A1";}
         $alert_level = str_replace('A','Alert ',$template_data->alert_level);
         $recom_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$alert_level."' AND alert_status = '".$template_data->alert_status."';";
         $execute_query = $this->dbconn->query($recom_query);
@@ -4068,6 +4073,7 @@ class ChatMessageModel {
             "formatted_data_timestamp" => $template_data->formatted_data_timestamp,
             "data_timestamp" => $template_data->data_timestamp,
             "alert_level" => $alert_level,
+            "event_category" => $template_data->event_category,
             "extended_day" => $extended_day
         ];
 
@@ -4082,11 +4088,10 @@ class ChatMessageModel {
         $ewi_time = null;
         $greeting = null;
         date_default_timezone_set('Asia/Manila');
-        $current_date = date('Y-m-d H:i:s');
-
+        $current_date = date('Y-m-d H:i:s');//H:i:s
+        // var_dump($current_date);
         $final_template = $raw_data['backbone'][0]['template'];
         
-        var_dump($raw_data['site'][0]['purok']);
         if (($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL) && $raw_data['site'][0]['sitio'] != NULL) {
             $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
         } else if ($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) {
@@ -4106,43 +4111,56 @@ class ChatMessageModel {
         }else if(strtotime($current_date) >= strtotime(date("Y-m-d 18:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 23:59:59"))){
             $greeting = "gabi";
         }
+        // var_dump($greeting);
+        $time_of_release = strtotime($raw_data['data_timestamp']);
+        // $time_of_release = date("2018-09-21 02:30:00");
+        // $datetime = explode(" ",$time_of_release);
+        // $time = strtotime($datetime[1]);
 
-        $time_of_release = $raw_data['data_timestamp'];
-        // $time_stamp = date("Y-m-d 02:30:00");
-        $datetime = explode(" ",$time_of_release);
-        $time = $datetime[1];
-
-        if(strtotime($time) >= date("00:00:00") && strtotime($time) <= date("03:59:59")){
+        if($time_of_release >= strtotime(date("Y-m-d 00:00:00")) && $time_of_release <= strtotime(date("Y-m-d 04:00:00"))){
             $date_submission = "mamaya";
             $time_submission = "bago mag-07:30 AM";
             $ewi_time = "04:00 AM";
-        } else if(strtotime($time) >= date("04:00:00") && strtotime($time) <= date("07:59:59")){
+        } else if($time_of_release >= strtotime(date("Y-m-d 04:00:00")) && $time_of_release <= strtotime(date("Y-m-d 07:59:59"))){
             $date_submission = "mamaya";
             $time_submission = "bago mag-07:30 AM";
             $ewi_time = "08:00 AM";
-        } else if(strtotime($time) >= date("08:00:00") && strtotime($time) <= date("15:59:59")){
+        } else if($time_of_release >= strtotime(date("Y-m-d 08:00:00")) && $time_of_release <= strtotime(date("Y-m-d 15:59:59"))){
             $date_submission = "mamaya";
             $time_submission = "bago mag-3:30 PM";
             $ewi_time = "04:00 PM";
-        } else if(strtotime($time) >= date("16:00:00") && strtotime($time) <= date("19:59:59")){
+        } else if($time_of_release >= strtotime(date("Y-m-d 16:00:00")) && $time_of_release <= strtotime(date("Y-m-d 19:59:59"))){
             $date_submission = "bukas";
             $time_submission = "bago mag-7:30 AM";
             $ewi_time = "08:00 PM";
-        } else if(strtotime($time) >= date("20:00:00")){
+        } else if($time_of_release >= strtotime(date("Y-m-d 20:00:00"))){
             $date_submission = "bukas";
             $time_submission = "bago mag-7:30 AM";
             $ewi_time = "12:00 MN";
         } else {
-            echo "Error Occured: Please contact Administrator";
+            $date_submission = "mamaya";
+            $time_submission = "bago mag-07:30 AM";
+            $ewi_time = "04:00 AM";
         }
 
-        if($raw_data['alert_level'] == "Alert 0"){
+        if($raw_data['alert_level'] == "Alert 0" || $raw_data['event_category'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
             $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
             $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
             $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
             $final_template = str_replace("(greetings)",$greeting,$final_template);
-            if($raw_data["recommended_response"][0]["alert_status"] == "Extended"){
+            if($raw_data['event_category'] == "extended"){
+                $extended_day_text = null;
+                if($raw_data['extended_day'] == 3){
+                    $extended_day_text = "susunod na routine";
+                }else if($raw_data['extended_day'] == 2) {
+                    $extended_day_text = "ikalawang araw ng 3-day extended";
+                }else if($raw_data['extended_day'] == 1) {
+                    $extended_day_text = "unang araw ng 3-day extended";
+                }
                 $final_template = str_replace("(current_date)",$raw_data['formatted_data_timestamp'],$final_template);
+                $final_template = str_replace("(nth-day-extended)",$extended_day_text ,$final_template);
+            }else if ($raw_data['event_category'] == "event") {
+                $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
                 $final_template = str_replace("(nth-day-extended)",$raw_data['extended_day'] . "-day" ,$final_template);
             }
         }else {
