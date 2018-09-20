@@ -4048,7 +4048,6 @@ class ChatMessageModel {
             echo "0 results\n";
         }
         
-        echo $template_data->alert_level;
         if ($template_data->alert_level == "ND"){
             $template_data->alert_level = "A1";
             $extended_day = $template_data->ewi_details->day;
@@ -4144,7 +4143,7 @@ class ChatMessageModel {
             $ewi_time = "04:00 AM";
         }
 
-        if($raw_data['alert_level'] == "Alert 0" || $raw_data['alert_level'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
+        if($raw_data['alert_level'] == "Alert 0" || $raw_data['event_category'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
             $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
             $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
             $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
