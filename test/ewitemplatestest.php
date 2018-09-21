@@ -186,4 +186,143 @@ final class EwiTemplatesTest extends TestCase {
   	$this->assertEquals($greetingExpected, $greeting);
   }
 
+  /***************************************************************************/
+  // test Generated extended day messages
+  /***************************************************************************/
+
+  public function testExtended_day_3() {
+    $day = 3;
+    $get_extended_text = $this->ewiTemplates->generateExtendedDayMessage($day);
+    $text_expected = "susunod na routine";
+
+    $this->assertEquals($text_expected, $get_extended_text);
+  }
+
+  public function testExtended_day_2() {
+    $day = 2;
+    $get_extended_text = $this->ewiTemplates->generateExtendedDayMessage($day);
+    $text_expected = "huling araw ng 3-day extended";
+
+    $this->assertEquals($text_expected, $get_extended_text);
+  }
+
+  public function testExtended_day_1() {
+    $day = 1;
+    $get_extended_text = $this->ewiTemplates->generateExtendedDayMessage($day);
+    $text_expected = "ikalawang araw ng 3-day extended";
+
+    $this->assertEquals($text_expected, $get_extended_text);
+  }
+
+
+  public function testSiteDetails_bak() {
+    $site_details = [
+      "site_code" => 2,
+      "site_code" => "bak",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Poblacion",
+      "municipality" => "Bakun",
+      "province" => "Benguet",
+      "region" => "CAR",
+      "psgc_source" => 141103009,
+      "season" => 2
+    ];
+    $site_container = [$site_details];
+    $raw_template = [
+      "site" => $site_container
+    ];
+    $generated_site_details = $this->ewiTemplates->generateSiteDetails($raw_template);
+    $expected_site_details = "Poblacion, Bakun, Benguet";
+    $this->assertEquals($expected_site_details, $generated_site_details);
+  }
+
+  public function testSiteDetails_blc() {
+    $site_details = [
+      "site_code" => 6,
+      "site_code" => "blc",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Boloc",
+      "municipality" => "Tubungan",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63046016,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $raw_template = [
+      "site" => $site_container
+    ];
+    $generated_site_details = $this->ewiTemplates->generateSiteDetails($raw_template);
+    $expected_site_details = "Boloc, Tubungan, Iloilo";
+    $this->assertEquals($expected_site_details, $generated_site_details);
+  }
+
+  public function testSiteDetails_pug() {
+    $site_details = [
+      "site_code" => 42,
+      "site_code" => "pug",
+      "purok" => "",
+      "sitio" => "Longlong",
+      "barangay" => "Puguis",
+      "municipality" => "La Trinidad",
+      "province" => "Benguet",
+      "region" => "CAR",
+      "psgc_source" => 141110013,
+      "season" => 2
+    ];
+    $site_container = [$site_details];
+    $raw_template = [
+      "site" => $site_container
+    ];
+    $generated_site_details = $this->ewiTemplates->generateSiteDetails($raw_template);
+    $expected_site_details = "Longlong, Puguis, La Trinidad, Benguet";
+    $this->assertEquals($expected_site_details, $generated_site_details);
+  }
+
+  public function testSiteDetails_umi() {
+    $site_details = [
+      "site_code" => 2,
+      "site_code" => "bak",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $raw_template = [
+      "site" => $site_container
+    ];
+    $generated_site_details = $this->ewiTemplates->generateSiteDetails($raw_template);
+    $expected_site_details = "Umingan, Alimodian, Iloilo";
+    $this->assertEquals($expected_site_details, $generated_site_details);
+  }
+
+  public function testSiteDetails_tue() {
+    $site_details = [
+      "site_code" => 2,
+      "site_code" => "bak",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Tue",
+      "municipality" => "Tadian",
+      "province" => "Mt. Province",
+      "region" => "CAR",
+      "psgc_source" => 144410019,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $raw_template = [
+      "site" => $site_container
+    ];
+    $generated_site_details = $this->ewiTemplates->generateSiteDetails($raw_template);
+    $expected_site_details = "Tue, Tadian, Mt. Province";
+    $this->assertEquals($expected_site_details, $generated_site_details);
+  }
+
 }

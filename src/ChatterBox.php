@@ -250,9 +250,8 @@ class ChatterBox implements MessageComponentInterface {
                 $exchanges = $this->chatModel->fetchTeamsForContactSettings();
                 $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
-                // var_dump($decodedText->data);
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
-                if($decodedText->data->internal_alert_level == "A0"){
+                if($decodedText->data->internal_alert_level == "A0" || $decodedText->data->internal_alert_level == "ND"){
                     $internal_alert = "A0-0";
                     $internal_alert = explode('-',$internal_alert);
                 }else {
