@@ -33,6 +33,9 @@ class EwiTemplate {
       $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
     }
 
+    $time_of_release = strtotime($raw_data['data_timestamp']);
+    $greeting = $this->generateGreetingsMessage($time_of_release);
+    echo $greeting;
     if(strtotime($current_date) >= strtotime(date("Y-m-d 00:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 11:59:59"))){
       $greeting = "umaga";
     }else if(strtotime($current_date) >= strtotime(date("Y-m-d 12:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 13:00:00"))){
@@ -43,7 +46,7 @@ class EwiTemplate {
       $greeting = "gabi";
     }
     // var_dump($greeting);
-    $time_of_release = strtotime($raw_data['data_timestamp']);
+    
     // $time_of_release = date("2018-09-21 02:30:00");
     // $datetime = explode(" ",$time_of_release);
     // $time = strtotime($datetime[1]);
@@ -193,7 +196,30 @@ class EwiTemplate {
   }
 
 
-  function fillBackboneTemplate() {
+  function generateExtendedDayMessage($day) {
+    if($day == 3){
+        $extended_day_message = "susunod na routine";
+    }else if($day == 2) {
+        $extended_day_message = "huling araw ng 3-day extended";
+    }else if($day == 1) {
+        $extended_day_message = "ikalawang araw ng 3-day extended";
+    }
 
+    return $extended_day_message;
+  }
+
+
+  function generateSiteDetails($raw_data) {
+    if (($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL) && $raw_data['site'][0]['sitio'] != NULL) {
+        $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+    } else if ($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) {
+         $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+    } else if (($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) && ($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL)) {
+        $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+    } else {
+         $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+    }
+
+    return $reconstructed_site_details;
   }
 }
