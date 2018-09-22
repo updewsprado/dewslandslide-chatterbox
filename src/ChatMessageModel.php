@@ -16,9 +16,9 @@ class ChatMessageModel {
         $usr = "pysys_local";
         $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        $host = "localhost";
-        $usr = "root";
-        $pwd = "senslope";
+        // $host = "localhost";
+        // $usr = "root";
+        // $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
