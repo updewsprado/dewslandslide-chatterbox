@@ -325,4 +325,60 @@ final class EwiTemplatesTest extends TestCase {
     $this->assertEquals($expected_site_details, $generated_site_details);
   }
 
+  public function testEWI_A1_R () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 1";
+    $tech_info = [["key_input" => "Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO ASSIST THE HOUSEHOLDS AT RISK IN RESPONDING TO A HIGHER ALERT"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 1 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO ASSIST THE HOUSEHOLDS AT RISK IN RESPONDING TO A HIGHER ALERT. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+
+
 }
