@@ -125,6 +125,37 @@ class EwiTemplate {
     return $final_template;
   }
 
+  function generateEwiFinalMessage($raw_data, $time_messages, $greeting) {
+    $final_template = $raw_data['backbone'][0]['template'];
+    $site_details = $this->generateSiteDetails($raw_data);
+    if($raw_data['alert_level'] == "Alert 0" || $raw_data['event_category'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
+      $final_template = str_replace("(site_location)",$site_details,$final_template);
+      $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+      $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+      $final_template = str_replace("(greetings)",$greeting,$final_template);
+      if($raw_data['event_category'] == "extended"){
+          $extended_day_text = $this->generateExtendedDayMessage($raw_data['extended_day']);
+          $final_template = str_replace("(current_date)",$raw_data['formatted_data_timestamp'],$final_template);
+          $final_template = str_replace("(nth-day-extended)",$extended_day_text ,$final_template);
+      }else if ($raw_data['event_category'] == "event") {
+          $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+          $final_template = str_replace("(nth-day-extended)",$raw_data['extended_day'] . "-day" ,$final_template);
+      }
+    }else {
+      $final_template = str_replace("(site_location)",$site_details,$final_template);
+      $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
+      $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
+      $final_template = str_replace("(technical_info)",$raw_data['tech_info'][0]['key_input'],$final_template);
+      $final_template = str_replace("(recommended_response)",$raw_data['recommended_response'][0]['key_input'],$final_template);
+      $final_template = str_replace("(gndmeas_date_submission)",$time_messages["date_submission"],$final_template);
+      $final_template = str_replace("(gndmeas_time_submission)",$time_messages["time_submission"],$final_template);
+      $final_template = str_replace("(next_ewi_time)",$time_messages["next_ewi_time"],$final_template);
+      $final_template = str_replace("(greetings)",$greeting,$final_template);
+    }
+
+    return $final_template;
+  }
+
 
   function generateTimeMessages($release_time) {
     if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 04:00:00"))){
