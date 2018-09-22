@@ -16,9 +16,9 @@ class ChatMessageModel {
         $usr = "pysys_local";
         $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -3667,8 +3667,10 @@ class ChatMessageModel {
         if ($data['tag_important'] != true) {
             $insert_tag_status = $this->insertTag($data); 
             $full_data['tag_status'] = $insert_tag_status;
+            $full_data['status'] = true;
         } else {
             $full_data['tag_status'] = $this->tagToNarratives($data);
+            $full_data['status'] = true;
         }
         return $full_data;
     }
@@ -3676,7 +3678,7 @@ class ChatMessageModel {
     function tagToNarratives($data) {
         $event_container = [];
         $offices = [];
-
+        $result = null;
         if (isset($data['sms_id']) == true) {
             $insert_tag_status = $this->insertTag($data);
             if ($insert_tag_status['status'] == true) {

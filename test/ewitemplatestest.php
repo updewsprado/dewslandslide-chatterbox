@@ -217,7 +217,7 @@ final class EwiTemplatesTest extends TestCase {
 
   public function testSiteDetails_bak() {
     $site_details = [
-      "site_code" => 2,
+      "site_id" => 2,
       "site_code" => "bak",
       "purok" => "",
       "sitio" => "",
@@ -239,7 +239,7 @@ final class EwiTemplatesTest extends TestCase {
 
   public function testSiteDetails_blc() {
     $site_details = [
-      "site_code" => 6,
+      "site_id" => 6,
       "site_code" => "blc",
       "purok" => "",
       "sitio" => "",
@@ -261,7 +261,7 @@ final class EwiTemplatesTest extends TestCase {
 
   public function testSiteDetails_pug() {
     $site_details = [
-      "site_code" => 42,
+      "site_id" => 42,
       "site_code" => "pug",
       "purok" => "",
       "sitio" => "Longlong",
@@ -283,8 +283,8 @@ final class EwiTemplatesTest extends TestCase {
 
   public function testSiteDetails_umi() {
     $site_details = [
-      "site_code" => 2,
-      "site_code" => "bak",
+      "site_id" => 50,
+      "site_code" => "umi",
       "purok" => "",
       "sitio" => "",
       "barangay" => "Umingan",
@@ -305,8 +305,8 @@ final class EwiTemplatesTest extends TestCase {
 
   public function testSiteDetails_tue() {
     $site_details = [
-      "site_code" => 2,
-      "site_code" => "bak",
+      "site_id" => 49,
+      "site_code" => "tue",
       "purok" => "",
       "sitio" => "",
       "barangay" => "Tue",
