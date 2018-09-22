@@ -3487,6 +3487,45 @@ class ChatMessageModel {
         return $mobile_data_container;
     }
 
+    function getLEWCMobileDetailsViaSiteName($office,$site_codes) {
+        $where = "";
+        $counter = 0;
+        $site_office_query = "";
+        $mobile_id_container = [];
+        foreach ($site_codes as $site_code) {
+            if ($counter == 0) {
+                $site_office_query = "org_name = 'LEWC' AND fk_site_id IN (".$site_code."";
+            } else {
+                $site_office_query = $site_office_query.", ".$site_code."";
+            }
+            // if ($counter == 0) { // LOUIE - which is better
+            //     $site_office_query = "(org_name = '".$office."' AND fk_site_id = '".$site_code."')";
+            // } else {
+            //     $site_office_query = $site_office_query." OR (org_name = '".$office."' AND fk_site_id = '".$site_code."')";
+            // }            
+            $counter++;
+        }
+
+        $mobile_data_query = "SELECT DISTINCT mobile_id FROM user_organization AS uo INNER JOIN user_mobile AS um ON um.user_id = uo.user_id INNER JOIN users ON users.user_id = uo.user_id WHERE ".$site_office_query.");";
+
+        // $mobile_data_query = "SELECT DISTINCT mobile_id FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id WHERE ".$site_office_query.";"; // Which is better?
+
+        var_dump($mobile_data_query);
+
+        $execute_query = $this->dbconn->query($mobile_data_query);
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($mobile_id_container, $row['mobile_id']);
+            }
+            $full_data['data'] = $mobile_id_container;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }        
+        $full_data['type'] = "getLEWCMobileDetailsViaSiteName";
+        return $this->utf8_encode_recursive($full_data); 
+    }
+
     function sendSms($recipients, $message) {
         $sms_status_container = [];
         $current_ts = date("Y-m-d H:i:s", time());
@@ -3887,12 +3926,13 @@ class ChatMessageModel {
     }
 
     function fetchSitesForRoutine() {
-        $sites_query = "SELECT site_code,season from sites;";
+        $sites_query = "SELECT site_id,site_code,season from sites;";
         $sites = [];
         $execute_query = $this->dbconn->query($sites_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
                 $raw = [
+                    "id" => $row['site_id'],
                     "site" => $row['site_code'],
                     "season" => $row['season']
                 ];
