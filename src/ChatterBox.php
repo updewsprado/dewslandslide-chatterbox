@@ -271,6 +271,12 @@ class ChatterBox implements MessageComponentInterface {
                         $sites = [$decodedText->data->site_id];
                         $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
                         break;
+                    case 'event_level_3':
+                        $alert_status = 'Event-Level3';
+                        $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                        $sites = [$decodedText->data->site_id];
+                        $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
+                        break;    
                     case 'extended':
                         $alert_status = 'Extended';
                         $offices = ['LEWC'];
