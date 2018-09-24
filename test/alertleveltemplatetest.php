@@ -229,6 +229,114 @@ final class EwiTemplatesTest extends TestCase {
     $this->assertEquals($expected_output, $ewi_template);
   }
 
+  public function testEWI_A2_gR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_gE () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
   public function testEWI_A2_s () {
     date_default_timezone_set('Asia/Manila');
     $current_date = date('Y-m-d H:i:s');//H:i:s
@@ -283,6 +391,114 @@ final class EwiTemplatesTest extends TestCase {
     $this->assertEquals($expected_output, $ewi_template);
   }
 
+  public function testEWI_A2_sR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ang sensor ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ang sensor ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_sE () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ang sensor ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ang sensor ng significant ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
   public function testEWI_A2_m () {
     date_default_timezone_set('Asia/Manila');
     $current_date = date('Y-m-d H:i:s');//H:i:s
@@ -331,6 +547,276 @@ final class EwiTemplatesTest extends TestCase {
 
     Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
     Naka-detect ng bagong cracks sa site. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_mR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_mE () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_gD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng significant ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng significant ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_sD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ang sensor ng significant ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ang sensor ng significant ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A2_mD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa site. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa site. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
 
     Salamat.";
     // echo $ewi_template;
@@ -493,7 +979,437 @@ final class EwiTemplatesTest extends TestCase {
     $this->assertEquals($expected_output, $ewi_template);
   }
 
+  public function testEWI_A3_gR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
 
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+public function testEWI_A3_sR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ang sensor ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ang sensor ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_mR () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraan o kasalukuyang ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_gE () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng critical ground movement. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_mE () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa site. Maaaring magkaroon ng landslide dahil sa nakaraang lindol o earthquake. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_gD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Nakapagsukat ang LEWC ng critical ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Nakapagsukat ang LEWC ng critical ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_sD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ang sensor ng critical ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ang sensor ng critical ground movement. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
+
+  public function testEWI_A3_mD () {
+    date_default_timezone_set('Asia/Manila');
+    $current_date = date('Y-m-d H:i:s');//H:i:s
+    $alert_level = "Alert 2";
+    $tech_info = [["key_input" => "Naka-detect ng bagong cracks sa siteNagkaroon ng landslide at maaaring magkaroon pa ng paggalaw. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan"]];
+    $recommended_reponse = [["key_input" => "Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK"]];
+    $time = strtotime("07:00:00");
+    $greeting = $this->ewiTemplates->generateGreetingsMessage($time);
+    $release_time = strtotime("08:05:00");
+    $time_messages = $this->ewiTemplates->generateTimeMessages($release_time);
+    $site_details = [
+      "site_id" => 50,
+      "site_code" => "umi",
+      "purok" => "",
+      "sitio" => "",
+      "barangay" => "Umingan",
+      "municipality" => "Alimodian",
+      "province" => "Iloilo",
+      "region" => "VI",
+      "psgc_source" => 63002053,
+      "season" => 1
+    ];
+    $site_container = [$site_details];
+    $backbone_template = [["template" => "Magandang (greetings) po.
+
+    (alert_level) ang alert level sa (site_location) ngayong (current_date_time).
+    (technical_info). (recommended_response). Inaasahan namin ang pagpapadala ng LEWC ng ground data (gndmeas_date_submission) (gndmeas_time_submission). Ang susunod na Early Warning Information ay mamayang (next_ewi_time).
+
+    Salamat."]];
+
+    $raw_template = [
+      "site" => $site_container,
+      "backbone" => $backbone_template,
+      "tech_info" => $tech_info,
+      "recommended_response" => $recommended_reponse,
+      "formatted_data_timestamp" => "September 25, 2018 8:00 AM",
+      "data_timestamp" => "2018-09-25 7:30:00",
+      "alert_level" => $alert_level,
+      "event_category" => "event",
+      "extended_day" => 0
+    ];
+
+    $ewi_template = $this->ewiTemplates->generateEwiFinalMessage($raw_template, $time_messages, $greeting);
+    
+    $expected_output = "Magandang umaga po.
+
+    Alert 2 ang alert level sa Umingan, Alimodian, Iloilo ngayong September 25, 2018 8:00 AM.
+    Naka-detect ng bagong cracks sa siteNagkaroon ng landslide at maaaring magkaroon pa ng paggalaw. Nag-request ang LEWC/LGU ng monitoring sa site dahil sa malakas na pag ulan. Ang recommended response ay PREPARE TO EVACUATE THE HOUSEHOLDS AT RISK. Inaasahan namin ang pagpapadala ng LEWC ng ground data mamaya bago mag-11:30 AM. Ang susunod na Early Warning Information ay mamayang 12:00 NN.
+
+    Salamat.";
+    // echo $ewi_template;
+    $this->assertEquals($expected_output, $ewi_template);
+  }
 
 
 
