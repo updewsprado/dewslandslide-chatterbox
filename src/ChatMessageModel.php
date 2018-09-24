@@ -2751,7 +2751,7 @@ class ChatMessageModel {
         $sites = [];
         $ctr = 0;
         $all_sites_query = "SELECT * FROM sites;";
-        $result = $this->dbconn->query($all_sites_query);
+        $result = $this->senslope_dbconn->query($all_sites_query);
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 $sites[$ctr]["site_id"] = $row["site_id"];
