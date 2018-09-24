@@ -31,7 +31,7 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
+        $host = "192.168.150.75";
         $usr = "pysys_local";
         $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
