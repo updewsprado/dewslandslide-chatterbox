@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -31,13 +31,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.72";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
@@ -4542,14 +4542,18 @@ class ChatMessageModel {
         $extended_sites_query = "SELECT sites.site_code,public_alert_event.validity from sites INNER JOIN public_alert_event ON sites.site_id=public_alert_event.site_id WHERE public_alert_event.status = 'extended' order by sites.site_code";
         $this->checkConnectionDB($extended_sites_query);
         $result = $this->senslope_dbconn->query($extended_sites_query);
-        $current_date = strtotime(date("Y/m/d"));
+
         while($row = $result->fetch_assoc()) {
-            $secs = $current_date - strtotime($row['validity']);
-            $days = $secs / 86400;
-            if ($days > 0.6) {
-                array_push($extended_sites, $row['site_code']); 
+
+            $start = strtotime('tomorrow noon', strtotime($row['validity']));
+            $end = strtotime('+2 days', $start);
+            $day = 3 - ceil(($end - (60*60*12) - strtotime('now'))/(60*60*24));
+
+            if ($day > 0 && $day <= 3) {
+                array_push($extended_sites, $row['site_code']);
             }
         }
+
         $final_sites = [];
         foreach ($extended_sites as $extnd_site) {
             if (sizeOf($sites_cant_send_gndmeas) > 0) {
