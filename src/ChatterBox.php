@@ -263,20 +263,21 @@ class ChatterBox implements MessageComponentInterface {
                 }else {
                     $internal_alert = explode('-',$decodedText->data->internal_alert_level);
                 }
-              
+
                 switch ($decodedText->event_category) {
                     case 'event':
-                        $alert_status = 'Event';
-                        $offices = ['BLGU','PLGU','LEWC','MLGU'];
-                        $sites = [$decodedText->data->site_id];
-                        $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
-                        break;
-                    case 'event_level_3':
-                        $alert_status = 'Event-Level3';
-                        $offices = ['BLGU','PLGU','LEWC','MLGU'];
-                        $sites = [$decodedText->data->site_id];
-                        $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
-                        break;    
+                        if ($internal_alert[0] != "A3") {
+                            $alert_status = 'Event';
+                            $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                            $sites = [$decodedText->data->site_id];
+                            $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
+                        } else {
+                             $alert_status = 'Event-Level3';
+                            $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                            $sites = [$decodedText->data->site_id];
+                            $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);                           
+                        }
+                        break;  
                     case 'extended':
                         $alert_status = 'Extended';
                         $offices = ['LEWC'];
@@ -286,11 +287,10 @@ class ChatterBox implements MessageComponentInterface {
                     default:
                         break;
                 }
-
                 $data = [
                     "ewi_details" => $decodedText->data,
                     "event_category" => $decodedText->event_category,
-                    "internal_alert" => $internal_alert[1],
+                    "internal_alert" => $internal_alert[1][0],
                     "alert_level" => substr($decodedText->data->internal_alert_level, 0, 2),
                     "alert_status" => $alert_status,
                     "site_name" => $decodedText->data->site_code,
