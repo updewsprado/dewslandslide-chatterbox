@@ -3893,7 +3893,7 @@ class ChatMessageModel {
     }
 
     function fetchRoutineReminder() {
-        $routine_query = "SELECT * from ewi_backbone_template WHERE alert_status = 'Routine-Reminder';";
+        $routine_query = "SELECT * from ewi_backbone_template WHERE alert_status = 'Reminder';";
         $template = [];
         $execute_query = $this->dbconn->query($routine_query);
         if ($execute_query->num_rows > 0) {
@@ -4345,5 +4345,252 @@ class ChatMessageModel {
         $full_data['type'] = "fetchedTeams";
         $full_data['data'] = $teams;
         return $full_data;
+    }
+
+    function flagGndMeasSettingsSentStatus() {
+        $overwrite_query = "UPDATE ground_meas_reminder_automation SET status = 1 WHERE status = 0";
+        $this->checkConnectionDB($overwrite_query);
+        $result = $this->dbconn->query($overwrite_query);
+    }
+
+    function getGroundMeasurementsForToday() {
+        if (strtotime(date('h:i A')) > strtotime('7:30 AM') && strtotime(date('h:m A')) < strtotime('11:30 AM')) {
+            $ground_time = '11:30 AM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        } else if (strtotime(date('h:i A')) > strtotime('11:30 AM') && strtotime(date('h:i A')) < strtotime('2:30 PM')) {
+            $ground_time = '3:30 PM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        } else {
+            $ground_time = '7:30 AM';
+            $current_date = date_format(date_sub(date_create(date('Y-m-d ').$ground_time),date_interval_create_from_date_string("4 hours")),"Y-m-d H:i:s");
+        }
+
+        $gndmeas_sent_sites = [];
+        $sql = "SELECT * FROM gintags 
+                INNER JOIN smsinbox_users ON smsinbox_users.inbox_id = table_element_id 
+                INNER JOIN gintags_reference ON gintags.tag_id_fk = gintags_reference.tag_id
+                where (gintags_reference.tag_name = '#CantSendGroundMeas' OR gintags_reference.tag_name = '#GroundMeas' OR gintags_reference.tag_name = '#GroundObs') AND smsinbox_users.ts_sms < '".date('Y-m-d ').$ground_time."' AND smsinbox_users.ts_sms > '".$current_date."' limit 100;";
+        $result = $this->dbconn->query($sql);
+        if ($result->num_rows > 0) {
+            foreach ($result as $tagged) {
+                $sql = "SELECT DISTINCT site_code FROM user_mobile INNER JOIN user_organization ON user_mobile.user_id = user_organization.user_id INNER JOIN sites ON user_organization.fk_site_id = sites.site_id WHERE user_mobile.sim_num like '%".substr($tagged['sim_num'],-10)."%';";
+                $get_sites = $this->dbconn->query($sql);
+                if ($get_sites->num_rows > 0) {
+                    foreach ($get_sites as $site) {
+                        if (sizeOf($gndmeas_sent_sites) == 1) {
+                            array_push($gndmeas_sent_sites, $site['sitename']);
+                        } else {
+                            if (!in_array($site['sitename'],$gndmeas_sent_sites)) {
+                                array_push($gndmeas_sent_sites,$site['sitename']);
+                            }
+                        }
+                    }
+                } else {
+                    echo "No contacts fetched. \n\n";
+                }
+            }
+        } else {
+            echo "No Ground measurement received.\n\n";
+        }
+        return array_unique($gndmeas_sent_sites);
+    }
+
+    function checkForGndMeasSettings($time) {
+        $settings_container = [];
+        $template_query = "SELECT * FROM ground_meas_reminder_automation WHERE status = 0 and timestamp = '".$time."' order by site";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        while ($row = $result->fetch_assoc()) {
+            array_push($settings_container, $row);
+        }
+        return $settings_container;
+    }
+
+    function routineSites() {
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
+        $sql = "SELECT DISTINCT site_code,status from sites INNER JOIN public_alert_event ON sites.site_id=public_alert_event.site_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' order by site_code";
+        $result = $this->senslope_dbconn->query($sql);
+        $site_routine_collection['sitename'] = [];
+        $site_routine_collection['status'] = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                array_push($site_routine_collection['sitename'],$row['site_code']);
+                array_push($site_routine_collection['status'],$row['status']);
+            }
+        } else {
+            echo "0 results";
+        }
+        $sql = "SELECT site_code,season from sites";
+        $result = $this->dbconn->query($sql);
+        $sites_on_routine = [];
+        $site_collection['sitename'] = [];
+        $site_collection['season'] = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                array_push($site_collection['sitename'],$row['site_code']);
+                array_push($site_collection['season'],$row['season']);
+            }
+        } else {
+            echo "0 results";
+        }
+        $on_routine_raw = array_diff($site_collection['sitename'],$site_routine_collection['sitename']);
+        
+        $on_routine['sitename'] = [];
+        $on_routine['season'] = [];
+        foreach ($on_routine_raw as $sites) {
+            array_push($on_routine['sitename'], $sites);
+        }
+        for ($allsite_counter = 0; $allsite_counter < sizeof($site_collection['sitename']);$allsite_counter++) {
+            for ($raw_counter = 0; $raw_counter < sizeof($on_routine['sitename']);$raw_counter++) { 
+                if ($on_routine['sitename'][$raw_counter] == $site_collection['sitename'][$allsite_counter]) {
+                    array_push($on_routine['season'],$site_collection['season'][$allsite_counter]);
+                }
+            }
+        }
+        // [[s1],[s2]];
+        $wet = [[1,2,6,7,8,9,10,11,12], [5,6,7,8,9,10]];
+        $dry = [[3,4,5], [1,2,3,4,11,12]];
+        $month = (int) date("m"); // ex 3.
+        $today = date("l");
+        switch ($today) {
+            case 'Wednesday':
+                for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
+                    if (in_array($month,$dry[(int) ($on_routine['season'][$routine_counter]-1)])) {
+                        array_push($sites_on_routine, $on_routine['sitename'][$routine_counter]);
+                    }
+                }
+                break;
+            case 'Tuesday':
+            case 'Friday':
+                for ($routine_counter = 0; $routine_counter < sizeof($on_routine['sitename']); $routine_counter++) {
+                    if (in_array($month,$wet[(int) ($on_routine['season'][$routine_counter]-1)])){
+                        array_push($sites_on_routine, $on_routine['sitename'][$routine_counter]);
+                    }
+                }
+                break;
+        }
+        $final_sites = [];
+        foreach ($sites_on_routine as $rtn_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                   if (strtoupper($rtn_site) != $cant_send) {
+                        array_push($final_sites, $rtn_site);
+                   }
+                }
+            } else {
+                $final_sites = $sites_on_routine;
+            }
+        }
+        $temp = [];
+        foreach (array_unique($final_sites) as $site) {
+            array_push($temp, $site);
+        }
+        return $temp;
+    }
+
+
+    function eventSites() {
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
+        $event_sites_query = "SELECT DISTINCT site_code,status,public_alert_release.event_id from sites INNER JOIN public_alert_event ON sites.site_id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by site_code";
+
+        $sites_with_stepup_alert = "SELECT DISTINCT site_code,status,public_alert_release.event_id from sites INNER JOIN public_alert_event ON sites.site_id=public_alert_event.site_id INNER JOIN public_alert_release ON public_alert_event.event_id = public_alert_release.event_id WHERE public_alert_event.status <> 'routine' AND public_alert_event.status <> 'finished' AND public_alert_event.status <> 'invalid' AND public_alert_event.status <> 'extended' and public_alert_release.internal_alert_level NOT LIKE 'A3%' order by site_code";
+
+        $alert_three = [];
+        $result = $this->senslope_dbconn->query($sites_with_stepup_alert);
+        while ($row = $result->fetch_assoc()) {
+            array_push($alert_three, $row['site_code']);
+        }
+        $event_sites = [];
+        $this->checkConnectionDB($event_sites_query);
+        $result = $this->senslope_dbconn->query($event_sites_query);
+        while ($row = $result->fetch_assoc()) {
+            array_push($event_sites, $row);
+        }
+        $final_sites = [];
+        foreach ($event_sites as $evt_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                   if (strtoupper($evt_site['site_code']) != strtoupper($cant_send)) {
+                        array_push($final_sites, $evt_site);
+                   }
+                }
+            } else {
+                $final_sites = $event_sites;
+            }
+        }
+        $temp_sites = [];
+        
+        foreach ($final_sites as $evt_site) {
+            if (sizeOf($alert_three) > 0) {
+                if (!in_array($evt_site['site_code'], $alert_three)) {
+                    array_push($temp_sites, $evt_site);
+                }
+            } else {
+                $temp_sites = $event_sites;
+            }
+        }
+        $temp = [];
+        foreach (array_unique($temp_sites,SORT_REGULAR) as $site) {
+            array_push($temp, $site);
+        }
+        return $temp;
+    }
+
+    function extendedSites() {
+        $extended_sites = [];
+        $sites_cant_send_gndmeas = $this->getGroundMeasurementsForToday();
+        $extended_sites_query = "SELECT sites.site_code,public_alert_event.validity from sites INNER JOIN public_alert_event ON sites.site_id=public_alert_event.site_id WHERE public_alert_event.status = 'extended' order by sites.site_code";
+        $this->checkConnectionDB($extended_sites_query);
+        $result = $this->senslope_dbconn->query($extended_sites_query);
+
+        while($row = $result->fetch_assoc()) {
+
+            $start = strtotime('tomorrow noon', strtotime($row['validity']));
+            $end = strtotime('+2 days', $start);
+            $day = 3 - ceil(($end - (60*60*12) - strtotime('now'))/(60*60*24));
+
+            if ($day > 0 && $day <= 3) {
+                array_push($extended_sites, $row['site_code']);
+            }
+        }
+
+        $final_sites = [];
+        foreach ($extended_sites as $extnd_site) {
+            if (sizeOf($sites_cant_send_gndmeas) > 0) {
+                foreach ($sites_cant_send_gndmeas as $cant_send) {
+                   if (strtoupper($extnd_site) != $cant_send) {
+                        array_push($final_sites, $extnd_site);
+                   }
+                }
+            } else {
+                $final_sites = $extended_sites;
+            }
+        }
+        $temp = [];
+        foreach (array_unique($final_sites) as $site) {
+            array_push($temp, $site);
+        }
+        return $temp;
+    }
+
+    function getGroundMeasurementReminderTemplate() {
+        $template_query = "SELECT template FROM ewi_backbone_template WHERE alert_status = 'GndMeasReminder'";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        return $result->fetch_assoc();
+    }
+
+    function insertGndMeasReminderSettings($site, $type, $template, $altered, $modified_by) {
+        if (strtotime(date('H:m:i A')) > strtotime('7:30 AM') && strtotime(date('H:m:i A')) < strtotime('11:30 AM')) {
+            $ground_time = '11:30 AM';
+        } else if (strtotime(date('H:m:i A')) > strtotime('11:30 AM') && strtotime(date('H:m:i A')) < strtotime('2:30 PM')) {
+            $ground_time = '2:30 PM';
+        } else {
+            $ground_time = '7:30 AM';
+        }
+        $template_query = "INSERT INTO ground_meas_reminder_automation VALUES (0,'".$type."','".$template."', 'LEWC', '".$site."','".$altered."','".$ground_time."',0, '".$modified_by."')";
+        $this->checkConnectionDB($template_query);
+        $result = $this->dbconn->query($template_query);
+        return $result; 
     }
 }
