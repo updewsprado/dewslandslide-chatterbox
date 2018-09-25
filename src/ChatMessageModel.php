@@ -25,13 +25,14 @@ class ChatMessageModel {
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
         } else {
+            echo $host . "\n";
             echo "Connection Established for comms_db... \n";
             return true;
         }
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.72";
+        $host = "192.168.150.75";
         $usr = "pysys_local";
         $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
@@ -44,6 +45,7 @@ class ChatMessageModel {
         if ($this->senslope_dbconn->connect_error) {
             die("Connection failed: " . $this->senslope_dbconn->connect_error);
         } else {
+            echo $host . "\n";
             echo "Connection Established for senslopedb... \n";
             return true;
         }
@@ -2148,6 +2150,7 @@ class ChatMessageModel {
         }
         $returnData['type'] = 'fetchedCmmtyContacts';
         $returnData['data'] = $returnCmmtyContacts;
+
         return $this->utf8_encode_recursive($returnData);
     }
 
@@ -2881,6 +2884,7 @@ class ChatMessageModel {
             $flag = false;
         }
 
+        /* Insert all mobile numbers to user_mobile table */
         for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
             try {
                 $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
@@ -2890,6 +2894,7 @@ class ChatMessageModel {
             }
         }
 
+        /* Insert all landline numbers to user_landlines table */
         for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
             try {
                 $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
@@ -2899,6 +2904,7 @@ class ChatMessageModel {
             }
         }
 
+        /* Prepare the WHERE filter for the PSGC query */
         $site_query = "";
         for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
             if ($counter == 0) {
@@ -2908,52 +2914,57 @@ class ChatMessageModel {
             }
         }
 
-        $psgc = [];
+        /* Get Site Details */
+        $site_details = [];
         $ctr = 0;
         try {
-            $get_psgc = "SELECT psgc FROM sites WHERE ".$site_query;
-            $psgc_collection = $this->dbconn->query($get_psgc);
-            while ($row = $psgc_collection->fetch_assoc()) {
-                $psgc[$ctr] = $row['psgc'];
+            $site_details_query = "SELECT site_id, site_code, psgc_source  FROM sites WHERE ".$site_query;
+            $site_collection = $this->dbconn->query($site_details_query);
+            while ($row = $site_collection->fetch_assoc()) {
+                $site_details[$ctr] = $row;
                 $ctr++;
             }
         } catch (Exception $e) {
             $flag = false;
-        }
+        }        
 
-        $org_scope_query = "";
+        /* Prepare org details query */
+        $org_query = "";
         for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
             if ($counter == 0) {
-                $org_scope_query = "org_name = '".$data->organizations[$counter]."'";
+                $org_query = "org_name = '".$data->organizations[$counter]."'";
             } else {
-                $org_scope_query = $org_scope_query." OR org_name = '".$data->organizations[$counter]."'";
+                $org_query = $org_query." OR org_name = '".$data->organizations[$counter]."'";
             }
         }
 
-        $scopes = [];
+        /* Get org details from database */
+        $org_details = [];
         $ctr = 0;
         try {
-            $get_org_scope = "SELECT org_scope FROM organization WHERE ".$org_scope_query;
-            $scope_collection = $this->dbconn->query($get_org_scope);
-            while ($row = $scope_collection->fetch_assoc()) {
-                $scopes[$ctr] = $row['org_scope'];
+            $get_org_scope = "SELECT * FROM organization WHERE ".$org_query;
+            $org_collection = $this->dbconn->query($get_org_scope);
+            while ($row = $org_collection->fetch_assoc()) {
+                $org_details[$ctr] = $row;
                 $ctr++;
             }
         } catch (Exception $e) {
             $flag = false;
-        }
+        }        
 
-        try {
+        /* Delete first, all users that already exists in user_organization table */
+        try { 
             $delete_orgs = "DELETE FROM user_organization WHERE users_id = '".$data->id."'";
             $result = $this->dbconn->query($delete_orgs);
         } catch (Exception $e) {
             $flag = false;
         }
 
-        for ($counter = 0; $counter < sizeof($psgc); $counter++) {
-            for ($sub_counter = 0; $sub_counter < sizeof($scopes); $sub_counter++) {
+        /* Insert into user_organization table the new community contact */
+        for ($counter = 0; $counter < sizeof($site_details); $counter++) {
+            for ($sub_counter = 0; $sub_counter < sizeof($org_details); $sub_counter++) {
                 try {
-                    $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$scopes[$sub_counter]."','".$psgc[$counter]."','')";
+                    $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$site_details[$counter]['site_id']."','".$org_details[$sub_counter]['org_name']."','".$org_details[$sub_counter]['org_id']."')";
                     $result_org = $this->dbconn->query($insert_org);
                 } catch (Exception $e) {
                     $flag = false;
@@ -2961,6 +2972,7 @@ class ChatMessageModel {
             }
         }
 
+        /* Insert into user_ewi_status table the new community contact */
         try {
             $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->id."')";
             $result = $this->dbconn->query($insert_ewi_status);
@@ -2968,14 +2980,18 @@ class ChatMessageModel {
             $flag = false;
         }
         
+        /* Return response message for notification toast */
         if ($flag == false) {
             $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
         } else {
             $return_data['return_msg'] = "Successfully added new contact.";
         }
         $return_data['status'] = $flag;
+
+        echo "\n" . $return_data['return_msg'] . "\n"; // Log to chatterbox log
         
-        $return_data['type'] = "newAddedCommContact";
+        // $return_data['type'] = "newAddedCommContact";
+        $return_data['type'] = "newCommunityContact";
         return $return_data;
     }
 
