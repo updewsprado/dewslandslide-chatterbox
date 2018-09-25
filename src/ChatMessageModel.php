@@ -2126,56 +2126,6 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function getAllOfficesAndSites() {
-        $fullData['type'] = 'loadofficeandsites';
-        $sqlOffices = "SELECT DISTINCT office FROM communitycontacts";
-        $this->checkConnectionDB($sqlOffices);
-        $result = $this->dbconn->query($sqlOffices);
-
-        $ctr = 0;
-        $returnOffices = "";
-
-        if ($result->num_rows > 0) {
-            $fullData['total_offices'] = $result->num_rows;
-            echo $result->num_rows . " results\n";
-            while ($row = $result->fetch_assoc()) {
-                $returnOffices[$ctr] = $row['office'];
-                $ctr = $ctr + 1;
-            }
-
-            $fullData['offices'] = $returnOffices;
-            echo "Offices data size: " . $this->getArraySize($returnOffices) . "\n";
-        }
-        else {
-            echo "0 results for offices\n";
-            $fullData['offices'] = null;
-        }
-        $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts order by sitename asc";
-        $this->checkConnectionDB($sqlSitenames);
-        $result = $this->dbconn->query($sqlSitenames);
-
-        $ctr = 0;
-        $returnSitenames = "";
-
-        if ($result->num_rows > 0) {
-            $fullData['total_sites'] = $result->num_rows;
-            echo $result->num_rows . " results\n";
-            while ($row = $result->fetch_assoc()) {
-                $returnSitenames[$ctr] = $row['sitename'];
-
-                $ctr = $ctr + 1;
-            }
-
-            $fullData['sitenames'] = $returnSitenames;
-            echo "Sitenames data size: " . $this->getArraySize($returnSitenames) . "\n";
-        }
-        else {
-            echo "0 results for sitenames\n";
-            $fullData['sitenames'] = null;
-        }
-        return $fullData;
-    }
-
     public function getAllCmmtyContacts() {
         $this->checkConnectionDB();
         $returnCmmtyContacts = [];
@@ -3294,8 +3244,6 @@ class ChatMessageModel {
             echo "No message fetched!";
         }
 
-        // var_dump($inbox_outbox_collection);
-
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
         $full_data['recipients'] = $mobile_number;
@@ -3503,18 +3451,22 @@ class ChatMessageModel {
             }
         }
 
-        $mobile_data_query = "SELECT DISTINCT mobile_id FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id WHERE ".$site_office_query.";"; 
+        $mobile_data_query = "SELECT DISTINCT mobile_id,fk_site_id FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id WHERE ".$site_office_query." order by fk_site_id;";
 
         $execute_query = $this->dbconn->query($mobile_data_query);
+
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
-                array_push($mobile_id_container, $row['mobile_id']);
+                array_push($mobile_id_container, $row);
             }
             $full_data['data'] = $mobile_id_container;
         } else {
             echo "0 results\n";
             $full_data['data'] = null;
         }        
+
+        $full_data['date'] = date("F j, Y");
+        $full_data['sites'] = $this->getAllSites();
         $full_data['type'] = "getLEWCMobileDetailsViaSiteName";
         return $this->utf8_encode_recursive($full_data); 
     }
@@ -4026,8 +3978,6 @@ class ChatMessageModel {
     }
 
     function fetchEventTemplate($template_data) {
-        // var_dump($template_data);
-        // echo "========================================================";
         $site_query = "SELECT * FROM sites WHERE site_code = '".$template_data->site_name."';";
         $site_container = [];
         $ewi_backbone_container = [];
@@ -4124,7 +4074,6 @@ class ChatMessageModel {
         $greeting = null;
         date_default_timezone_set('Asia/Manila');
         $current_date = date('Y-m-d H:i:s');//H:i:s
-        // var_dump($current_date);
         $final_template = $raw_data['backbone'][0]['template'];
         $site_details = $this->generateSiteDetails($raw_data);
         $greeting = $this->generateGreetingsMessage(strtotime($current_date));
