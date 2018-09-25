@@ -3333,7 +3333,7 @@ class ChatMessageModel {
         $outbox_query = "SELECT smsoutbox_users.outbox_id as convo_id, mobile_id,
                         null as ts_received, ts_written, ts_sent, sms_msg , null as read_status,
                         web_status, gsm_id , send_status , ts_written as timestamp, 'You' as user FROM smsoutbox_users INNER JOIN smsoutbox_user_status ON smsoutbox_users.outbox_id = smsoutbox_user_status.outbox_id WHERE ".$outbox_filter_query."";
-        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg order by timestamp desc limit 70;";
+        $full_query = "SELECT * FROM (".$inbox_query." UNION ".$outbox_query.") as full_contact group by sms_msg,timestamp order by timestamp desc limit 70;";
 
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
@@ -3431,7 +3431,6 @@ class ChatMessageModel {
         while ($row = $mobile_number->fetch_assoc()) {
             array_push($mobile_data_container, $row);
         }
-
         return $mobile_data_container;
     }
 
@@ -3810,7 +3809,7 @@ class ChatMessageModel {
         return $full_data;
     }
 
-    function autoTagMessage($offices, $event_id, $site_id,$data_timestamp, $timestamp, $tag, $msg) {
+    function autoNarrative($offices, $event_id, $site_id,$data_timestamp, $timestamp, $tag, $msg) {
         $narrative_input = $this->getNarrativeInput($tag);
         $template = $narrative_input->fetch_assoc()['narrative_input'];
         $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
@@ -3822,6 +3821,18 @@ class ChatMessageModel {
             echo "No templates fetch..\n\n";
         }
         return $result;
+    }
+
+    function autoTagMessage($acc_id, $sms_id, $ts,$tag = "#EwiMessage") {
+        $status = [];
+        $get_tag_id = "SELECT tag_id FROM gintags_reference WHERE tag_name = '".$tag."'";
+        $tag_id_container = $this->dbconn->query($get_tag_id);
+        while ($row = $tag_id_container->fetch_assoc()) {
+            $tag_insertion_query = "INSERT INTO gintags VALUES (0,'".$row['tag_id']."','".$acc_id."','".$sms_id."','smsoutbox_users','".$ts."','Null')";
+            $tag_message = $this->dbconn->query($tag_insertion_query);
+            array_push($status, $tag_message);
+        }
+        return $status;
     }
 
     function getNarrativeInput($tag) {
