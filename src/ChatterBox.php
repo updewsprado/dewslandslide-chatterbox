@@ -42,6 +42,12 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($quickInboxMessages));
             } else if ($msgType == "smsloadquickinboxunregisteredrequest") {
 
+            } else if ($msgType == "getRoutineMobileIDsForRoutine") {
+                echo "Loading LEWC Mobile Details for routine...";
+                $sites = $decodedText->sites;
+                $offices = $decodedText->offices;
+                $exchanges = $this->chatModel->getRoutineMobileIDsViaSiteName($offices,$sites);
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "latestAlerts") {
                 echo "Loading latest public alerts.";
                 $latestAlerts = $this->chatModel->getLatestAlerts();
@@ -246,9 +252,12 @@ class ChatterBox implements MessageComponentInterface {
             } else if ($msgType == "fetchTeams") {
                 $exchanges = $this->chatModel->fetchTeams();
                 $from->send(json_encode($exchanges));
+            } else if ($msgType == "fetchTeamsForContactSettings") {
+                $exchanges = $this->chatModel->fetchTeamsForContactSettings();
+                $from->send(json_encode($exchanges));
             } else if ($msgType == "getEwiDetailsViaDashboard") {
                 $internal_alert = explode('-',$decodedText->data->internal_alert_level);
-                if($decodedText->data->internal_alert_level == "A0"){
+                if($decodedText->data->internal_alert_level == "A0" || $decodedText->data->internal_alert_level == "ND"){
                     $internal_alert = "A0-0";
                     $internal_alert = explode('-',$internal_alert);
                 }else {
@@ -286,7 +295,7 @@ class ChatterBox implements MessageComponentInterface {
                 $template = $this->chatModel->fetchEventTemplate((object) $data);
                 $full_data = [
                     "type" => "fetchedEwiDashboardTemplate",
-                    "recipients" => $recipients,
+                    "recipients" => $this->chatModel->utf8_encode_recursive($recipients),
                     "template" => $template
                 ];
                 $from->send(json_encode($full_data));

@@ -2126,56 +2126,6 @@ class ChatMessageModel {
         return $fullData;
     }
 
-    public function getAllOfficesAndSites() {
-        $fullData['type'] = 'loadofficeandsites';
-        $sqlOffices = "SELECT DISTINCT office FROM communitycontacts";
-        $this->checkConnectionDB($sqlOffices);
-        $result = $this->dbconn->query($sqlOffices);
-
-        $ctr = 0;
-        $returnOffices = "";
-
-        if ($result->num_rows > 0) {
-            $fullData['total_offices'] = $result->num_rows;
-            echo $result->num_rows . " results\n";
-            while ($row = $result->fetch_assoc()) {
-                $returnOffices[$ctr] = $row['office'];
-                $ctr = $ctr + 1;
-            }
-
-            $fullData['offices'] = $returnOffices;
-            echo "Offices data size: " . $this->getArraySize($returnOffices) . "\n";
-        }
-        else {
-            echo "0 results for offices\n";
-            $fullData['offices'] = null;
-        }
-        $sqlSitenames = "SELECT DISTINCT sitename FROM communitycontacts order by sitename asc";
-        $this->checkConnectionDB($sqlSitenames);
-        $result = $this->dbconn->query($sqlSitenames);
-
-        $ctr = 0;
-        $returnSitenames = "";
-
-        if ($result->num_rows > 0) {
-            $fullData['total_sites'] = $result->num_rows;
-            echo $result->num_rows . " results\n";
-            while ($row = $result->fetch_assoc()) {
-                $returnSitenames[$ctr] = $row['sitename'];
-
-                $ctr = $ctr + 1;
-            }
-
-            $fullData['sitenames'] = $returnSitenames;
-            echo "Sitenames data size: " . $this->getArraySize($returnSitenames) . "\n";
-        }
-        else {
-            echo "0 results for sitenames\n";
-            $fullData['sitenames'] = null;
-        }
-        return $fullData;
-    }
-
     public function getAllCmmtyContacts() {
         $this->checkConnectionDB();
         $returnCmmtyContacts = [];
@@ -3282,13 +3232,17 @@ class ChatMessageModel {
         $fetch_convo = $this->dbconn->query($full_query);
         if ($fetch_convo->num_rows != 0) {
             while($row = $fetch_convo->fetch_assoc()) {
+                $tag = $this->fetchSmsTags($row['convo_id']);
+                if (sizeOf($tag['data']) == 0) {
+                    $row['hasTag'] = 0;
+                } else {
+                    $row['hasTag'] = 1;
+                }
                 array_push($inbox_outbox_collection,$row);
             }
         } else {
             echo "No message fetched!";
         }
-
-        var_dump($inbox_outbox_collection);
 
         $full_data = [];
         $full_data['full_name'] = $details['full_name'];
@@ -3354,6 +3308,9 @@ class ChatMessageModel {
         $outbox_filter_query = "";
         $inbox_outbox_collection = [];
         $convo_id_container = [];
+        if(empty($offices)){
+            $offices = ["mlgu","blgu","lewc","plgu","lewc","mlgu","plgu","blgu"];
+        }
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
 
         foreach ($contact_lists as $mobile_data) {
@@ -3469,14 +3426,49 @@ class ChatMessageModel {
                 $counter++;
             }
         }
-
         $mobile_data_query = "SELECT * FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id = '".$site."' WHERE ".$site_office_query.";";
-
         $mobile_number = $this->dbconn->query($mobile_data_query);
         while ($row = $mobile_number->fetch_assoc()) {
             array_push($mobile_data_container, $row);
         }
+
         return $mobile_data_container;
+    }
+
+    function getRoutineMobileIDsViaSiteName($offices,$site_codes) {
+        $where = "";
+        $counter = 0;
+        $site_office_query = "";
+        $mobile_id_container = [];
+        foreach ($offices as $office) {
+            foreach ($site_codes as $site_code) {
+                if ($counter == 0) { 
+                    $site_office_query = "(org_name = '".$office."' AND fk_site_id = '".$site_code."')";
+                } else {
+                    $site_office_query = $site_office_query." OR (org_name = '".$office."' AND fk_site_id = '".$site_code."')";
+                }            
+                $counter++;
+            }
+        }
+
+        $mobile_data_query = "SELECT DISTINCT mobile_id,fk_site_id FROM user_organization INNER JOIN users ON user_organization.user_id = users.user_id INNER JOIN user_mobile ON user_mobile.user_id = users.user_id INNER JOIN sites ON sites.site_id WHERE ".$site_office_query." order by fk_site_id;";
+
+        $execute_query = $this->dbconn->query($mobile_data_query);
+
+        if ($execute_query->num_rows > 0) {
+            while ($row = $execute_query->fetch_assoc()) {
+                array_push($mobile_id_container, $row);
+            }
+            $full_data['data'] = $mobile_id_container;
+        } else {
+            echo "0 results\n";
+            $full_data['data'] = null;
+        }        
+
+        $full_data['date'] = date("F j, Y");
+        $full_data['sites'] = $this->getAllSites();
+        $full_data['type'] = "getLEWCMobileDetailsViaSiteName";
+        return $this->utf8_encode_recursive($full_data); 
     }
 
     function sendSms($recipients, $message) {
@@ -3659,8 +3651,10 @@ class ChatMessageModel {
         if ($data['tag_important'] != true) {
             $insert_tag_status = $this->insertTag($data); 
             $full_data['tag_status'] = $insert_tag_status;
+            $full_data['status'] = true;
         } else {
             $full_data['tag_status'] = $this->tagToNarratives($data);
+            $full_data['status'] = true;
         }
         return $full_data;
     }
@@ -3668,10 +3662,11 @@ class ChatMessageModel {
     function tagToNarratives($data) {
         $event_container = [];
         $offices = [];
-
+        $result = null;
         if (isset($data['sms_id']) == true) {
             $insert_tag_status = $this->insertTag($data);
             if ($insert_tag_status['status'] == true) {
+                $time_sent = null;
                 $narrative_input = $this->getNarrativeInput($data['tag']);
                 $template = $narrative_input->fetch_assoc()['narrative_input'];
                 $raw_office = explode(" ",$data['full_name']);
@@ -3684,8 +3679,8 @@ class ChatMessageModel {
                         array_push($event_container, $row);
                     }
                 }
-
-                $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $data['time_sent'], $template, $data['msg'], $data['full_name']);
+                // $time_sent = $this->setTimeSent($data['ts'], $data['time_sent']);
+                $narrative = $this->parseTemplateCodes($offices, $event_container[0]['site_id'], $data['ts'], $time_sent, $template, $data['msg'], $data['full_name']);
                 $sql = "INSERT INTO narratives VALUES(0,'".$event_container[0]['event_id']."','".$data['ts']."','".$narrative."')";
                 $result = $this->senslope_dbconn->query($sql);
             } else {
@@ -3736,6 +3731,21 @@ class ChatMessageModel {
             }
         }
         return $result;
+    }
+
+    function setTimeSent ($timestamp, $time_sent) {
+        $time_state = null;
+        if(strtotime($timestamp) >= strtotime(date("Y-m-d 00:00:01")) && strtotime($timestamp) < strtotime(date("Y-m-d 11:59:59"))){
+            $time_state = "AM";
+        }else if(strtotime($timestamp) == strtotime(date("Y-m-d 12:00:00"))){
+            $time_state = "NN";
+        }else if(strtotime($timestamp) >= strtotime(date("Y-m-d 12:01:00")) && strtotime($timestamp) < strtotime(date("Y-m-d 23:59:59"))) {
+            $time_state = "PM";
+        }else if(strtotime($timestamp) == strtotime(date("Y-m-d 00:00:00"))){
+            $time_state = "MN";
+        }
+        $time = "$time_sent $time_state";
+        return $time;
     }
 
     function searchConvoIdViaMessageAttribute($ts, $msg, $recipients) {
@@ -3805,7 +3815,7 @@ class ChatMessageModel {
         $template = $narrative_input->fetch_assoc()['narrative_input'];
         $narrative = $this->parseTemplateCodes($offices, $site_id, $data_timestamp, $timestamp, $template, $msg);
         if ($template != "") {
-            $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".$data_timestamp."','".$narrative."')";
+            $sql = "INSERT INTO narratives VALUES(0,'".$event_id."','".date("Y-m-d H:i:s")."','".$narrative."')";
             $result = $this->senslope_dbconn->query($sql);
         } else {
             $result = false;
@@ -3833,6 +3843,8 @@ class ChatMessageModel {
                     break;
 
                 case '(current_release_time)':
+                    $raw_time = explode(":",$timestamp);
+                    if (strlen($raw_time[0]) == 1) {$timestamp = "0".$timestamp;}
                     $template = str_replace($code,$timestamp,$template);
                     break;
 
@@ -3859,12 +3871,13 @@ class ChatMessageModel {
     }
 
     function fetchSitesForRoutine() {
-        $sites_query = "SELECT site_code,season from sites;";
+        $sites_query = "SELECT site_id,site_code,season from sites;";
         $sites = [];
         $execute_query = $this->dbconn->query($sites_query);
         if ($execute_query->num_rows > 0) {
             while ($row = $execute_query->fetch_assoc()) {
                 $raw = [
+                    "id" => $row['site_id'],
                     "site" => $row['site_code'],
                     "season" => $row['season']
                 ];
@@ -3983,7 +3996,7 @@ class ChatMessageModel {
 
         if($template_data->alert_level == "A0") {
             $alert_status = null;
-            if($template_data->event_category == "event" && $template_data->alert_status == "Event"){// for lowering
+            if($template_data->event_category == "event"){// for lowering
                 $alert_status = "Lowering";
             }else {// for extended
                 $alert_status = "Extended";
@@ -4021,8 +4034,11 @@ class ChatMessageModel {
             echo "0 results\n";
         }
         
+        if ($template_data->alert_level == "ND"){
+            $template_data->alert_level = "A1";
+            $extended_day = $template_data->ewi_details->day;
+        }
 
-        if ($template_data->alert_level == "ND"){$template_data->alert_level = "A1";}
         $alert_level = str_replace('A','Alert ',$template_data->alert_level);
         $recom_query = "SELECT * FROM ewi_template WHERE alert_symbol_level = '".$alert_level."' AND alert_status = '".$template_data->alert_status."';";
         $execute_query = $this->dbconn->query($recom_query);
@@ -4043,6 +4059,7 @@ class ChatMessageModel {
             "formatted_data_timestamp" => $template_data->formatted_data_timestamp,
             "data_timestamp" => $template_data->data_timestamp,
             "alert_level" => $alert_level,
+            "event_category" => $template_data->event_category,
             "extended_day" => $extended_day
         ];
 
@@ -4057,84 +4074,135 @@ class ChatMessageModel {
         $ewi_time = null;
         $greeting = null;
         date_default_timezone_set('Asia/Manila');
-        $current_date = date('Y-m-d H:i:s');
-
+        $current_date = date('Y-m-d H:i:s');//H:i:s
         $final_template = $raw_data['backbone'][0]['template'];
-        
-        
-        if ($raw_data['site'][0]['purok'] == "") {
-            $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
-        }
+        $site_details = $this->generateSiteDetails($raw_data);
+        $greeting = $this->generateGreetingsMessage(strtotime($current_date));
+        $time_messages = $this->generateTimeMessages(strtotime($raw_data['data_timestamp']));
 
-        if ($raw_data['site'][0]['sitio'] == "") {
-             $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
-        } else {
-             $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
-        }
-
-        if(strtotime($current_date) >= strtotime(date("Y-m-d 00:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 11:59:59"))){
-            $greeting = "umaga";
-        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 12:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 13:00:00"))){
-            $greeting = "tanghali";
-        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 13:00:01")) && strtotime($current_date) < strtotime(date("Y-m-d 17:59:59"))) {
-            $greeting = "hapon";
-        }else if(strtotime($current_date) >= strtotime(date("Y-m-d 18:00:00")) && strtotime($current_date) < strtotime(date("Y-m-d 23:59:59"))){
-            $greeting = "gabi";
-        }
-
-        $time_of_release = $raw_data['data_timestamp'];
-        // $time_stamp = date("Y-m-d 02:30:00");
-        $datetime = explode(" ",$time_of_release);
-        $time = $datetime[1];
-
-        if($time >= date("00:00:00") && $time <= date("03:59:59")){
-            $date_submission = "mamaya";
-            $time_submission = "bago mag-07:30 AM";
-            $ewi_time = "04:00 AM";
-        } else if($time >= date("04:00:00") && $time <= date("07:59:59")){
-            $date_submission = "mamaya";
-            $time_submission = "bago mag-07:30 AM";
-            $ewi_time = "08:00 AM";
-        } else if($time >= date("08:00:00") && $time <= date("15:59:59")){
-            $date_submission = "mamaya";
-            $time_submission = "bago mag-3:30 PM";
-            $ewi_time = "04:00 PM";
-        } else if($time >= date("16:00:00") && $time <= date("19:59:59")){
-            $date_submission = "bukas";
-            $time_submission = "bago mag-7:30 AM";
-            $ewi_time = "08:00 PM";
-        } else if($time >= date("20:00:00")){
-            $date_submission = "bukas";
-            $time_submission = "bago mag-7:30 AM";
-            $ewi_time = "12:00 MN";
-        } else {
-            echo "Error Occured: Please contact Administrator";
-        }
-
-        if($raw_data['alert_level'] == "Alert 0"){
-            $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
+        if($raw_data['alert_level'] == "Alert 0" || $raw_data['event_category'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
+            $final_template = str_replace("(site_location)",$site_details,$final_template);
             $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
             $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
             $final_template = str_replace("(greetings)",$greeting,$final_template);
-            if($raw_data["recommended_response"][0]["alert_status"] == "Extended"){
+            if($raw_data['event_category'] == "extended"){
+                $extended_day_text = $this->generateExtendedDayMessage($raw_data['extended_day']);
                 $final_template = str_replace("(current_date)",$raw_data['formatted_data_timestamp'],$final_template);
+                $final_template = str_replace("(nth-day-extended)",$extended_day_text ,$final_template);
+            }else if ($raw_data['event_category'] == "event") {
+                $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
                 $final_template = str_replace("(nth-day-extended)",$raw_data['extended_day'] . "-day" ,$final_template);
             }
         }else {
-            $final_template = str_replace("(site_location)",$reconstructed_site_details,$final_template);
+            $final_template = str_replace("(site_location)",$site_details,$final_template);
             $final_template = str_replace("(alert_level)",$raw_data['alert_level'],$final_template);
             $final_template = str_replace("(current_date_time)",$raw_data['formatted_data_timestamp'],$final_template);
             $final_template = str_replace("(technical_info)",$raw_data['tech_info'][0]['key_input'],$final_template);
             $final_template = str_replace("(recommended_response)",$raw_data['recommended_response'][0]['key_input'],$final_template);
-            $final_template = str_replace("(gndmeas_date_submission)",$date_submission,$final_template);
-            $final_template = str_replace("(gndmeas_time_submission)",$time_submission,$final_template);
-            $final_template = str_replace("(next_ewi_time)",$ewi_time,$final_template);
+            $final_template = str_replace("(gndmeas_date_submission)",$time_messages["date_submission"],$final_template);
+            $final_template = str_replace("(gndmeas_time_submission)",$time_messages["time_submission"],$final_template);
+            $final_template = str_replace("(next_ewi_time)",$time_messages["next_ewi_time"],$final_template);
             $final_template = str_replace("(greetings)",$greeting,$final_template);
         }
 
         
 
         return $final_template;
+    }
+
+    function generateSiteDetails($raw_data) {
+        if (($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL) && $raw_data['site'][0]['sitio'] != NULL) {
+            $reconstructed_site_details = $raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        } else if ($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) {
+             $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        } else if (($raw_data['site'][0]['sitio'] == "" || $raw_data['site'][0]['sitio'] == NULL) && ($raw_data['site'][0]['purok'] == "" || $raw_data['site'][0]['purok'] == NULL)) {
+            $reconstructed_site_details = $raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        } else {
+             $reconstructed_site_details = $raw_data['site'][0]['purok'].", ".$raw_data['site'][0]['sitio'].", ".$raw_data['site'][0]['barangay'].", ".$raw_data['site'][0]['municipality'].", ".$raw_data['site'][0]['province'];
+        }
+
+        return $reconstructed_site_details;
+    }
+
+    function generateExtendedDayMessage($day) {
+        if($day == 3){
+            $extended_day_message = "susunod na routine";
+        }else if($day == 2) {
+            $extended_day_message = "huling araw ng 3-day extended";
+        }else if($day == 1) {
+            $extended_day_message = "ikalawang araw ng 3-day extended";
+        }
+
+        return $extended_day_message;
+    }
+
+    function generateTimeMessages($release_time) {
+        if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 04:00:00"))){
+          $date_submission = "mamaya";
+          $time_submission = "bago mag-7:30 AM";
+          $next_ewi_time = "4:00 AM";
+        } 
+        else if($release_time >= strtotime(date("Y-m-d 04:00:00")) && $release_time < strtotime(date("Y-m-d 08:00:00"))){
+          $date_submission = "mamaya";
+          $time_submission = "bago mag-7:30 AM";
+          $next_ewi_time = "8:00 AM";
+        } 
+        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 12:00:00"))){
+          $date_submission = "mamaya";
+          $time_submission = "bago mag-11:30 AM";
+          $next_ewi_time = "12:00 NN";
+        } 
+        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 16:00:00"))){
+          $date_submission = "mamaya";
+          $time_submission = "bago mag-3:30 PM";
+          $next_ewi_time = "4:00 PM";
+        } 
+        else if($release_time >= strtotime(date("Y-m-d 16:00:00")) && $release_time < strtotime(date("Y-m-d 20:00:00"))){
+          $date_submission = "bukas";
+          $time_submission = "bago mag-7:30 AM";
+          $next_ewi_time = "8:00 PM";
+        } 
+        else if($release_time >= strtotime(date("Y-m-d 20:00:00"))){
+          $date_submission = "bukas";
+          $time_submission = "bago mag-7:30 AM";
+          $next_ewi_time = "12:00 MN";
+        } 
+        else {
+          $date_submission = "mamaya";
+          $time_submission = "bago mag-7:30 AM";
+          $next_ewi_time = "4:00 AM";
+        }
+
+        $timeTemplate = [
+          "date_submission" => $date_submission,
+          "time_submission" => $time_submission,
+          "next_ewi_time" => $next_ewi_time
+        ];
+
+        return $timeTemplate;
+    }
+
+    function generateGreetingsMessage($release_time) {
+        if( $release_time >= strtotime(date("Y-m-d 18:00:00")) && $release_time <= strtotime(date("Y-m-d 23:59:59")) ){
+          $greeting = "gabi";
+        } 
+        else if( $release_time == strtotime(date("Y-m-d 00:00:00")) ){
+          $greeting = "gabi";
+        } 
+        else if( $release_time > strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 11:59:59")) ){
+          $greeting = "umaga";
+        } 
+        else if( $release_time == strtotime(date("Y-m-d 12:00:00")) ){
+          $greeting = "tanghali";
+        } 
+        else if( $release_time > strtotime(date("Y-m-d 12:00:01")) && $release_time < strtotime(date("Y-m-d 15:59:59")) ){
+          $greeting = "hapon";
+        } 
+        else {
+          $greeting = "araw";
+        }
+
+        return $greeting;
     }
 
     function fetchSearchKeyViaGlobalMessages($search_key, $search_limit) {
