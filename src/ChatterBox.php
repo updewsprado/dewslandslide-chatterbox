@@ -268,12 +268,12 @@ class ChatterBox implements MessageComponentInterface {
                     case 'event':
                         if ($internal_alert[0] != "A3") {
                             $alert_status = 'Event';
-                            $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                            $offices = ['BLGU','PLGU','LEWC','MLGU','REGION-8'];
                             $sites = [$decodedText->data->site_id];
                             $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);
                         } else {
                              $alert_status = 'Event-Level3';
-                            $offices = ['BLGU','PLGU','LEWC','MLGU'];
+                            $offices = ['BLGU','PLGU','LEWC','MLGU','REGION-8'];
                             $sites = [$decodedText->data->site_id];
                             $recipients = $this->chatModel->getMobileDetailsViaOfficeAndSitename($offices, $sites);                           
                         }
@@ -307,6 +307,7 @@ class ChatterBox implements MessageComponentInterface {
                 $from->send(json_encode($full_data));
             } else if ($msgType == "sendEwiViaDashboard") {
                 $status = [];
+                $gintag_status = [];
                 $recipients_to_tag = [];
                 $counter = 0;
                 foreach ($decodedText->recipients as $recipient) {
@@ -326,10 +327,12 @@ class ChatterBox implements MessageComponentInterface {
                     $temp_site = $temp_org[0];
                     array_push($recipients_to_tag,$temp_org[1]);
                     array_push($status,$temp);
+                    array_push($gintag_status, $this->chatModel->autoTagMessage($decodedText->account_id,$send_status['convo_id'],$send_status['timestamp']));
                 }
                 $full_data['type'] = "sentEwiDashboard";
                 $full_data['statuses'] = $status;
-                $full_data['gintag_status'] = $this->chatModel->autoTagMessage(array_unique($recipients_to_tag), $decodedText->event_id,$decodedText->site_id,$decodedText->data_timestamp,$decodedText->timestamp ,"#EwiMessage",$decodedText->msg);
+                $full_data['narrative_status'] = $this->chatModel->autoNarrative(array_unique($recipients_to_tag), $decodedText->event_id,$decodedText->site_id,$decodedText->data_timestamp,$decodedText->timestamp ,"#EwiMessage",$decodedText->msg);
+                $full_data['gintag_status'] = $gintag_status;
                 $from->send(json_encode($full_data));
             } else if ($msgType == "getGroundMeasDefaultSettings") {
                 if (strtotime(date('h:i A')) >= strtotime('7:30 AM') && strtotime(date('h:i A')) <= strtotime('11:30 AM')) {
