@@ -370,7 +370,6 @@ class ChatMessageModel {
             ORDER BY ts_sms";
 
         $full_query = "SELECT * FROM (".$get_all_sms_from_period.") as community UNION SELECT * FROM (".$get_all_sms_from_period_employee.") as employee ORDER BY ts_sms";
-
         $this->checkConnectionDB($full_query);
         $sms_result_from_period = $this->dbconn->query($full_query);
 
@@ -399,8 +398,8 @@ class ChatMessageModel {
             $full_data['data'] = null;
         }
 
-        // echo "JSON DATA: " . json_encode($full_data);
         return $this->utf8_encode_recursive($full_data);
+        // var_dump($this->utf8_encode_recursive($full_data));
     }
 
     public function getFullnamesAndNumbers() {
@@ -3368,7 +3367,7 @@ class ChatMessageModel {
         $inbox_outbox_collection = [];
         $convo_id_container = [];
         if(empty($offices)){
-            $offices = ["mlgu","blgu","lewc","plgu","lewc","mlgu","plgu","blgu"];
+            $offices = ["mlgu","blgu","lewc","plgu"];
         }
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
 
@@ -4452,6 +4451,7 @@ class ChatMessageModel {
         }        
         return $last_inserted_id;
     }
+
     function flagGndMeasSettingsSentStatus() {
         $overwrite_query = "UPDATE ground_meas_reminder_automation SET status = 1 WHERE status = 0";
         $this->checkConnectionDB($overwrite_query);
