@@ -4088,7 +4088,7 @@ class ChatMessageModel {
         $final_template = $raw_data['backbone'][0]['template'];
         $site_details = $this->generateSiteDetails($raw_data);
         $greeting = $this->generateGreetingsMessage(strtotime($current_date));
-        $time_messages = $this->generateTimeMessages(strtotime($raw_data['data_timestamp']));
+        $time_messages = $this->generateTimeMessages(strtotime(date('Y-m-d H:i:s', strtotime('+30 minutes', strtotime($raw_data['data_timestamp'])))));
 
         if($raw_data['alert_level'] == "Alert 0" || $raw_data['event_category'] == "extended" && $raw_data['alert_level'] == "Alert 1"){
             $final_template = str_replace("(site_location)",$site_details,$final_template);
@@ -4147,27 +4147,29 @@ class ChatMessageModel {
     }
 
     function generateTimeMessages($release_time) {
-        if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 04:00:00"))){
+        if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 03:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "4:00 AM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 04:00:00")) && $release_time < strtotime(date("Y-m-d 08:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 04:00:00")) && $release_time < strtotime(date("Y-m-d 07:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "8:00 AM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 12:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 11:59:59"))){
+            var_dump(date("Y-m-d 08:00:00"));
+            var_dump(date("Y-m-d 11:59:59"));
           $date_submission = "mamaya";
           $time_submission = "bago mag-11:30 AM";
           $next_ewi_time = "12:00 NN";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 16:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 12:00:00")) && $release_time < strtotime(date("Y-m-d 15:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-3:30 PM";
           $next_ewi_time = "4:00 PM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 16:00:00")) && $release_time < strtotime(date("Y-m-d 20:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 16:00:00")) && $release_time < strtotime(date("Y-m-d 19:59:59"))){
           $date_submission = "bukas";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "8:00 PM";
