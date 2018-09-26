@@ -25,6 +25,7 @@ class ChatMessageModel {
         if ($this->dbconn->connect_error) {
             die("Connection failed: " . $this->dbconn->connect_error);
         } else {
+            echo $host . "\n";
             echo "Connection Established for comms_db... \n";
             return true;
         }
@@ -44,6 +45,7 @@ class ChatMessageModel {
         if ($this->senslope_dbconn->connect_error) {
             die("Connection failed: " . $this->senslope_dbconn->connect_error);
         } else {
+            echo $host . "\n";
             echo "Connection Established for senslopedb... \n";
             return true;
         }
@@ -368,7 +370,6 @@ class ChatMessageModel {
             ORDER BY ts_sms";
 
         $full_query = "SELECT * FROM (".$get_all_sms_from_period.") as community UNION SELECT * FROM (".$get_all_sms_from_period_employee.") as employee ORDER BY ts_sms";
-
         $this->checkConnectionDB($full_query);
         $sms_result_from_period = $this->dbconn->query($full_query);
 
@@ -397,8 +398,8 @@ class ChatMessageModel {
             $full_data['data'] = null;
         }
 
-        // echo "JSON DATA: " . json_encode($full_data);
         return $this->utf8_encode_recursive($full_data);
+        // var_dump($this->utf8_encode_recursive($full_data));
     }
 
     public function getFullnamesAndNumbers() {
@@ -2148,6 +2149,7 @@ class ChatMessageModel {
         }
         $returnData['type'] = 'fetchedCmmtyContacts';
         $returnData['data'] = $returnCmmtyContacts;
+
         return $this->utf8_encode_recursive($returnData);
     }
 
@@ -2303,10 +2305,10 @@ class ChatMessageModel {
         // EWI status checker.
         $if_ewi_updated = "SELECT * FROM user_ewi_status WHERE users_id = '$id'";
         $ewi_update = $this->dbconn->query($if_ewi_updated);
-        if ($ewi_update->num_rows == 0) {
-            $update_ewi_status = "INSERT INTO user_ewi_status VALUES(0,'Active','','$id')";
-            $update = $this->dbconn->query($update_ewi_status);
-        }
+        // if ($ewi_update->num_rows == 0) { // Ask JOHN regarding this code
+        //     $update_ewi_status = "INSERT INTO user_ewi_status VALUES(0,'','Active','$id')";
+        //     $update = $this->dbconn->query($update_ewi_status);
+        // }
 
         // refactor this code
         $query = "SELECT users.user_id,users.salutation,users.firstname,users.middlename,users.lastname,users.nickname,users.birthday,users.sex,users.status as active_status,user_organization.org_id,user_organization.org_name,user_organization.scope,organization.org_id as organization_id,user_mobile.mobile_id,user_mobile.sim_num,user_mobile.priority,user_mobile.mobile_status,user_landlines.landline_id,user_landlines.landline_num,user_landlines.remarks,sites.site_id,sites.site_code,sites.psgc_source,user_ewi_status.mobile_id as ewi_mobile_id,user_ewi_status.status as ewi_status,user_ewi_status.remarks as ewi_remarks FROM users INNER JOIN user_organization ON users.user_id = user_organization.user_id LEFT JOIN user_ewi_status ON user_ewi_status.users_id = users.user_id LEFT JOIN organization ON user_organization.org_name = organization.org_name LEFT JOIN user_mobile ON user_mobile.user_id = users.user_id LEFT JOIN user_landlines ON user_landlines.user_id = users.user_id LEFT JOIN user_emails ON user_emails.user_id = users.user_id LEFT JOIN sites ON sites.site_id = user_organization.fk_site_id WHERE users.user_id = '$id' order by lastname desc;";
@@ -2458,9 +2460,13 @@ class ChatMessageModel {
                 }
             } else {
                 for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
+                    
+                    // Get GSM ID
+                    $mobile_gsm_id = $this->identifyGSMIDFromMobileNumber($data->numbers[$num_counter]->mobile_number);
+
                     if ($data->numbers[$num_counter]->mobile_id != "" && $data->numbers[$num_counter]->mobile_number != "") {
                         try {
-                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."',gsm_id = '".$mobile_gsm_id."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
                             $result = $this->dbconn->query($num_exist);
                         } catch (Exception $e) {
                             $flag = false;
@@ -2474,7 +2480,7 @@ class ChatMessageModel {
                         }
                     } else {
                         try {
-                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','".$mobile_gsm_id."')";
                             $result = $this->dbconn->query($new_num);
                         } catch (Exception $e) {
                             $flag = false;
@@ -2548,25 +2554,103 @@ class ChatMessageModel {
             } else {
                 for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
                     if ($data->numbers[$num_counter]->mobile_id != "" && $data->numbers[$num_counter]->mobile_number != "") {
+                        // NUMBER ALREADY EXISTS
                         try {
-                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                            // Get GSM ID
+                            $mobile_gsm_id = $this->identifyGSMIDFromMobileNumber($data->numbers[$num_counter]->mobile_number);
+                            $num_exist = "UPDATE user_mobile SET sim_num = '".$data->numbers[$num_counter]->mobile_number."',priority = '".$data->numbers[$num_counter]->mobile_priority."',mobile_status = '".$data->numbers[$num_counter]->mobile_status."',gsm_id = '".$mobile_gsm_id."' WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
                             $result = $this->dbconn->query($num_exist);
+
+                            /* Update user_ewi_status */
+                            if ($data->ewi_recipient == "") {
+                                try {
+                                    $update_existing = "UPDATE user_ewi_status SET status='".$data->numbers[$num_counter]->mobile_status."', remarks='Inactive' WHERE users_id = '".$data->user_id."' AND mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                                    $result = $this->dbconn->query($update_existing);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            } else {
+                                try {
+                                    $update_existing = "UPDATE user_ewi_status SET status='".$data->numbers[$num_counter]->mobile_status."', remarks='Active' WHERE users_id = '".$data->user_id."' AND mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                                    $result = $this->dbconn->query($update_existing);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            }
+
                         } catch (Exception $e) {
                             $flag = false;
                             echo $e->getMessage();
                         }
                     } else if ($data->numbers[$num_counter]->mobile_number == "") {
+                        // BLANK NUMBER
                         try {
                             $num_exist = "DELETE FROM user_mobile WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
                             $result = $this->dbconn->query($num_exist);
+
+                            $last_insert_mobile_id = $this->getLastInsertID();
+
+                            echo "\nLast inserted ID\n";
+                            var_dump($last_insert_mobile_id);
+                            echo "\n";
+
+                            /* Update user_ewi_status */
+                            if ($data->ewi_recipient == "") {
+                                try {
+                                    $num_exist = "DELETE FROM user_ewi_status WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                                    $result = $this->dbconn->query($num_exist);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            } else {
+                                try {
+                                    $num_exist = "DELETE FROM user_ewi_status WHERE mobile_id='".$data->numbers[$num_counter]->mobile_id."'";
+                                    $result = $this->dbconn->query($num_exist);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            }
                         } catch (Exception $e) {
                             $flag = false;
                             echo $e->getMessage();
                         }
                     } else {
+                        // NEW NUMBER
                         try {
-                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
+                            // Get GSM ID
+                            $mobile_gsm_id = $this->identifyGSMIDFromMobileNumber($data->numbers[$num_counter]->mobile_number);
+                            $new_num = "INSERT INTO user_mobile VALUES (0,'$data->user_id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','".$mobile_gsm_id."')";
                             $result = $this->dbconn->query($new_num);
+
+                            $last_insert_mobile_id = $this->getLastInsertID();
+
+                            echo "\nLast inserted ID\n";
+                            var_dump($last_insert_mobile_id);
+                            echo "\n";
+
+                            /* Update user_ewi_status */
+                            if ($data->ewi_recipient == "") {
+                                try {
+                                    $insert_ewi_status = "INSERT INTO user_ewi_status VALUES ('".$last_insert_mobile_id."','0','Inactive','".$data->user_id."')";
+                                    $result = $this->dbconn->query($insert_ewi_status);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            } else {
+                                try {
+                                    $insert_ewi_status = "INSERT INTO user_ewi_status VALUES ('".$last_insert_mobile_id."','".$data->numbers[$num_counter]->mobile_status."','Active','".$data->user_id."')";
+                                    $result = $this->dbconn->query($insert_ewi_status);
+                                } catch (Exception $e) {
+                                    $flag = false;
+                                    echo $e->getMessage();
+                                }
+                            }
+
                         } catch (Exception $e) {
                             $flag = false;
                             echo $e->getMessage();
@@ -2575,6 +2659,7 @@ class ChatMessageModel {
                 }
             }
 
+            /* Update user_landlines */
             if (sizeof($data->landline) == 0) {
                 try {
                     $landline_exist = "DELETE FROM user_landlines WHERE user_id='".$data->user_id."'";
@@ -2603,7 +2688,7 @@ class ChatMessageModel {
                         }
                     } else {
                         try {
-                            $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
+                            $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->user_id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
                             $result = $this->dbconn->query($new_landline); 
                         } catch (Exception $e) {
                             $flag = false;
@@ -2613,57 +2698,6 @@ class ChatMessageModel {
                 }
             }
 
-            if ($data->ewi_recipient == "") {
-                try {
-                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->id."'";
-                    $result = $this->dbconn->query($check_if_existing);
-                    if ($result->num_rows == 0) {
-                        try {
-                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'Inactive','','".$data->id."')";
-                            $result = $this->dbconn->query($insert_ewi_status);
-                        } catch (Exception $e) {
-                            $flag = false;
-                            echo $e->getMessage();
-                        }
-                    } else {
-                        try {
-                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->id."'";
-                            $result = $this->dbconn->query($update_existing);
-                        } catch (Exception $e) {
-                            $flag = false;
-                            echo $e->getMessage();
-                        }
-                    }
-                } catch (Exception $e) {
-                    $flag = false;
-                    echo $e->getMessage();
-                }
-            } else {
-                try {
-                    $check_if_existing = "SELECT * FROM user_ewi_status WHERE users_id = '".$data->user_id."'";
-                    $result = $this->dbconn->query($check_if_existing);
-                    if ($result->num_rows == 0) {
-                        try {
-                            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->user_id."')";
-                            $result = $this->dbconn->query($insert_ewi_status);
-                        } catch (Exception $e) {
-                            $flag = false;
-                            echo $e->getMessage();
-                        }
-                    } else {
-                        try {
-                            $update_existing = "UPDATE user_ewi_status SET status='".$data->ewi_recipient."', remarks='' WHERE users_id = '".$data->user_id."'";
-                            $result = $this->dbconn->query($update_existing);
-                        } catch (Exception $e) {
-                            $flag = false;
-                            echo $e->getMessage();
-                        }
-                    }
-                } catch (Exception $e) {
-                    $flag = false;
-                    echo $e->getMessage();
-                }
-            }
 
             $scope_query = "";
             for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
@@ -2836,8 +2870,10 @@ class ChatMessageModel {
 
         for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
             try {
-                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','0')";
-                $result = $this->dbconn->query($new_num);
+                $mobile_gsm_id = $this->identifyGSMIDFromMobileNumber($data->numbers[$num_counter]->mobile_number);
+
+                $new_num_query = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','".$mobile_gsm_id."')";
+                $result = $this->dbconn->query($new_num_query);
             } catch (Exception $e) {
                 $flag = false;
                 echo "false";
@@ -2881,15 +2917,20 @@ class ChatMessageModel {
             $flag = false;
         }
 
+        /* Insert all mobile numbers to user_mobile table */
         for ($num_counter = 0; $num_counter < sizeof($data->numbers); $num_counter++) {
             try {
-                $new_num = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."')";
-                $result = $this->dbconn->query($new_num);
+                $mobile_gsm_id = $this->identifyGSMIDFromMobileNumber($data->numbers[$num_counter]->mobile_number);
+
+                $new_num_query = "INSERT INTO user_mobile VALUES (0,'$data->id','".$data->numbers[$num_counter]->mobile_number."','".$data->numbers[$num_counter]->mobile_priority."','".$data->numbers[$num_counter]->mobile_status."','".$mobile_gsm_id."')";
+
+                $result = $this->dbconn->query($new_num_query);
             } catch (Exception $e) {
                 $flag = false;
             }
         }
 
+        /* Insert all landline numbers to user_landlines table */
         for ($landline_counter = 0; $landline_counter < sizeof($data->landline); $landline_counter++) {
             try {
                 $new_landline = "INSERT INTO user_landlines VALUES (0,'$data->id','".$data->landline[$landline_counter]->landline_number."','".$data->landline[$landline_counter]->landline_remarks."')";
@@ -2899,6 +2940,7 @@ class ChatMessageModel {
             }
         }
 
+        /* Prepare the WHERE filter for the PSGC query */
         $site_query = "";
         for ($counter = 0; $counter < sizeof($data->sites); $counter++) {
             if ($counter == 0) {
@@ -2908,52 +2950,57 @@ class ChatMessageModel {
             }
         }
 
-        $psgc = [];
+        /* Get Site Details */
+        $site_details = [];
         $ctr = 0;
         try {
-            $get_psgc = "SELECT psgc FROM sites WHERE ".$site_query;
-            $psgc_collection = $this->dbconn->query($get_psgc);
-            while ($row = $psgc_collection->fetch_assoc()) {
-                $psgc[$ctr] = $row['psgc'];
+            $site_details_query = "SELECT site_id, site_code, psgc_source  FROM sites WHERE ".$site_query;
+            $site_collection = $this->dbconn->query($site_details_query);
+            while ($row = $site_collection->fetch_assoc()) {
+                $site_details[$ctr] = $row;
                 $ctr++;
             }
         } catch (Exception $e) {
             $flag = false;
-        }
+        }        
 
-        $org_scope_query = "";
+        /* Prepare org details query */
+        $org_query = "";
         for ($counter = 0; $counter < sizeof($data->organizations); $counter++) {
             if ($counter == 0) {
-                $org_scope_query = "org_name = '".$data->organizations[$counter]."'";
+                $org_query = "org_name = '".$data->organizations[$counter]."'";
             } else {
-                $org_scope_query = $org_scope_query." OR org_name = '".$data->organizations[$counter]."'";
+                $org_query = $org_query." OR org_name = '".$data->organizations[$counter]."'";
             }
         }
 
-        $scopes = [];
+        /* Get org details from database */
+        $org_details = [];
         $ctr = 0;
         try {
-            $get_org_scope = "SELECT org_scope FROM organization WHERE ".$org_scope_query;
-            $scope_collection = $this->dbconn->query($get_org_scope);
-            while ($row = $scope_collection->fetch_assoc()) {
-                $scopes[$ctr] = $row['org_scope'];
+            $get_org_scope = "SELECT * FROM organization WHERE ".$org_query;
+            $org_collection = $this->dbconn->query($get_org_scope);
+            while ($row = $org_collection->fetch_assoc()) {
+                $org_details[$ctr] = $row;
                 $ctr++;
             }
         } catch (Exception $e) {
             $flag = false;
-        }
+        }        
 
-        try {
+        /* Delete first, all users that already exists in user_organization table */
+        try { 
             $delete_orgs = "DELETE FROM user_organization WHERE users_id = '".$data->id."'";
             $result = $this->dbconn->query($delete_orgs);
         } catch (Exception $e) {
             $flag = false;
         }
 
-        for ($counter = 0; $counter < sizeof($psgc); $counter++) {
-            for ($sub_counter = 0; $sub_counter < sizeof($scopes); $sub_counter++) {
+        /* Insert into user_organization table the new community contact */
+        for ($counter = 0; $counter < sizeof($site_details); $counter++) {
+            for ($sub_counter = 0; $sub_counter < sizeof($org_details); $sub_counter++) {
                 try {
-                    $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$scopes[$sub_counter]."','".$psgc[$counter]."','')";
+                    $insert_org = "INSERT INTO user_organization VALUES (0,'".$data->id."','".$site_details[$counter]['site_id']."','".$org_details[$sub_counter]['org_name']."','".$org_details[$sub_counter]['org_id']."')";
                     $result_org = $this->dbconn->query($insert_org);
                 } catch (Exception $e) {
                     $flag = false;
@@ -2961,21 +3008,32 @@ class ChatMessageModel {
             }
         }
 
-        try {
-            $insert_ewi_status = "INSERT INTO user_ewi_status VALUES (0,'".$data->ewi_recipient."','','".$data->id."')";
-            $result = $this->dbconn->query($insert_ewi_status);
-        } catch (Exception $e) {
-            $flag = false;
+        /* Get the mobile IDs per user */
+        $mobile_id_per_user = [];
+        $mobile_id_per_user = $this->getMobileIDPerUser($data->id);
+
+        /* INSERT into user_ewi_status if user is mobile recipient and corresponding mobile_id */
+        for ($counter = 0; $counter < sizeof($mobile_id_per_user); $counter++) {
+            try {
+                $insert_ewi_status = "INSERT INTO user_ewi_status VALUES ('".$mobile_id_per_user[$counter]['mobile_id']."','".$data->ewi_recipient."','Active','".$data->id."')";
+                $result = $this->dbconn->query($insert_ewi_status);
+            } catch (Exception $e) {
+                $flag = false;
+            }        
         }
-        
+
+        /* Return response message for notification toast */
         if ($flag == false) {
             $return_data['return_msg'] = "Error occured, please refresh the page and try again.";
         } else {
             $return_data['return_msg'] = "Successfully added new contact.";
         }
         $return_data['status'] = $flag;
+
+        echo "\n" . $return_data['return_msg'] . "\n"; // Log to chatterbox log
         
-        $return_data['type'] = "newAddedCommContact";
+        // $return_data['type'] = "newAddedCommContact";
+        $return_data['type'] = "newCommunityContact";
         return $return_data;
     }
 
@@ -3309,7 +3367,7 @@ class ChatMessageModel {
         $inbox_outbox_collection = [];
         $convo_id_container = [];
         if(empty($offices)){
-            $offices = ["mlgu","blgu","lewc","plgu","lewc","mlgu","plgu","blgu"];
+            $offices = ["mlgu","blgu","lewc","plgu"];
         }
         $contact_lists = $this->getMobileDetailsViaOfficeAndSitename($offices,$sites);
 
@@ -4158,8 +4216,6 @@ class ChatMessageModel {
           $next_ewi_time = "8:00 AM";
         } 
         else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 11:59:59"))){
-            var_dump(date("Y-m-d 08:00:00"));
-            var_dump(date("Y-m-d 11:59:59"));
           $date_submission = "mamaya";
           $time_submission = "bago mag-11:30 AM";
           $next_ewi_time = "12:00 NN";
@@ -4204,10 +4260,10 @@ class ChatMessageModel {
         else if( $release_time > strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 11:59:59")) ){
           $greeting = "umaga";
         } 
-        else if( $release_time == strtotime(date("Y-m-d 12:00:00")) ){
+        else if( $release_time > strtotime(date("Y-m-d 12:00:00")) && $release_time < strtotime(date("Y-m-d 12:59:59")) ){
           $greeting = "tanghali";
         } 
-        else if( $release_time > strtotime(date("Y-m-d 12:00:01")) && $release_time < strtotime(date("Y-m-d 15:59:59")) ){
+        else if( $release_time > strtotime(date("Y-m-d 13:00:00")) && $release_time < strtotime(date("Y-m-d 15:59:59")) ){
           $greeting = "hapon";
         } 
         else {
@@ -4358,6 +4414,53 @@ class ChatMessageModel {
         $full_data['type'] = "fetchedTeams";
         $full_data['data'] = $teams;
         return $full_data;
+    }
+  
+    function getMobileIDPerUser($user_id) {
+        $mobile_id_per_user = [];
+        $ctr = 0;
+        try {
+            $get_org_scope = "SELECT * FROM user_mobile WHERE user_id='".$user_id."'";
+            $org_collection = $this->dbconn->query($get_org_scope);
+            while ($row = $org_collection->fetch_assoc()) {
+                $mobile_id_per_user[$ctr] = $row;
+                $ctr++;
+            }
+            return $mobile_id_per_user;
+        } catch (Exception $e) {
+            $flag = false;
+        }
+    }
+
+    function identifyGSMIDFromMobileNumber($mobile_number) { // New function to identify the GSM_ID
+        $current_mobile_gsm_id = 0;
+        $current_mobile_network = $this->identifyMobileNetwork($mobile_number);
+        switch ($current_mobile_network) {
+            case "GLOBE":
+                $current_mobile_gsm_id = 8;
+                break;
+            case "SMART":
+                $current_mobile_gsm_id = 9;
+                break;
+            case "UNKNOWN":
+                $current_mobile_gsm_id = 0;
+                break;
+            default:
+                $current_mobile_gsm_id = 0;
+        }
+        return $current_mobile_gsm_id;
+    }
+
+    function getLastInsertID() {
+        $last_inserted_id;
+        try {
+            $get_last_id = "SELECT LAST_INSERT_ID();";
+            $result = $this->dbconn->query($get_last_id);
+            $last_inserted_id = $result->fetch_assoc()["LAST_INSERT_ID()"];
+        } catch (Exception $e) {
+            $flag = false;
+        }        
+        return $last_inserted_id;
     }
 
     function flagGndMeasSettingsSentStatus() {
