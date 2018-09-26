@@ -12,13 +12,13 @@ class ChatMessageModel {
     }
 
     public function initDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
         
         $dbname = "comms_db";
         $this->dbconn = new \mysqli($host, $usr, $pwd, $dbname);
@@ -32,13 +32,13 @@ class ChatMessageModel {
     }
 
     function switchDBforCB() {
-        $host = "192.168.150.75";
-        $usr = "pysys_local";
-        $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
+        // $host = "192.168.150.75";
+        // $usr = "pysys_local";
+        // $pwd = "NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg";
 
-        // $host = "localhost";
-        // $usr = "root";
-        // $pwd = "senslope";
+        $host = "localhost";
+        $usr = "root";
+        $pwd = "senslope";
 
         $analysis_db = "senslopedb";
         $this->senslope_dbconn = new \mysqli($host, $usr, $pwd, $analysis_db);
@@ -4205,27 +4205,27 @@ class ChatMessageModel {
     }
 
     function generateTimeMessages($release_time) {
-        if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 04:00:00"))){
+        if($release_time >= strtotime(date("Y-m-d 00:00:00")) && $release_time < strtotime(date("Y-m-d 03:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "4:00 AM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 04:00:00")) && $release_time < strtotime(date("Y-m-d 08:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 04:00:00")) && $release_time < strtotime(date("Y-m-d 07:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "8:00 AM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 12:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 11:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-11:30 AM";
           $next_ewi_time = "12:00 NN";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 08:00:00")) && $release_time < strtotime(date("Y-m-d 16:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 12:00:00")) && $release_time < strtotime(date("Y-m-d 15:59:59"))){
           $date_submission = "mamaya";
           $time_submission = "bago mag-3:30 PM";
           $next_ewi_time = "4:00 PM";
         } 
-        else if($release_time >= strtotime(date("Y-m-d 16:00:00")) && $release_time < strtotime(date("Y-m-d 20:00:00"))){
+        else if($release_time >= strtotime(date("Y-m-d 16:00:00")) && $release_time < strtotime(date("Y-m-d 19:59:59"))){
           $date_submission = "bukas";
           $time_submission = "bago mag-7:30 AM";
           $next_ewi_time = "8:00 PM";
